@@ -1,0 +1,26 @@
+{
+  "": {
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/primary.swiftdeps"
+  },
+  "/home/user/GoldRush/Sources/GoldRushSim/Commands.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Commands.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Commands.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Commands~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Commands.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Commands.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushSim/Support.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Support.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Support.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Support~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Support.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Support.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushSim/main.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/main.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/main.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/main~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/main.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/main.dia"
+  }
+}

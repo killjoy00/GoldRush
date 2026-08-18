@@ -1,0 +1,10 @@
+# reveal: games=50000
+# Every agent below plays identically except for WHICH three cards
+# it makes public. If the win rates are indistinguishable, the
+# reveal decision is decorative and needs redesign.
+p1_policy,p2_policy,p1_win_rate,ci95,mean_margin,margin_se
+considered,random,0.4786,0.0044,-1.746,0.151
+random,considered,0.5278,0.0044,2.182,0.151
+considered,inverted,0.4360,0.0043,-5.307,0.150
+inverted,considered,0.5678,0.0043,5.536,0.150
+random,inverted,0.4622,0.0044,-3.151,0.149

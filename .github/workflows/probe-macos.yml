@@ -1,0 +1,34 @@
+# Throwaway diagnostic. Tells us which runner images exist, which Xcodes are
+# installed and which iOS SDKs they carry, so ci.yml pins real versions rather
+# than assumed ones. Delete once the app build is pinned.
+name: Probe macOS runner
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/probe-macos.yml"]
+
+jobs:
+  probe:
+    name: Probe ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-14, macos-15, macos-26]
+    steps:
+      - name: Runner identity
+        run: |
+          echo "=== runner: ${{ matrix.runner }} ==="
+          sw_vers || true
+          uname -m || true
+      - name: Installed Xcodes
+        run: ls -d /Applications/Xcode*.app 2>/dev/null || echo "none found"
+      - name: Selected Xcode and SDKs
+        run: |
+          xcodebuild -version || true
+          echo "--- SDKs ---"
+          xcodebuild -showsdks || true
+          echo "--- swift ---"
+          swift --version || true

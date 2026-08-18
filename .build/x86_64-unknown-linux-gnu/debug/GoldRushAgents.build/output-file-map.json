@@ -1,0 +1,47 @@
+{
+  "": {
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/primary.swiftdeps"
+  },
+  "/home/user/GoldRush/Sources/GoldRushAgents/Agent.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Agent.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Agent.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Agent~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Agent.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Agent.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushAgents/GreedyAgent.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GreedyAgent.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GreedyAgent.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GreedyAgent~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GreedyAgent.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GreedyAgent.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushAgents/InferenceAgent.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/InferenceAgent.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/InferenceAgent.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/InferenceAgent~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/InferenceAgent.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/InferenceAgent.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushAgents/MatchRunner.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/MatchRunner.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/MatchRunner.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/MatchRunner~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/MatchRunner.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/MatchRunner.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushAgents/RandomAgent.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/RandomAgent.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/RandomAgent.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/RandomAgent~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/RandomAgent.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/RandomAgent.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushAgents/Valuation.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Valuation.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Valuation.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Valuation~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Valuation.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Valuation.dia"
+  }
+}

@@ -1,0 +1,3 @@
+module GoldRushAgents {
+    header "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/include/GoldRushAgents-Swift.h"
+}

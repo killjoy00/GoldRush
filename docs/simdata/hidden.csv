@@ -1,0 +1,13 @@
+# hidden: games=50000
+# The question is whether hidden cards let a better-informed agent
+# convert its information edge. Inference tracks the residual deck;
+# Greedy prices hidden cards at the same expectation but does not
+# model the opponent. If persistence changes nothing, it is not
+# earning its rule.
+hidden_cards,persistent,inference_win_rate,ci95,mean_margin,mean_unseen_p1,mean_unseen_p2,score_sd
+0,true,0.4785,0.0044,-0.219,12.00,12.00,19.67
+0,false,0.4785,0.0044,-0.219,12.00,12.00,19.67
+1,true,0.4035,0.0043,-6.069,13.84,14.71,18.45
+1,false,0.4141,0.0043,-5.296,12.00,12.00,18.43
+2,true,0.3596,0.0042,-9.222,15.52,16.22,18.70
+2,false,0.3760,0.0042,-8.107,12.00,12.00,18.61

@@ -1,0 +1,7 @@
+# deck: games=50000 sizes=60,72,84
+# Cards DRAWN stay fixed at 60, so deck size sets residual
+# uncertainty alone: 60 leaves nothing undealt, 84 leaves 24.
+deck_size,residual,composition,inference_win_rate,ci95,mean_margin,mean_unseen,score_sd
+60,0,"Nugget:12 Pyrite:8 Ore:8 Shovel:7 Gravel:8 Pan:7 Quartz:7 Mule:3",0.3870,0.0043,-7.152,2.69,18.29
+72,12,"Nugget:14 Pyrite:10 Ore:10 Shovel:8 Gravel:10 Pan:8 Quartz:8 Mule:4",0.3930,0.0043,-6.857,14.69,18.54
+84,24,"Nugget:16 Pyrite:12 Ore:12 Shovel:9 Gravel:12 Pan:9 Quartz:9 Mule:5",0.3985,0.0043,-6.424,26.69,18.89
