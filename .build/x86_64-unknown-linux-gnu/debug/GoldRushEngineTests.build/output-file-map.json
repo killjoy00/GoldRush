@@ -22,5 +22,12 @@
     "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/ScoringFixtureTests~partial.swiftmodule",
     "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/ScoringFixtureTests.swiftdeps",
     "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/ScoringFixtureTests.dia"
+  },
+  "/home/user/GoldRush/Tests/GoldRushEngineTests/UICoreTests.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/UICoreTests.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/UICoreTests.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/UICoreTests~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/UICoreTests.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/UICoreTests.dia"
   }
 }

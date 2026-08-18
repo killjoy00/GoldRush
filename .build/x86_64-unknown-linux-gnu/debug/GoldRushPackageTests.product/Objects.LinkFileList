@@ -19,10 +19,13 @@
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/PlaythroughHarness.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/PropertyTests.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/ScoringFixtureTests.swift.o
+/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/UICoreTests.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/GoldRushEngineTests.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/GoldRushPackageDiscoveredTests.swiftmodule.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/all-discovered-tests.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/GoldRushPackageTests.swiftmodule.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/runner.swift.o
+/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/GameViewModel.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/GoldRushUICore.swiftmodule.o
-/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/Placeholder.swift.o
+/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/MatchTransport.swift.o
+/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/SplitBuilder.swift.o
