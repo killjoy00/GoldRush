@@ -67,6 +67,8 @@ public struct PlayerView: Sendable, Equatable {
     public let currentDraw: [VisibleCard]
     /// The two piles awaiting a choice. Populated during `.choose`.
     public let piles: (a: [VisibleCard], b: [VisibleCard])?
+    /// Cards still available in a scoring draft. Face-up, so public.
+    public let draftPool: [ScoringCardID]
 
     public var isMyTurn: Bool { actingPlayer == player }
     public let actingPlayer: PlayerID?
@@ -111,6 +113,7 @@ public struct PlayerView: Sendable, Equatable {
 
         self.hand = state.hands[player]
         self.myRevealed = state.revealed[player]
+        self.draftPool = state.draftPool
         // Reveals are simultaneous: the opponent's picks stay private until both
         // players have committed, so resolving p1 before p2 in the action
         // sequence leaks nothing.

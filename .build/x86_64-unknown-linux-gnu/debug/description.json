@@ -32,6 +32,26 @@
         },
         {
           "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushAgents/GreedyAgent.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushAgents/InferenceAgent.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushAgents/MatchRunner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushAgents/RandomAgent.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushAgents/Valuation.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt"
         },
         {
@@ -47,7 +67,12 @@
       "moduleName" : "GoldRushAgents",
       "moduleOutputPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushAgents.swiftmodule",
       "objects" : [
-        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Agent.swift.o"
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Agent.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GreedyAgent.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/InferenceAgent.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/MatchRunner.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/RandomAgent.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Valuation.swift.o"
       ],
       "otherArguments" : [
         "-target",
@@ -90,12 +115,37 @@
         },
         {
           "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GreedyAgent.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/InferenceAgent.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/MatchRunner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/RandomAgent.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Valuation.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushAgents.swiftmodule"
         }
       ],
       "prepareForIndexing" : false,
       "sources" : [
-        "/home/user/GoldRush/Sources/GoldRushAgents/Agent.swift"
+        "/home/user/GoldRush/Sources/GoldRushAgents/Agent.swift",
+        "/home/user/GoldRush/Sources/GoldRushAgents/GreedyAgent.swift",
+        "/home/user/GoldRush/Sources/GoldRushAgents/InferenceAgent.swift",
+        "/home/user/GoldRush/Sources/GoldRushAgents/MatchRunner.swift",
+        "/home/user/GoldRush/Sources/GoldRushAgents/RandomAgent.swift",
+        "/home/user/GoldRush/Sources/GoldRushAgents/Valuation.swift"
       ],
       "tempsPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build",
       "wholeModuleOptimization" : false
@@ -540,6 +590,14 @@
       "inputs" : [
         {
           "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushSim/Commands.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushSim/Support.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/home/user/GoldRush/Sources/GoldRushSim/main.swift"
         },
         {
@@ -563,6 +621,8 @@
       "moduleName" : "GoldRushSim",
       "moduleOutputPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushSim.swiftmodule",
       "objects" : [
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Commands.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Support.swift.o",
         "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/main.swift.o"
       ],
       "otherArguments" : [
@@ -602,6 +662,14 @@
       "outputs" : [
         {
           "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Commands.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Support.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/main.swift.o"
         },
         {
@@ -611,6 +679,8 @@
       ],
       "prepareForIndexing" : false,
       "sources" : [
+        "/home/user/GoldRush/Sources/GoldRushSim/Commands.swift",
+        "/home/user/GoldRush/Sources/GoldRushSim/Support.swift",
         "/home/user/GoldRush/Sources/GoldRushSim/main.swift"
       ],
       "tempsPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build",
@@ -712,6 +782,11 @@
       "goldrush",
       "-c",
       "/home/user/GoldRush/Sources/GoldRushAgents/Agent.swift",
+      "/home/user/GoldRush/Sources/GoldRushAgents/GreedyAgent.swift",
+      "/home/user/GoldRush/Sources/GoldRushAgents/InferenceAgent.swift",
+      "/home/user/GoldRush/Sources/GoldRushAgents/MatchRunner.swift",
+      "/home/user/GoldRush/Sources/GoldRushAgents/RandomAgent.swift",
+      "/home/user/GoldRush/Sources/GoldRushAgents/Valuation.swift",
       "-I",
       "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
       "-target",
@@ -941,6 +1016,8 @@
       "-package-name",
       "goldrush",
       "-c",
+      "/home/user/GoldRush/Sources/GoldRushSim/Commands.swift",
+      "/home/user/GoldRush/Sources/GoldRushSim/Support.swift",
       "/home/user/GoldRush/Sources/GoldRushSim/main.swift",
       "-I",
       "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
@@ -1117,6 +1194,26 @@
         {
           "kind" : "file",
           "name" : "/home/user/GoldRush/Sources/GoldRushAgents/Agent.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushAgents/GreedyAgent.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushAgents/InferenceAgent.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushAgents/MatchRunner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushAgents/RandomAgent.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushAgents/Valuation.swift"
         }
       ],
       "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/sources"
@@ -1238,6 +1335,26 @@
         },
         {
           "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GreedyAgent.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/InferenceAgent.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/MatchRunner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/RandomAgent.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Valuation.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameConfig.swift.o"
         },
         {
@@ -1332,6 +1449,14 @@
         },
         {
           "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushSim/Commands.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushSim/Support.swift"
+        },
+        {
+          "kind" : "file",
           "name" : "/home/user/GoldRush/Sources/GoldRushSim/main.swift"
         }
       ],
@@ -1351,6 +1476,26 @@
         {
           "kind" : "file",
           "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GoldRushAgents.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GreedyAgent.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/InferenceAgent.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/MatchRunner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/RandomAgent.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Valuation.swift.o"
         },
         {
           "kind" : "file",
@@ -1394,7 +1539,15 @@
         },
         {
           "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Commands.swift.o"
+        },
+        {
+          "kind" : "file",
           "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/GoldRushSim.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Support.swift.o"
         },
         {
           "kind" : "file",

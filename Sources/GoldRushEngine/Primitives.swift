@@ -22,7 +22,7 @@ public enum PileID: UInt8, CaseIterable, Sendable, Codable, Hashable {
 /// randomises hash seeds per process, so anything derived from dictionary
 /// iteration order fails to reproduce across runs. This has a fixed layout and
 /// no hashing at all.
-public struct PlayerPair<Value: Sendable & Codable & Equatable>: Sendable, Codable, Equatable {
+public struct PlayerPair<Value: Sendable & Equatable>: Sendable, Equatable {
     public var p1: Value
     public var p2: Value
 
@@ -52,6 +52,7 @@ public struct PlayerPair<Value: Sendable & Codable & Equatable>: Sendable, Codab
 }
 
 extension PlayerPair: Hashable where Value: Hashable {}
+extension PlayerPair: Codable where Value: Codable {}
 
 /// A set of card identities, as a fixed 128-bit mask.
 ///

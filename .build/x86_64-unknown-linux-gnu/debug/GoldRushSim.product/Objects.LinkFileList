@@ -1,5 +1,10 @@
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Agent.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GoldRushAgents.swiftmodule.o
+/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GreedyAgent.swift.o
+/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/InferenceAgent.swift.o
+/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/MatchRunner.swift.o
+/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/RandomAgent.swift.o
+/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Valuation.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameConfig.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameState.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GoldRushEngine.swiftmodule.o
@@ -10,5 +15,7 @@
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringCardCatalog.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringEffect.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/SeededRNG.swift.o
+/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Commands.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/GoldRushSim.swiftmodule.o
+/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Support.swift.o
 /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/main.swift.o
