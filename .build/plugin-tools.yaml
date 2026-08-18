@@ -11,10 +11,11 @@ targets:
   "GoldRushPackageTests-x86_64-unknown-linux-gnu-debug.test": ["<GoldRushPackageTests-x86_64-unknown-linux-gnu-debug.test>"]
   "GoldRushSim-x86_64-unknown-linux-gnu-debug.exe": ["<GoldRushSim-x86_64-unknown-linux-gnu-debug.exe>"]
   "GoldRushSim-x86_64-unknown-linux-gnu-debug.module": ["<GoldRushSim-x86_64-unknown-linux-gnu-debug.module>"]
+  "GoldRushUI-x86_64-unknown-linux-gnu-debug.module": ["<GoldRushUI-x86_64-unknown-linux-gnu-debug.module>"]
   "GoldRushUICore-x86_64-unknown-linux-gnu-debug.module": ["<GoldRushUICore-x86_64-unknown-linux-gnu-debug.module>"]
   "PackageStructure": ["<PackageStructure>"]
-  "main": ["<GoldRushAgents-x86_64-unknown-linux-gnu-debug.module>","<GoldRushEngine-x86_64-unknown-linux-gnu-debug.module>","<GoldRushSim-x86_64-unknown-linux-gnu-debug.exe>","<GoldRushSim-x86_64-unknown-linux-gnu-debug.module>","<GoldRushUICore-x86_64-unknown-linux-gnu-debug.module>"]
-  "test": ["<GoldRushAgents-x86_64-unknown-linux-gnu-debug.module>","<GoldRushEngine-x86_64-unknown-linux-gnu-debug.module>","<GoldRushEngineTests-x86_64-unknown-linux-gnu-debug.module>","<GoldRushPackageTests-x86_64-unknown-linux-gnu-debug.test>","<GoldRushSim-x86_64-unknown-linux-gnu-debug.exe>","<GoldRushSim-x86_64-unknown-linux-gnu-debug.module>","<GoldRushUICore-x86_64-unknown-linux-gnu-debug.module>"]
+  "main": ["<GoldRushAgents-x86_64-unknown-linux-gnu-debug.module>","<GoldRushEngine-x86_64-unknown-linux-gnu-debug.module>","<GoldRushSim-x86_64-unknown-linux-gnu-debug.exe>","<GoldRushSim-x86_64-unknown-linux-gnu-debug.module>","<GoldRushUI-x86_64-unknown-linux-gnu-debug.module>","<GoldRushUICore-x86_64-unknown-linux-gnu-debug.module>"]
+  "test": ["<GoldRushAgents-x86_64-unknown-linux-gnu-debug.module>","<GoldRushEngine-x86_64-unknown-linux-gnu-debug.module>","<GoldRushEngineTests-x86_64-unknown-linux-gnu-debug.module>","<GoldRushPackageTests-x86_64-unknown-linux-gnu-debug.test>","<GoldRushSim-x86_64-unknown-linux-gnu-debug.exe>","<GoldRushSim-x86_64-unknown-linux-gnu-debug.module>","<GoldRushUI-x86_64-unknown-linux-gnu-debug.module>","<GoldRushUICore-x86_64-unknown-linux-gnu-debug.module>"]
 default: "main"
 nodes:
   "/home/user/GoldRush/Sources/GoldRushAgents/":
@@ -24,6 +25,9 @@ nodes:
     is-directory-structure: true
     content-exclusion-patterns: [".git",".build"]
   "/home/user/GoldRush/Sources/GoldRushSim/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+  "/home/user/GoldRush/Sources/GoldRushUI/":
     is-directory-structure: true
     content-exclusion-patterns: [".git",".build"]
   "/home/user/GoldRush/Sources/GoldRushUICore/":
@@ -133,6 +137,19 @@ commands:
     outputs: ["/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.product/Objects.LinkFileList"]
     description: "Write auxiliary file /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.product/Objects.LinkFileList"
 
+  "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/GoldRushUI.swiftmodule.o":
+    tool: shell
+    inputs: ["/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUI.swiftmodule"]
+    outputs: ["/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/GoldRushUI.swiftmodule.o"]
+    description: "Wrapping AST for GoldRushUI for debugging"
+    args: ["/opt/swift/usr/bin/swiftc","-modulewrap","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUI.swiftmodule","-o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/GoldRushUI.swiftmodule.o","-target","x86_64-unknown-linux-gnu"]
+
+  "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/home/user/GoldRush/Sources/GoldRushUI/CardViews.swift","/home/user/GoldRush/Sources/GoldRushUI/ChooseView.swift","/home/user/GoldRush/Sources/GoldRushUI/HUDView.swift","/home/user/GoldRush/Sources/GoldRushUI/HandoffView.swift","/home/user/GoldRush/Sources/GoldRushUI/RevealSelectionView.swift","/home/user/GoldRush/Sources/GoldRushUI/RootView.swift","/home/user/GoldRush/Sources/GoldRushUI/ScoringView.swift","/home/user/GoldRush/Sources/GoldRushUI/SplitView.swift","/home/user/GoldRush/Sources/GoldRushUI/TableauView.swift","/home/user/GoldRush/Sources/GoldRushUI/Theme.swift"]
+    outputs: ["/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/sources"]
+    description: "Write auxiliary file /home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/sources"
+
   "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/GoldRushUICore.swiftmodule.o":
     tool: shell
     inputs: ["/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUICore.swiftmodule"]
@@ -192,6 +209,11 @@ commands:
     tool: phony
     inputs: ["/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Commands.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/Support.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/main.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushSim.swiftmodule"]
     outputs: ["<GoldRushSim-x86_64-unknown-linux-gnu-debug.module>"]
+
+  "<GoldRushUI-x86_64-unknown-linux-gnu-debug.module>":
+    tool: phony
+    inputs: ["/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/CardViews.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/ChooseView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/HUDView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/HandoffView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/RevealSelectionView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/RootView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/ScoringView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/SplitView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/TableauView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/Theme.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUI.swiftmodule"]
+    outputs: ["<GoldRushUI-x86_64-unknown-linux-gnu-debug.module>"]
 
   "<GoldRushUICore-x86_64-unknown-linux-gnu-debug.module>":
     tool: phony
@@ -254,6 +276,13 @@ commands:
     description: "Compiling Swift Module 'GoldRushSim' (3 sources)"
     args: ["/opt/swift/usr/bin/swiftc","-module-name","GoldRushSim","-emit-dependencies","-emit-module","-emit-module-path","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushSim.swiftmodule","-output-file-map","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/output-file-map.json","-incremental","-c","@/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/sources","-I","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules","-target","x86_64-unknown-linux-gnu","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store","-Onone","-enable-testing","-j4","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache","-parseable-output","-Xfrontend","-entry-point-function-name","-Xfrontend","GoldRushSim_main","-swift-version","6","-g","-Xcc","-fPIC","-Xcc","-g","-package-name","goldrush","-Xcc","-fno-omit-frame-pointer"]
 
+  "C.GoldRushUI-x86_64-unknown-linux-gnu-debug.module":
+    tool: shell
+    inputs: ["/home/user/GoldRush/Sources/GoldRushUI/CardViews.swift","/home/user/GoldRush/Sources/GoldRushUI/ChooseView.swift","/home/user/GoldRush/Sources/GoldRushUI/HUDView.swift","/home/user/GoldRush/Sources/GoldRushUI/HandoffView.swift","/home/user/GoldRush/Sources/GoldRushUI/RevealSelectionView.swift","/home/user/GoldRush/Sources/GoldRushUI/RootView.swift","/home/user/GoldRush/Sources/GoldRushUI/ScoringView.swift","/home/user/GoldRush/Sources/GoldRushUI/SplitView.swift","/home/user/GoldRush/Sources/GoldRushUI/TableauView.swift","/home/user/GoldRush/Sources/GoldRushUI/Theme.swift","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngine.swiftmodule","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushAgents.swiftmodule","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUICore.swiftmodule","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/sources"]
+    outputs: ["/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/CardViews.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/ChooseView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/HUDView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/HandoffView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/RevealSelectionView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/RootView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/ScoringView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/SplitView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/TableauView.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/Theme.swift.o","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUI.swiftmodule"]
+    description: "Compiling Swift Module 'GoldRushUI' (10 sources)"
+    args: ["/opt/swift/usr/bin/swiftc","-module-name","GoldRushUI","-emit-dependencies","-emit-module","-emit-module-path","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUI.swiftmodule","-output-file-map","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/output-file-map.json","-parse-as-library","-incremental","-c","@/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/sources","-I","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules","-target","x86_64-unknown-linux-gnu","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store","-Onone","-enable-testing","-j4","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache","-parseable-output","-parse-as-library","-emit-objc-header","-emit-objc-header-path","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/include/GoldRushUI-Swift.h","-swift-version","6","-g","-Xcc","-fPIC","-Xcc","-g","-package-name","goldrush","-Xcc","-fno-omit-frame-pointer"]
+
   "C.GoldRushUICore-x86_64-unknown-linux-gnu-debug.module":
     tool: shell
     inputs: ["/home/user/GoldRush/Sources/GoldRushUICore/GameViewModel.swift","/home/user/GoldRush/Sources/GoldRushUICore/MatchTransport.swift","/home/user/GoldRush/Sources/GoldRushUICore/SplitBuilder.swift","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngine.swiftmodule","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushAgents.swiftmodule","/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/sources"]
@@ -263,7 +292,7 @@ commands:
 
   "PackageStructure":
     tool: package-structure-tool
-    inputs: ["/home/user/GoldRush/Sources/GoldRushAgents/","/home/user/GoldRush/Sources/GoldRushEngine/","/home/user/GoldRush/Sources/GoldRushSim/","/home/user/GoldRush/Sources/GoldRushUICore/","/home/user/GoldRush/Tests/GoldRushEngineTests/","/home/user/GoldRush/Package.swift","/home/user/GoldRush/Package.resolved"]
+    inputs: ["/home/user/GoldRush/Sources/GoldRushAgents/","/home/user/GoldRush/Sources/GoldRushEngine/","/home/user/GoldRush/Sources/GoldRushSim/","/home/user/GoldRush/Sources/GoldRushUI/","/home/user/GoldRush/Sources/GoldRushUICore/","/home/user/GoldRush/Tests/GoldRushEngineTests/","/home/user/GoldRush/Package.swift","/home/user/GoldRush/Package.resolved"]
     outputs: ["<PackageStructure>"]
     description: "Planning build"
     allow-missing-inputs: true

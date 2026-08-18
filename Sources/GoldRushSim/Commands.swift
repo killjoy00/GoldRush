@@ -253,13 +253,13 @@ enum Sim {
         }
     }
 
-    /// Reveals exactly the cards a thoughtful player would hide: the inverse
-    /// policy. If reveal choice is decorative, this should not lose either.
+    /// The inverse of the agent's policy -- now the intuitive "hide your sharp
+    /// cards" rule, which the data says is the weaker one.
     struct InvertedRevealInference: GameAgent {
         let inner = InferenceAgent()
         var name: String { "inference-inverted-reveal" }
         func selectReveal(_ view: PlayerView, count: Int, rng: inout SeededRNG) -> [ScoringCardID] {
-            let ranked = view.hand.sorted { inner.concealmentValue($0) > inner.concealmentValue($1) }
+            let ranked = view.hand.sorted { inner.disclosureValue($0) < inner.disclosureValue($1) }
             return Array(ranked.prefix(count))
         }
         func split(_ view: PlayerView, rng: inout SeededRNG) -> SplitDecision { inner.split(view, rng: &rng) }

@@ -1,0 +1,144 @@
+name: TestFlight
+
+# Manual, or on a v* tag. Never on an ordinary push: every upload consumes a
+# TestFlight build number and notifies testers.
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: "What testers should know about this build"
+        required: false
+        default: "Automated build"
+  push:
+    tags: ["v*"]
+
+jobs:
+  upload:
+    name: Archive, sign and upload
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      # Change this by setting a repository variable of the same name.
+      BUNDLE_ID: ${{ vars.GOLDRUSH_BUNDLE_ID || 'com.killjoy00.goldrush' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+
+      - name: Check required secrets are present
+        # Fails with a readable message rather than a confusing signing error
+        # forty lines into an xcodebuild log.
+        run: |
+          missing=""
+          [ -z "${{ secrets.ASC_KEY_ID }}" ] && missing="$missing ASC_KEY_ID"
+          [ -z "${{ secrets.ASC_ISSUER_ID }}" ] && missing="$missing ASC_ISSUER_ID"
+          [ -z "${{ secrets.ASC_KEY_P8 }}" ] && missing="$missing ASC_KEY_P8"
+          [ -z "${{ secrets.APPLE_TEAM_ID }}" ] && missing="$missing APPLE_TEAM_ID"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            echo "See docs/DEPLOYMENT.md for how to create each one."
+            exit 1
+          fi
+          echo "All four secrets present."
+
+      - name: Install the App Store Connect API key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          # Accept the secret either base64-encoded or as raw PEM text.
+          if echo "$ASC_KEY_P8" | grep -q "BEGIN PRIVATE KEY"; then
+            printf '%s' "$ASC_KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          else
+            echo "$ASC_KEY_P8" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          fi
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          grep -q "BEGIN PRIVATE KEY" ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            || { echo "::error::ASC_KEY_P8 did not decode to a PEM private key"; exit 1; }
+
+      - name: Archive
+        # Cloud signing: -allowProvisioningUpdates with an App Store Connect API
+        # key lets Xcode create the bundle ID, certificate and provisioning
+        # profile on demand. That is why this pipeline never asks anyone to
+        # export a .p12 or touch a Keychain.
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cd App
+          xcodebuild archive \
+            -project GoldRush.xcodeproj \
+            -scheme GoldRush \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/GoldRush.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            -skipMacroValidation \
+            GOLDRUSH_BUNDLE_ID="$BUNDLE_ID" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            MARKETING_VERSION=1.0 \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }}
+
+      - name: Write export options
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${TEAM_ID}</string>
+            <key>uploadSymbols</key><true/>
+            <key>destination</key><string>export</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Export the .ipa
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/GoldRush.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          ls -la "$RUNNER_TEMP/export"
+
+      - name: Upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          IPA=$(ls "$RUNNER_TEMP/export"/*.ipa | head -1)
+          echo "Uploading $IPA (build ${{ github.run_number }})"
+          xcrun altool --upload-app \
+            -f "$IPA" \
+            -t ios \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
+
+      - name: Keep the build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goldrush-build-${{ github.run_number }}
+          path: |
+            ${{ runner.temp }}/export/*.ipa
+          if-no-files-found: ignore
+          retention-days: 14

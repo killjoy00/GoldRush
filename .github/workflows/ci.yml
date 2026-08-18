@@ -23,3 +23,57 @@ jobs:
         run: swift test
       - name: Release build (the simulator runs at -O)
         run: swift build -c release
+
+  ios:
+    name: iOS UI typecheck
+    # Pinned from the probe run: macos-26 carries Xcode 26.6 (17F113), the
+    # iOS 26.5 SDK and Swift 6.3.3 -- the same compiler the engine is tested
+    # with on Linux, so there is no version skew between the two halves.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show toolchain
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+          swift --version
+      - name: Build engine for iOS
+        run: |
+          xcodebuild build \
+            -scheme GoldRushEngine \
+            -destination 'generic/platform=iOS' \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO | tail -30
+      - name: Typecheck the SwiftUI screens against the iOS SDK
+        run: |
+          xcodebuild build \
+            -scheme GoldRushUI \
+            -destination 'generic/platform=iOS' \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO | tail -40
+
+  app:
+    name: iOS app build (unsigned)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
+      - name: Build the app target without signing
+        # Validates the hand-written project file end to end. Nobody on this
+        # project has a Mac to open it in, so this job is the only thing that
+        # proves GoldRush.xcodeproj is well-formed -- and it needs no Apple
+        # credentials, so it runs on every push, not just release builds.
+        run: |
+          cd App
+          xcodebuild build \
+            -project GoldRush.xcodeproj \
+            -scheme GoldRush \
+            -destination 'generic/platform=iOS' \
+            -skipMacroValidation \
+            GOLDRUSH_BUNDLE_ID=com.goldrush.ci \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            | tail -40

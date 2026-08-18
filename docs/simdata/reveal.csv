@@ -3,8 +3,8 @@
 # it makes public. If the win rates are indistinguishable, the
 # reveal decision is decorative and needs redesign.
 p1_policy,p2_policy,p1_win_rate,ci95,mean_margin,margin_se
-considered,random,0.4786,0.0044,-1.746,0.151
-random,considered,0.5278,0.0044,2.182,0.151
-considered,inverted,0.4360,0.0043,-5.307,0.150
-inverted,considered,0.5678,0.0043,5.536,0.150
-random,inverted,0.4622,0.0044,-3.151,0.149
+considered,random,0.4866,0.0044,-0.831,0.102
+random,considered,0.5114,0.0044,0.629,0.102
+considered,inverted,0.4726,0.0044,-1.521,0.102
+inverted,considered,0.5178,0.0044,1.079,0.102
+random,inverted,0.4843,0.0044,-0.771,0.102

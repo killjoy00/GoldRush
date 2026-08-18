@@ -696,6 +696,183 @@
       "tempsPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build",
       "wholeModuleOptimization" : false
     },
+    "C.GoldRushUI-x86_64-unknown-linux-gnu-debug.module" : {
+      "executable" : "/opt/swift/usr/bin/swiftc",
+      "fileList" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/sources",
+      "importPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/CardViews.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/ChooseView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/HUDView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/HandoffView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/RevealSelectionView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/RootView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/ScoringView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/SplitView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/TableauView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/Theme.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngine.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushAgents.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUICore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "GoldRushUI",
+      "moduleOutputPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUI.swiftmodule",
+      "objects" : [
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/CardViews.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/ChooseView.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/HUDView.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/HandoffView.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/RevealSelectionView.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/RootView.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/ScoringView.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/SplitView.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/TableauView.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/Theme.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-unknown-linux-gnu",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j4",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/include/GoldRushUI-Swift.h",
+        "-swift-version",
+        "6",
+        "-g",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "goldrush",
+        "-Xcc",
+        "-fno-omit-frame-pointer"
+      ],
+      "outputFileMapPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/CardViews.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/ChooseView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/HUDView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/HandoffView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/RevealSelectionView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/RootView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/ScoringView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/SplitView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/TableauView.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/Theme.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUI.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/home/user/GoldRush/Sources/GoldRushUI/CardViews.swift",
+        "/home/user/GoldRush/Sources/GoldRushUI/ChooseView.swift",
+        "/home/user/GoldRush/Sources/GoldRushUI/HUDView.swift",
+        "/home/user/GoldRush/Sources/GoldRushUI/HandoffView.swift",
+        "/home/user/GoldRush/Sources/GoldRushUI/RevealSelectionView.swift",
+        "/home/user/GoldRush/Sources/GoldRushUI/RootView.swift",
+        "/home/user/GoldRush/Sources/GoldRushUI/ScoringView.swift",
+        "/home/user/GoldRush/Sources/GoldRushUI/SplitView.swift",
+        "/home/user/GoldRush/Sources/GoldRushUI/TableauView.swift",
+        "/home/user/GoldRush/Sources/GoldRushUI/Theme.swift"
+      ],
+      "tempsPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build",
+      "wholeModuleOptimization" : false
+    },
     "C.GoldRushUICore-x86_64-unknown-linux-gnu-debug.module" : {
       "executable" : "/opt/swift/usr/bin/swiftc",
       "fileList" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/sources",
@@ -1086,6 +1263,59 @@
       "-driver-use-frontend-path",
       "/opt/swift/usr/bin/swiftc"
     ],
+    "GoldRushUI" : [
+      "/opt/swift/usr/bin/swiftc",
+      "-module-name",
+      "GoldRushUI",
+      "-package-name",
+      "goldrush",
+      "-c",
+      "/home/user/GoldRush/Sources/GoldRushUI/CardViews.swift",
+      "/home/user/GoldRush/Sources/GoldRushUI/ChooseView.swift",
+      "/home/user/GoldRush/Sources/GoldRushUI/HUDView.swift",
+      "/home/user/GoldRush/Sources/GoldRushUI/HandoffView.swift",
+      "/home/user/GoldRush/Sources/GoldRushUI/RevealSelectionView.swift",
+      "/home/user/GoldRush/Sources/GoldRushUI/RootView.swift",
+      "/home/user/GoldRush/Sources/GoldRushUI/ScoringView.swift",
+      "/home/user/GoldRush/Sources/GoldRushUI/SplitView.swift",
+      "/home/user/GoldRush/Sources/GoldRushUI/TableauView.swift",
+      "/home/user/GoldRush/Sources/GoldRushUI/Theme.swift",
+      "-I",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "-target",
+      "x86_64-unknown-linux-gnu",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j4",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/include/GoldRushUI-Swift.h",
+      "-swift-version",
+      "6",
+      "-g",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "goldrush",
+      "-Xcc",
+      "-fno-omit-frame-pointer",
+      "-driver-use-frontend-path",
+      "/opt/swift/usr/bin/swiftc"
+    ],
     "GoldRushUICore" : [
       "/opt/swift/usr/bin/swiftc",
       "-module-name",
@@ -1159,6 +1389,11 @@
       "GoldRushEngine"
     ],
     "GoldRushSim" : [
+      "GoldRushAgents",
+      "GoldRushEngine"
+    ],
+    "GoldRushUI" : [
+      "GoldRushUICore",
       "GoldRushAgents",
       "GoldRushEngine"
     ],
@@ -1608,6 +1843,56 @@
         }
       ],
       "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.product/Objects.LinkFileList"
+    },
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/CardViews.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/ChooseView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/HUDView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/HandoffView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/RevealSelectionView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/RootView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/ScoringView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/SplitView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/TableauView.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUI/Theme.swift"
+        }
+      ],
+      "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUI.build/sources"
     },
     "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/sources" : {
       "alwaysOutOfDate" : false,

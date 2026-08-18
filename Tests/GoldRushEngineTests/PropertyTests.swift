@@ -377,3 +377,101 @@ struct PropertyTests {
         }
     }
 }
+
+/// The face-down rule, stated as the designer states it:
+///
+///   "The player that splits knows what the card is. The hidden info is only if
+///    the splitter puts a card face down and the opponent doesn't pick that
+///    card. They shouldn't ever know that card."
+///
+/// Encoded as a regression test in its own right, because it is the rule the
+/// whole hidden-information design rests on. The other property tests sample
+/// generated games; this one drives the exact scenario deterministically.
+@Suite("The face-down rule")
+struct FaceDownRuleTests {
+
+    /// Sets up a game and hands back the pieces of one fully controlled round.
+    static func openingRound(seed: UInt64) -> (state: GameState, splitter: PlayerID, chooser: PlayerID, draw: [CardID]) {
+        var state = GameState.newGame(seed: seed)
+        state = state.apply(.selectRevealedScoringCards(Array(state.hands.p1.prefix(3))))
+        state = state.apply(.selectRevealedScoringCards(Array(state.hands.p2.prefix(3))))
+        let round = state.round
+        return (state, state.config.splitter(round: round), state.config.chooser(round: round), state.currentDraw)
+    }
+
+    @Test("The chooser never learns a face-down card left in the pile it passed on",
+          arguments: (0..<30).map { UInt64(0xFACE_D0 &+ $0) })
+    func chooserNeverLearnsThePassedOverCard(seed: UInt64) {
+        var (state, splitter, chooser, draw) = Self.openingRound(seed: seed)
+
+        // Put one card face down, and place it in pile B.
+        let secret = draw[3]
+        let pileB = [draw[3], draw[4]]
+        let pileA = draw.filter { !pileB.contains($0) }
+        state = state.apply(.split(pileA: pileA, pileB: pileB, faceDown: [secret]))
+
+        // The chooser takes pile A, so the secret goes to the splitter.
+        state = state.apply(.choose(pile: .a))
+
+        // The splitter drew it, so of course it knows.
+        #expect(state.observations[splitter].contains(secret))
+
+        // The chooser must never know it -- not now, and not at any later point
+        // in the game, since nothing reveals it afterwards.
+        #expect(!state.observations[chooser].contains(secret))
+
+        let view = state.view(for: chooser)
+        // Stronger than "not shown": the identity is absent from the projection,
+        // so there is no accessor through which the UI could leak it.
+        let entry = view.opponentCollection.first { $0.id == secret }
+        #expect(entry != nil, "the chooser can see the opponent HOLDS a card")
+        #expect(entry?.type == nil, "but not which card it is")
+        #expect(view.opponentHiddenCount >= 1)
+
+        // It stays in the chooser's unseen pool, where it belongs.
+        #expect(view.unseen[state.type(secret)] >= 1)
+    }
+
+    @Test("The chooser does learn a face-down card it claims itself",
+          arguments: (0..<20).map { UInt64(0xC1A1_00 &+ $0) })
+    func chooserLearnsTheCardItClaims(seed: UInt64) {
+        var (state, _, chooser, draw) = Self.openingRound(seed: seed)
+
+        let secret = draw[3]
+        let pileB = [draw[3], draw[4]]
+        let pileA = draw.filter { !pileB.contains($0) }
+        state = state.apply(.split(pileA: pileA, pileB: pileB, faceDown: [secret]))
+
+        // This time the chooser takes the pile containing the face-down card.
+        state = state.apply(.choose(pile: .b))
+
+        #expect(state.observations[chooser].contains(secret))
+        let view = state.view(for: chooser)
+        #expect(view.collection.contains { $0.id == secret && $0.type != nil })
+        // Nothing was hidden from them this round.
+        #expect(view.opponentHiddenCount == 0)
+    }
+
+    @Test("Nothing later in the game ever reveals a passed-over card",
+          arguments: (0..<15).map { UInt64(0x5EA1_ED &+ $0) })
+    func secrecyPersistsToTheFinalScore(seed: UInt64) {
+        let result = PlaythroughHarness.play(seed: seed)
+
+        // Every card that was face down in a pile the chooser declined.
+        var denied = PlayerPair(repeating: [CardID]())
+        for record in result.rounds {
+            denied[record.chooser].append(contentsOf: record.hiddenFromChooser)
+        }
+
+        for player in PlayerID.allCases {
+            for card in denied[player] {
+                #expect(!result.finalState.observations[player].contains(card),
+                        "card \(card.rawValue) leaked to player \(player) by the end of the game")
+            }
+            // The count of never-identified opponent cards matches exactly what
+            // the harness independently recorded as denied.
+            let view = result.finalState.view(for: player)
+            #expect(view.opponentHiddenCount == denied[player].count)
+        }
+    }
+}

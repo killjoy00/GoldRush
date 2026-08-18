@@ -33,25 +33,38 @@ public struct InferenceAgent: GameAgent {
     public func selectReveal(
         _ view: PlayerView, count: Int, rng: inout SeededRNG
     ) -> [ScoringCardID] {
-        // Revealing is a real decision, not decoration: a public card is one the
-        // opponent can split around, so it should be a card whose value does not
-        // depend on catching them by surprise.
+        // Reveal the cards that are hardest for an opponent to play around --
+        // which, counter-intuitively, are the sharp ones.
         //
-        // Keep secret: opponent-relative riders (they can be denied once known)
-        // and cards with sharp thresholds (a known threshold is easy to starve).
-        // Reveal: flat per-card rates, which are hard to play around and which
-        // encourage the opponent to hand over piles this agent wants anyway.
+        // The intuitive policy is the opposite: hide your majority riders and
+        // thresholds so they cannot be denied. The simulator measured all three
+        // policies over 50,000 games each and found that intuition backwards, by
+        // a wide margin (docs/SIM_FINDINGS.md §2):
+        //
+        //     reveal the sharp cards  56.8%
+        //     reveal at random        ~50%
+        //     hide the sharp cards    43.6%
+        //
+        // The reason is structural. In I-cut-you-choose the splitter must divide
+        // the draw so the CHOOSER is indifferent. A splitter who cannot read you
+        // guesses, and a guess is safe for them -- concealment lowers the
+        // standard their split has to meet. Advertising a convex card instead
+        // forces genuinely hard divisions, and every one they misjudge pays you.
         let ranked = view.hand.sorted { lhs, rhs in
-            let l = concealmentValue(lhs)
-            let r = concealmentValue(rhs)
-            if l != r { return l < r }
+            let l = disclosureValue(lhs)
+            let r = disclosureValue(rhs)
+            if l != r { return l > r }
             return lhs.index < rhs.index
         }
         return Array(ranked.prefix(count))
     }
 
-    /// How much is gained by keeping this card secret. Higher means hide it.
-    public func concealmentValue(_ id: ScoringCardID) -> Int {
+    /// How much is gained by making this card public. Higher means reveal it.
+    ///
+    /// Scores how sharply a card's payout bends: riders and thresholds are the
+    /// cards an opponent must work hardest to split around, and are therefore
+    /// the ones worth showing them.
+    public func disclosureValue(_ id: ScoringCardID) -> Int {
         var score = 0
         for effect in ScoringCardCatalog[id].effects {
             switch effect {
@@ -86,26 +99,35 @@ public struct InferenceAgent: GameAgent {
             model.value(adding: counts(pile))
         }
 
-        // Choose the cut that leaves the opponent closest to indifferent, and
-        // break near-ties toward the split that keeps this agent the most.
+        // Maximin first, opponent model second.
         //
-        // The opponent takes whichever pile they prefer, so what this agent
-        // actually receives is the one they reject. Maximising the value of the
-        // pile they are LIKELY TO LEAVE is the real objective; equalising to
-        // them is the constraint that stops them taking a windfall.
+        // An earlier version of this maximised the pile the opponent was
+        // predicted to leave behind. That lost to GreedyAgent 61/39 in both
+        // seats, and the reason is instructive: the opponent model is built from
+        // only three public scoring cards, so it is noisy, and betting the split
+        // on it offers an exploitable pile every time the model is wrong.
+        // Greedy's equalise-to-self is weak but never exploitable, and robustness
+        // beat cleverness.
+        //
+        // So the primary objective is now the worst case: maximise
+        // min(own value of A, own value of B). Whichever pile the opponent
+        // takes, this agent's floor is as high as it can be made -- which is the
+        // guarantee Greedy gets. The opponent model is demoted to a tie-breaker
+        // among cuts that are equally good for this agent, where it steers the
+        // opponent toward the pile this agent wants less. That keeps the edge
+        // without ever paying for a bad read.
         var bestCut = (a: [ids[0]], b: Array(ids.dropFirst()))
-        var bestScore = -Double.infinity
+        var bestFloor = -Double.infinity
         for cut in SplitEnumerator.cuts(of: ids) {
-            let oppA = oppValue(cut.a), oppB = oppValue(cut.b)
-            let gap = abs(oppA - oppB)
-            // What this agent expects to keep: whichever pile the opponent
-            // declines under its model of them.
-            let kept = oppA >= oppB ? ownValue(cut.b) : ownValue(cut.a)
-            // Penalise the gap so an obviously lopsided pile is not offered, but
-            // let a genuinely better residual pay for a small imbalance.
-            let score = Double(kept) - 1.5 * Double(gap)
-            if score > bestScore {
-                bestScore = score
+            let ownA = Double(ownValue(cut.a)), ownB = Double(ownValue(cut.b))
+            let floor = min(ownA, ownB)
+            // Tie-break: nudge the opponent toward the pile costing this agent
+            // less, scaled small enough that it can never override the floor.
+            let oppA = Double(oppValue(cut.a)), oppB = Double(oppValue(cut.b))
+            let steer = ownA <= ownB ? (oppA - oppB) : (oppB - oppA)
+            let score = floor + 0.01 * steer
+            if score > bestFloor {
+                bestFloor = score
                 bestCut = cut
             }
         }
@@ -207,6 +229,6 @@ public struct InferenceAgent: GameAgent {
     public func revealAdditional(
         _ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG
     ) -> ScoringCardID {
-        legal.min { concealmentValue($0) < concealmentValue($1) } ?? legal[0]
+        legal.max { disclosureValue($0) < disclosureValue($1) } ?? legal[0]
     }
 }
