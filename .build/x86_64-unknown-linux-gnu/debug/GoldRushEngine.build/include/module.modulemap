@@ -1,0 +1,3 @@
+module GoldRushEngine {
+    header "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/include/GoldRushEngine-Swift.h"
+}

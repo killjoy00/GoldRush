@@ -1,0 +1,1297 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.xctest",
+      "packagePath" : "/home/user/GoldRush",
+      "productName" : "GoldRushPackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+    "GoldRushPackageDiscoveredTests"
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.GoldRushAgents-x86_64-unknown-linux-gnu-debug.module" : {
+      "executable" : "/opt/swift/usr/bin/swiftc",
+      "fileList" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/sources",
+      "importPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushAgents/Agent.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngine.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "GoldRushAgents",
+      "moduleOutputPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushAgents.swiftmodule",
+      "objects" : [
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Agent.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-unknown-linux-gnu",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j4",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/include/GoldRushAgents-Swift.h",
+        "-swift-version",
+        "6",
+        "-g",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "goldrush",
+        "-Xcc",
+        "-fno-omit-frame-pointer"
+      ],
+      "outputFileMapPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Agent.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushAgents.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/home/user/GoldRush/Sources/GoldRushAgents/Agent.swift"
+      ],
+      "tempsPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.GoldRushEngine-x86_64-unknown-linux-gnu-debug.module" : {
+      "executable" : "/opt/swift/usr/bin/swiftc",
+      "fileList" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/sources",
+      "importPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushEngine/MiningCards.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushEngine/Scoring.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushEngine/ScoringCardCatalog.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushEngine/ScoringEffect.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushEngine/SeededRNG.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "GoldRushEngine",
+      "moduleOutputPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngine.swiftmodule",
+      "objects" : [
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Scoring.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringCardCatalog.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringEffect.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/SeededRNG.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-unknown-linux-gnu",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j4",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/include/GoldRushEngine-Swift.h",
+        "-swift-version",
+        "6",
+        "-g",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "goldrush",
+        "-Xcc",
+        "-fno-omit-frame-pointer"
+      ],
+      "outputFileMapPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Scoring.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringCardCatalog.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringEffect.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/SeededRNG.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngine.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/home/user/GoldRush/Sources/GoldRushEngine/MiningCards.swift",
+        "/home/user/GoldRush/Sources/GoldRushEngine/Scoring.swift",
+        "/home/user/GoldRush/Sources/GoldRushEngine/ScoringCardCatalog.swift",
+        "/home/user/GoldRush/Sources/GoldRushEngine/ScoringEffect.swift",
+        "/home/user/GoldRush/Sources/GoldRushEngine/SeededRNG.swift"
+      ],
+      "tempsPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.GoldRushEngineTests-x86_64-unknown-linux-gnu-debug.module" : {
+      "executable" : "/opt/swift/usr/bin/swiftc",
+      "fileList" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/sources",
+      "importPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Tests/GoldRushEngineTests/ScoringFixtureTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngine.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushAgents.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUICore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "GoldRushEngineTests",
+      "moduleOutputPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngineTests.swiftmodule",
+      "objects" : [
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/ScoringFixtureTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-unknown-linux-gnu",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j4",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "6",
+        "-g",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "goldrush",
+        "-Xcc",
+        "-fno-omit-frame-pointer"
+      ],
+      "outputFileMapPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/ScoringFixtureTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngineTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/home/user/GoldRush/Tests/GoldRushEngineTests/ScoringFixtureTests.swift"
+      ],
+      "tempsPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.GoldRushPackageDiscoveredTests-x86_64-unknown-linux-gnu-debug.module" : {
+      "executable" : "/opt/swift/usr/bin/swiftc",
+      "fileList" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/sources",
+      "importPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.derived/GoldRushEngineTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.derived/all-discovered-tests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngineTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "GoldRushPackageDiscoveredTests",
+      "moduleOutputPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushPackageDiscoveredTests.swiftmodule",
+      "objects" : [
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/GoldRushEngineTests.swift.o",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/all-discovered-tests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-unknown-linux-gnu",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j4",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/include/GoldRushPackageDiscoveredTests-Swift.h",
+        "-g",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "goldrush",
+        "-Xcc",
+        "-fno-omit-frame-pointer"
+      ],
+      "outputFileMapPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/GoldRushEngineTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/all-discovered-tests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushPackageDiscoveredTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.derived/GoldRushEngineTests.swift",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.derived/all-discovered-tests.swift"
+      ],
+      "tempsPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.GoldRushPackageTests-x86_64-unknown-linux-gnu-debug.module" : {
+      "executable" : "/opt/swift/usr/bin/swiftc",
+      "fileList" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/sources",
+      "importPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngineTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushPackageDiscoveredTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "GoldRushPackageTests",
+      "moduleOutputPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushPackageTests.swiftmodule",
+      "objects" : [
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-unknown-linux-gnu",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j4",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/include/GoldRushPackageTests-Swift.h",
+        "-g",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "goldrush",
+        "-Xcc",
+        "-fno-omit-frame-pointer"
+      ],
+      "outputFileMapPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushPackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.GoldRushSim-x86_64-unknown-linux-gnu-debug.module" : {
+      "executable" : "/opt/swift/usr/bin/swiftc",
+      "fileList" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/sources",
+      "importPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushSim/main.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngine.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushAgents.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/sources"
+        }
+      ],
+      "isLibrary" : false,
+      "moduleName" : "GoldRushSim",
+      "moduleOutputPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushSim.swiftmodule",
+      "objects" : [
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/main.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-unknown-linux-gnu",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j4",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+        "-parseable-output",
+        "-Xfrontend",
+        "-entry-point-function-name",
+        "-Xfrontend",
+        "GoldRushSim_main",
+        "-swift-version",
+        "6",
+        "-g",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "goldrush",
+        "-Xcc",
+        "-fno-omit-frame-pointer"
+      ],
+      "outputFileMapPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/main.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushSim.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/home/user/GoldRush/Sources/GoldRushSim/main.swift"
+      ],
+      "tempsPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.GoldRushUICore-x86_64-unknown-linux-gnu-debug.module" : {
+      "executable" : "/opt/swift/usr/bin/swiftc",
+      "fileList" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/sources",
+      "importPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUICore/Placeholder.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushEngine.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushAgents.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "GoldRushUICore",
+      "moduleOutputPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUICore.swiftmodule",
+      "objects" : [
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/Placeholder.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "x86_64-unknown-linux-gnu",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j4",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/include/GoldRushUICore-Swift.h",
+        "-swift-version",
+        "6",
+        "-g",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "goldrush",
+        "-Xcc",
+        "-fno-omit-frame-pointer"
+      ],
+      "outputFileMapPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/Placeholder.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushUICore.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/home/user/GoldRush/Sources/GoldRushUICore/Placeholder.swift"
+      ],
+      "tempsPath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "GoldRushAgents" : [
+      "/opt/swift/usr/bin/swiftc",
+      "-module-name",
+      "GoldRushAgents",
+      "-package-name",
+      "goldrush",
+      "-c",
+      "/home/user/GoldRush/Sources/GoldRushAgents/Agent.swift",
+      "-I",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "-target",
+      "x86_64-unknown-linux-gnu",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j4",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/include/GoldRushAgents-Swift.h",
+      "-swift-version",
+      "6",
+      "-g",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "goldrush",
+      "-Xcc",
+      "-fno-omit-frame-pointer",
+      "-driver-use-frontend-path",
+      "/opt/swift/usr/bin/swiftc"
+    ],
+    "GoldRushEngine" : [
+      "/opt/swift/usr/bin/swiftc",
+      "-module-name",
+      "GoldRushEngine",
+      "-package-name",
+      "goldrush",
+      "-c",
+      "/home/user/GoldRush/Sources/GoldRushEngine/MiningCards.swift",
+      "/home/user/GoldRush/Sources/GoldRushEngine/Scoring.swift",
+      "/home/user/GoldRush/Sources/GoldRushEngine/ScoringCardCatalog.swift",
+      "/home/user/GoldRush/Sources/GoldRushEngine/ScoringEffect.swift",
+      "/home/user/GoldRush/Sources/GoldRushEngine/SeededRNG.swift",
+      "-I",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "-target",
+      "x86_64-unknown-linux-gnu",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j4",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/include/GoldRushEngine-Swift.h",
+      "-swift-version",
+      "6",
+      "-g",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "goldrush",
+      "-Xcc",
+      "-fno-omit-frame-pointer",
+      "-driver-use-frontend-path",
+      "/opt/swift/usr/bin/swiftc"
+    ],
+    "GoldRushEngineTests" : [
+      "/opt/swift/usr/bin/swiftc",
+      "-module-name",
+      "GoldRushEngineTests",
+      "-package-name",
+      "goldrush",
+      "-c",
+      "/home/user/GoldRush/Tests/GoldRushEngineTests/ScoringFixtureTests.swift",
+      "-I",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "-target",
+      "x86_64-unknown-linux-gnu",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j4",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "6",
+      "-g",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "goldrush",
+      "-Xcc",
+      "-fno-omit-frame-pointer",
+      "-driver-use-frontend-path",
+      "/opt/swift/usr/bin/swiftc"
+    ],
+    "GoldRushPackageDiscoveredTests" : [
+      "/opt/swift/usr/bin/swiftc",
+      "-module-name",
+      "GoldRushPackageDiscoveredTests",
+      "-package-name",
+      "goldrush",
+      "-c",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.derived/GoldRushEngineTests.swift",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.derived/all-discovered-tests.swift",
+      "-I",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "-target",
+      "x86_64-unknown-linux-gnu",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j4",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/include/GoldRushPackageDiscoveredTests-Swift.h",
+      "-g",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "goldrush",
+      "-Xcc",
+      "-fno-omit-frame-pointer",
+      "-driver-use-frontend-path",
+      "/opt/swift/usr/bin/swiftc"
+    ],
+    "GoldRushPackageTests" : [
+      "/opt/swift/usr/bin/swiftc",
+      "-module-name",
+      "GoldRushPackageTests",
+      "-package-name",
+      "goldrush",
+      "-c",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.derived/runner.swift",
+      "-I",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "-target",
+      "x86_64-unknown-linux-gnu",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j4",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/include/GoldRushPackageTests-Swift.h",
+      "-g",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "goldrush",
+      "-Xcc",
+      "-fno-omit-frame-pointer",
+      "-driver-use-frontend-path",
+      "/opt/swift/usr/bin/swiftc"
+    ],
+    "GoldRushSim" : [
+      "/opt/swift/usr/bin/swiftc",
+      "-module-name",
+      "GoldRushSim",
+      "-package-name",
+      "goldrush",
+      "-c",
+      "/home/user/GoldRush/Sources/GoldRushSim/main.swift",
+      "-I",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "-target",
+      "x86_64-unknown-linux-gnu",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j4",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+      "-parseable-output",
+      "-Xfrontend",
+      "-entry-point-function-name",
+      "-Xfrontend",
+      "GoldRushSim_main",
+      "-swift-version",
+      "6",
+      "-g",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "goldrush",
+      "-Xcc",
+      "-fno-omit-frame-pointer",
+      "-driver-use-frontend-path",
+      "/opt/swift/usr/bin/swiftc"
+    ],
+    "GoldRushUICore" : [
+      "/opt/swift/usr/bin/swiftc",
+      "-module-name",
+      "GoldRushUICore",
+      "-package-name",
+      "goldrush",
+      "-c",
+      "/home/user/GoldRush/Sources/GoldRushUICore/Placeholder.swift",
+      "-I",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules",
+      "-target",
+      "x86_64-unknown-linux-gnu",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j4",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/include/GoldRushUICore-Swift.h",
+      "-swift-version",
+      "6",
+      "-g",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "goldrush",
+      "-Xcc",
+      "-fno-omit-frame-pointer",
+      "-driver-use-frontend-path",
+      "/opt/swift/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "GoldRushAgents" : [
+      "GoldRushEngine"
+    ],
+    "GoldRushEngine" : [
+
+    ],
+    "GoldRushEngineTests" : [
+      "GoldRushUICore",
+      "GoldRushAgents",
+      "GoldRushEngine"
+    ],
+    "GoldRushPackageDiscoveredTests" : [
+      "GoldRushEngineTests",
+      "GoldRushUICore",
+      "GoldRushAgents",
+      "GoldRushEngine"
+    ],
+    "GoldRushPackageTests" : [
+      "GoldRushPackageDiscoveredTests",
+      "GoldRushEngineTests",
+      "GoldRushUICore",
+      "GoldRushAgents",
+      "GoldRushEngine"
+    ],
+    "GoldRushSim" : [
+      "GoldRushAgents",
+      "GoldRushEngine"
+    ],
+    "GoldRushUICore" : [
+      "GoldRushAgents",
+      "GoldRushEngine"
+    ]
+  },
+  "testDiscoveryCommands" : {
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.derived/all-discovered-tests.swift" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/ScoringFixtureTests.swift.o"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.derived/GoldRushEngineTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.derived/all-discovered-tests.swift"
+        }
+      ]
+    }
+  },
+  "testEntryPointCommands" : {
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.derived/runner.swift" : {
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/Modules/GoldRushPackageDiscoveredTests.swiftmodule"
+        }
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushAgents/Agent.swift"
+        }
+      ],
+      "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/sources"
+    },
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushEngine/MiningCards.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushEngine/Scoring.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushEngine/ScoringCardCatalog.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushEngine/ScoringEffect.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushEngine/SeededRNG.swift"
+        }
+      ],
+      "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/sources"
+    },
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Tests/GoldRushEngineTests/ScoringFixtureTests.swift"
+        }
+      ],
+      "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/sources"
+    },
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.derived/GoldRushEngineTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.derived/all-discovered-tests.swift"
+        }
+      ],
+      "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/sources"
+    },
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/sources"
+    },
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Agent.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GoldRushAgents.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GoldRushEngine.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Scoring.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringCardCatalog.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringEffect.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/SeededRNG.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/GoldRushEngineTests.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngineTests.build/ScoringFixtureTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/GoldRushEngineTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/GoldRushPackageDiscoveredTests.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageDiscoveredTests.build/all-discovered-tests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/GoldRushPackageTests.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/GoldRushUICore.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/Placeholder.swift.o"
+        }
+      ],
+      "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.product/Objects.LinkFileList"
+    },
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushSim/main.swift"
+        }
+      ],
+      "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/sources"
+    },
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/Agent.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushAgents.build/GoldRushAgents.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GoldRushEngine.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Scoring.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringCardCatalog.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringEffect.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/SeededRNG.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/GoldRushSim.swiftmodule.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.build/main.swift.o"
+        }
+      ],
+      "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushSim.product/Objects.LinkFileList"
+    },
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/home/user/GoldRush/Sources/GoldRushUICore/Placeholder.swift"
+        }
+      ],
+      "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/sources"
+    },
+    "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/opt/swift/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/swift-version-6A52383ED409C6A7.txt"
+    }
+  }
+}

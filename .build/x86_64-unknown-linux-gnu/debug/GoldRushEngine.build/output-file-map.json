@@ -1,0 +1,40 @@
+{
+  "": {
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/primary.swiftdeps"
+  },
+  "/home/user/GoldRush/Sources/GoldRushEngine/MiningCards.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushEngine/Scoring.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Scoring.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Scoring.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Scoring~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Scoring.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Scoring.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushEngine/ScoringCardCatalog.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringCardCatalog.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringCardCatalog.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringCardCatalog~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringCardCatalog.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringCardCatalog.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushEngine/ScoringEffect.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringEffect.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringEffect.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringEffect~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringEffect.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/ScoringEffect.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushEngine/SeededRNG.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/SeededRNG.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/SeededRNG.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/SeededRNG~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/SeededRNG.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/SeededRNG.dia"
+  }
+}

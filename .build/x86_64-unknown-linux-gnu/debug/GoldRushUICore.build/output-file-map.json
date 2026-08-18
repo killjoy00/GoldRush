@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/primary.swiftdeps"
+  },
+  "/home/user/GoldRush/Sources/GoldRushUICore/Placeholder.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/Placeholder.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/Placeholder.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/Placeholder~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/Placeholder.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushUICore.build/Placeholder.dia"
+  }
+}

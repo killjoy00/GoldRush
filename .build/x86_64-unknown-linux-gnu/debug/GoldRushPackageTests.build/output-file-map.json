@@ -1,0 +1,12 @@
+{
+  "": {
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/primary.swiftdeps"
+  },
+  "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.derived/runner.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/runner.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/runner.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/runner~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/runner.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushPackageTests.build/runner.dia"
+  }
+}
