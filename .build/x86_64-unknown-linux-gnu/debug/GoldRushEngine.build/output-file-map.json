@@ -2,12 +2,40 @@
   "": {
     "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/primary.swiftdeps"
   },
+  "/home/user/GoldRush/Sources/GoldRushEngine/GameConfig.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameConfig.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameConfig.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameConfig~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameConfig.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameConfig.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushEngine/GameState.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameState.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameState.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameState~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameState.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/GameState.dia"
+  },
   "/home/user/GoldRush/Sources/GoldRushEngine/MiningCards.swift": {
     "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards.d",
     "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards.swift.o",
     "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards~partial.swiftmodule",
     "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards.swiftdeps",
     "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/MiningCards.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushEngine/PlayerView.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/PlayerView.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/PlayerView.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/PlayerView~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/PlayerView.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/PlayerView.dia"
+  },
+  "/home/user/GoldRush/Sources/GoldRushEngine/Primitives.swift": {
+    "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Primitives.d",
+    "object": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Primitives.swift.o",
+    "swiftmodule": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Primitives~partial.swiftmodule",
+    "swift-dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Primitives.swiftdeps",
+    "diagnostics": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Primitives.dia"
   },
   "/home/user/GoldRush/Sources/GoldRushEngine/Scoring.swift": {
     "dependencies": "/home/user/GoldRush/.build/x86_64-unknown-linux-gnu/debug/GoldRushEngine.build/Scoring.d",
