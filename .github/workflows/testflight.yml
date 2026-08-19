@@ -144,6 +144,16 @@ jobs:
 
           echo "API key installed at AuthKey_${ASC_KEY_ID}.p8 ($(wc -c < "$KEY_PATH" | tr -d ' ') bytes)."
 
+      - name: Preflight App Store Connect
+        # xcodebuild reports every signing problem as "Cloud signing permission
+        # error" / "No profiles were found", which covers at least four
+        # unrelated causes with different fixes. This asks Apple directly and
+        # names the actual one, before spending a full signed build to find out.
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: python3 Tools/asc_preflight.py
+
       - name: Archive
         # Cloud signing: -allowProvisioningUpdates with an App Store Connect API
         # key lets Xcode create the bundle ID, certificate and provisioning
@@ -222,7 +232,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: goldrush-build-${{ github.run_number }}
+          # The .xcarchive is kept as well as the .ipa. Archiving is the slow,
+          # credential-dependent half of this job, and when export fails after a
+          # successful archive there is no reason to discard the build that
+          # already worked.
           path: |
             ${{ runner.temp }}/export/*.ipa
+            ${{ runner.temp }}/GoldRush.xcarchive
           if-no-files-found: ignore
           retention-days: 14
