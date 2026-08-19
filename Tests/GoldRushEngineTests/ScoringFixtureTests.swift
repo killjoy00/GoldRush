@@ -15,13 +15,32 @@ struct ScoringFixtureTests {
         gravel: 5, pan: 3, quartz: 3, packMule: 2
     )
 
-    static let fixture1Hand: [ScoringCardID] = [
-        ScoringCardID(.strike, 1),   // S1 Rich Vein
-        ScoringCardID(.dig, 1),      // D1 Pay Streak
-        ScoringCardID(.sluice, 1),   // L1 Wash Plant
-        ScoringCardID(.vein, 4),     // V4 Prism
-        ScoringCardID(.outfit, 1),   // O1 Full Outfit
-        ScoringCardID(.prospect, 6), // P6 Volume Play
+    /// A frozen snapshot of the original spec's six card definitions, used
+    /// instead of the live `ScoringCardCatalog`.
+    ///
+    /// This fixture's whole purpose is to hand-verify the PackMule optimiser and
+    /// the effect evaluator -- not to check today's catalog balance. The
+    /// catalog is expected to be re-tuned by the simulator over the life of
+    /// this project (P6's Fool's Gold penalty already has been), and if this
+    /// fixture read the live catalog, every retune would silently change what
+    /// "97" means and the hand-verification would need to be redone by hand
+    /// each time. Scoring against a frozen snapshot means a retune can change
+    /// what P6 pays in-game without ever touching what this test asserts.
+    static let fixture1Cards: [ScoringCard] = [
+        ScoringCard(ScoringCardID(.strike, 1), "Rich Vein", "3 per Gold Nugget",
+                    [.perType(.goldNugget, points: 3)]),
+        ScoringCard(ScoringCardID(.dig, 1), "Pay Streak", "4 per Ore+Shovel set",
+                    [.perSet(.oreShovel, points: 4)]),
+        ScoringCard(ScoringCardID(.sluice, 1), "Wash Plant",
+                    "4 per Gravel+Pan set; -1 per unmatched Gravel",
+                    [.perSet(.gravelPan, points: 4), .perUnmatched(.gravel, points: -1)]),
+        ScoringCard(ScoringCardID(.vein, 4), "Prism", "Nth Quartz scores 2xN",
+                    [.perNthLinear(.quartz, multiplier: 2)]),
+        ScoringCard(ScoringCardID(.outfit, 1), "Full Outfit", "2 per Tool",
+                    [.perTool(points: 2)]),
+        ScoringCard(ScoringCardID(.prospect, 6), "Volume Play",
+                    "1 per mining card in collection; -3 per Fool's Gold",
+                    [.perTotalMiningCards(points: 1), .perType(.foolsGold, points: -3)]),
     ]
 
     @Test("Fixture 1 collection totals 31 cards")
@@ -31,14 +50,14 @@ struct ScoringFixtureTests {
 
     @Test("Fixture 1 scores 97 with both mules allocated as Pan")
     func fixture1Total() {
-        let result = Scoring.scoreSolo(counts: Self.fixture1Counts, hand: Self.fixture1Hand)
+        let result = Scoring.scoreSolo(counts: Self.fixture1Counts, cards: Self.fixture1Cards)
         #expect(result.total == 97)
         #expect(result.allocation == MuleAllocation(toShovel: 0, toPan: 2))
     }
 
     @Test("Fixture 1 itemises to the hand-verified breakdown")
     func fixture1Breakdown() {
-        let result = Scoring.scoreSolo(counts: Self.fixture1Counts, hand: Self.fixture1Hand)
+        let result = Scoring.scoreSolo(counts: Self.fixture1Counts, cards: Self.fixture1Cards)
         var byCard: [String: Int] = [:]
         for card in result.cards { byCard[card.id.code] = card.points }
 
@@ -59,15 +78,15 @@ struct ScoringFixtureTests {
     @Test("Fixture 1 optimiser beats both-as-Shovel and one-each")
     func fixture1OptimiserBeatsAlternatives() {
         let bothPan = Scoring.score(
-            counts: Self.fixture1Counts, hand: Self.fixture1Hand,
+            counts: Self.fixture1Counts, cards: Self.fixture1Cards,
             allocation: MuleAllocation(toShovel: 0, toPan: 2)
         ).total
         let bothShovel = Scoring.score(
-            counts: Self.fixture1Counts, hand: Self.fixture1Hand,
+            counts: Self.fixture1Counts, cards: Self.fixture1Cards,
             allocation: MuleAllocation(toShovel: 2, toPan: 0)
         ).total
         let oneEach = Scoring.score(
-            counts: Self.fixture1Counts, hand: Self.fixture1Hand,
+            counts: Self.fixture1Counts, cards: Self.fixture1Cards,
             allocation: MuleAllocation(toShovel: 1, toPan: 1)
         ).total
 
@@ -75,7 +94,7 @@ struct ScoringFixtureTests {
         #expect(bothShovel == 95)
         #expect(oneEach == 96)
 
-        let best = Scoring.scoreSolo(counts: Self.fixture1Counts, hand: Self.fixture1Hand).total
+        let best = Scoring.scoreSolo(counts: Self.fixture1Counts, cards: Self.fixture1Cards).total
         #expect(best > bothShovel)
         #expect(best > oneEach)
         #expect(best == bothPan)
@@ -88,10 +107,10 @@ struct ScoringFixtureTests {
         #expect(MuleAllocation.candidates(mules: 4).count == 15)
 
         // No candidate may beat the one the optimiser chose.
-        let best = Scoring.scoreSolo(counts: Self.fixture1Counts, hand: Self.fixture1Hand).total
+        let best = Scoring.scoreSolo(counts: Self.fixture1Counts, cards: Self.fixture1Cards).total
         for candidate in MuleAllocation.candidates(mules: Self.fixture1Counts.packMule) {
             let value = Scoring.score(
-                counts: Self.fixture1Counts, hand: Self.fixture1Hand, allocation: candidate
+                counts: Self.fixture1Counts, cards: Self.fixture1Cards, allocation: candidate
             ).total
             #expect(value <= best)
         }

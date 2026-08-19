@@ -197,17 +197,30 @@ public enum Scoring {
     }
 
     // MARK: - Scoring a hand
+    //
+    // Each function here comes in two forms: one over `[ScoringCard]` (the real
+    // math, working on card data), and a thin `[ScoringCardID]` wrapper that
+    // looks the ids up in the live `ScoringCardCatalog`. Everyday callers --
+    // the engine, the agents, the simulator -- want the id form, since a hand is
+    // just ids. But it means those calls are only as stable as the mutable
+    // catalog: retune a card and every caller's result shifts with it.
+    //
+    // Fixture 1 is explicitly NOT supposed to shift. It hand-verifies the
+    // optimiser itself, and the catalog is expected to be re-tuned by the
+    // simulator over the life of this project -- so the fixture holds a frozen
+    // snapshot of card data and calls the `[ScoringCard]` form directly,
+    // bypassing the catalog entirely. A retune can change what P6 pays without
+    // ever touching what "97" means.
 
     static func scoreCards(
-        _ hand: [ScoringCardID],
+        _ cards: [ScoringCard],
         board: Board,
         opponent: Board?
     ) -> (total: Int, cards: [CardScore]) {
         var total = 0
         var details: [CardScore] = []
-        details.reserveCapacity(hand.count)
-        for id in hand {
-            let card = ScoringCardCatalog[id]
+        details.reserveCapacity(cards.count)
+        for card in cards {
             var points = 0
             var components: [Int] = []
             components.reserveCapacity(card.effects.count)
@@ -217,24 +230,40 @@ public enum Scoring {
                 points += value
             }
             total += points
-            details.append(CardScore(id: id, points: points, components: components))
+            details.append(CardScore(id: card.id, points: points, components: components))
         }
         return (total, details)
     }
 
+    static func scoreCards(
+        _ hand: [ScoringCardID],
+        board: Board,
+        opponent: Board?
+    ) -> (total: Int, cards: [CardScore]) {
+        scoreCards(hand.map { ScoringCardCatalog[$0] }, board: board, opponent: opponent)
+    }
+
     /// Total only. Hot path for the optimiser and the agents.
+    static func total(
+        _ cards: [ScoringCard],
+        board: Board,
+        opponent: Board?
+    ) -> Int {
+        var total = 0
+        for card in cards {
+            for effect in card.effects {
+                total += evaluate(effect, board: board, opponent: opponent)
+            }
+        }
+        return total
+    }
+
     static func total(
         _ hand: [ScoringCardID],
         board: Board,
         opponent: Board?
     ) -> Int {
-        var total = 0
-        for id in hand {
-            for effect in ScoringCardCatalog[id].effects {
-                total += evaluate(effect, board: board, opponent: opponent)
-            }
-        }
-        return total
+        total(hand.map { ScoringCardCatalog[$0] }, board: board, opponent: opponent)
     }
 
     // MARK: - The PackMule optimiser
@@ -250,7 +279,7 @@ public enum Scoring {
     /// a fixed order -- so the result is deterministic, not merely optimal.
     public static func bestAllocation(
         counts: MiningCounts,
-        hand: [ScoringCardID],
+        cards: [ScoringCard],
         opponent: Board?
     ) -> (allocation: MuleAllocation, board: Board, total: Int) {
         var bestAllocation = MuleAllocation.none
@@ -259,7 +288,7 @@ public enum Scoring {
 
         for candidate in MuleAllocation.candidates(mules: counts.packMule) {
             let board = Board(counts: counts, allocation: candidate)
-            let value = total(hand, board: board, opponent: opponent)
+            let value = total(cards, board: board, opponent: opponent)
             if value > bestTotal {
                 bestTotal = value
                 bestAllocation = candidate
@@ -267,6 +296,14 @@ public enum Scoring {
             }
         }
         return (bestAllocation, bestBoard, bestTotal)
+    }
+
+    public static func bestAllocation(
+        counts: MiningCounts,
+        hand: [ScoringCardID],
+        opponent: Board?
+    ) -> (allocation: MuleAllocation, board: Board, total: Int) {
+        bestAllocation(counts: counts, cards: hand.map { ScoringCardCatalog[$0] }, opponent: opponent)
     }
 
     /// The board an opponent is assumed to present when a comparison rider reads
@@ -327,9 +364,9 @@ public enum Scoring {
 
     /// Scores a player with no opponent on the table. Comparison riders pay
     /// nothing, which is what the fixtures exercise.
-    public static func scoreSolo(counts: MiningCounts, hand: [ScoringCardID]) -> Scorecard {
-        let best = bestAllocation(counts: counts, hand: hand, opponent: nil)
-        let resolved = scoreCards(hand, board: best.board, opponent: nil)
+    public static func scoreSolo(counts: MiningCounts, cards: [ScoringCard]) -> Scorecard {
+        let best = bestAllocation(counts: counts, cards: cards, opponent: nil)
+        let resolved = scoreCards(cards, board: best.board, opponent: nil)
         return Scorecard(
             total: resolved.total,
             allocation: best.allocation,
@@ -338,21 +375,34 @@ public enum Scoring {
         )
     }
 
+    public static func scoreSolo(counts: MiningCounts, hand: [ScoringCardID]) -> Scorecard {
+        scoreSolo(counts: counts, cards: hand.map { ScoringCardCatalog[$0] })
+    }
+
     /// Scores a specific arrangement rather than the best one. Used by the tests
     /// that assert the optimiser beat the alternatives.
     public static func score(
         counts: MiningCounts,
-        hand: [ScoringCardID],
+        cards: [ScoringCard],
         allocation: MuleAllocation,
         opponent: Board? = nil
     ) -> Scorecard {
         let board = Board(counts: counts, allocation: allocation)
-        let resolved = scoreCards(hand, board: board, opponent: opponent)
+        let resolved = scoreCards(cards, board: board, opponent: opponent)
         return Scorecard(
             total: resolved.total,
             allocation: allocation,
             board: board,
             cards: resolved.cards
         )
+    }
+
+    public static func score(
+        counts: MiningCounts,
+        hand: [ScoringCardID],
+        allocation: MuleAllocation,
+        opponent: Board? = nil
+    ) -> Scorecard {
+        score(counts: counts, cards: hand.map { ScoringCardCatalog[$0] }, allocation: allocation, opponent: opponent)
     }
 }
