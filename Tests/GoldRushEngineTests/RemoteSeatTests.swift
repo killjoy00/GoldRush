@@ -5,9 +5,10 @@ import Testing
 /// A transport that controls a single seat, the way a remote match does.
 /// Records what it was asked to submit so a test can tell whether the view
 /// model tried to act for the wrong player.
-final class SingleSeatTransport: MatchTransport, @unchecked Sendable {
+@MainActor
+final class SingleSeatTransport: MatchTransport {
     let localPlayers: [PlayerID]
-    var onStateChange: (@Sendable (GameState) -> Void)?
+    var onStateChange: ((GameState) -> Void)?
     private(set) var submitted: [Action] = []
 
     init(seat: PlayerID) { self.localPlayers = [seat] }
