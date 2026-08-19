@@ -126,7 +126,7 @@ appears in it.
 The first build is **pass-and-play and single-player**: two people on one
 device, or you against the AI.
 
-Remote play over Game Center comes in the next build. When it lands, both
+Remote play over Game Center is in the app. Both
 players must be signed into Game Center — Settings → Game Center on the iPhone.
 
 ---

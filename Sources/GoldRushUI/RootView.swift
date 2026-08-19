@@ -3,6 +3,12 @@ import SwiftUI
 import GoldRushEngine
 import GoldRushAgents
 import GoldRushUICore
+#if canImport(GameKit)
+import GameKit
+#endif
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Routes to whichever screen the game is currently asking for.
 public struct RootView: View {
@@ -37,19 +43,26 @@ public struct RootView: View {
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
 
-            switch model.screen {
-            case .revealSelection:
-                RevealSelectionView(model: model)
-            case .additionalReveal:
-                additionalReveal
-            case .split:
-                SplitView(model: model)
-            case .choose:
-                ChooseView(model: model)
-            case .draft:
-                draft
-            default:
-                Spacer()
+            if !model.isLocalTurn && !model.isFinished {
+                // Remote play only. The board stays visible -- the opponent's
+                // move is worth watching for -- but nothing is interactive,
+                // and what is on screen is still only this player's own view.
+                waitingForOpponent
+            } else {
+                switch model.screen {
+                case .revealSelection:
+                    RevealSelectionView(model: model)
+                case .additionalReveal:
+                    additionalReveal
+                case .split:
+                    SplitView(model: model)
+                case .choose:
+                    ChooseView(model: model)
+                case .draft:
+                    draft
+                default:
+                    Spacer()
+                }
             }
 
             Button {
@@ -63,6 +76,39 @@ public struct RootView: View {
         }
         .sheet(isPresented: $showTableau) {
             TableauView(view: model.view)
+        }
+    }
+
+    @ViewBuilder
+    var waitingForOpponent: some View {
+        VStack(spacing: 14) {
+            Spacer()
+            ProgressView().tint(Theme.gold)
+            Text("Waiting for your opponent")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Theme.parchment)
+            Text(waitingDetail)
+                .font(.system(size: 12))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Theme.parchment.opacity(0.65))
+                .padding(.horizontal, 40)
+            Text("You can close the app — it's your move when they're done.")
+                .font(.system(size: 11))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Theme.parchment.opacity(0.45))
+                .padding(.horizontal, 40)
+            Spacer()
+        }
+    }
+
+    var waitingDetail: String {
+        switch model.screen {
+        case .split: "They're dividing this round's cards into two piles."
+        case .choose: "They're choosing which pile to take."
+        case .revealSelection: "They're choosing which scoring cards to reveal."
+        case .additionalReveal: "They're revealing another scoring card."
+        case .draft: "They're drafting a scoring card."
+        default: "It's their turn."
         }
     }
 
@@ -118,6 +164,10 @@ public struct RootView: View {
 public struct NewGameView: View {
     @State private var model: GameViewModel?
     @State private var difficulty = InferenceAgent.Fidelity.full
+    #if canImport(GameKit)
+    @State private var showMatchmaker = false
+    @State private var onlineError: String?
+    #endif
 
     public init() {}
 
@@ -151,11 +201,38 @@ public struct NewGameView: View {
             Button { startSolo() } label: {
                 menuLabel("Play the prospector", "Single player vs the AI", filled: false)
             }
+            #if canImport(GameKit)
+            Button { startOnline() } label: {
+                menuLabel("Play a friend online", onlineSubtitle, filled: false)
+            }
+            .disabled(!GameCenterAuth.shared.isSignedIn)
+            .opacity(GameCenterAuth.shared.isSignedIn ? 1 : 0.5)
+            #endif
             Spacer()
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.dirt)
+        #if canImport(GameKit)
+        .sheet(isPresented: $showMatchmaker) {
+            GameCenterMatchmakerView(
+                onMatch: { match in
+                    showMatchmaker = false
+                    beginOnlineMatch(match)
+                },
+                onCancel: { showMatchmaker = false }
+            )
+            .ignoresSafeArea()
+        }
+        .task {
+            GameCenterAuth.shared.authenticate { controller in
+                // Game Center's sign-in screen has to be presented from UIKit,
+                // so it is handed to the topmost view controller rather than
+                // routed through SwiftUI.
+                presentFromTop(controller)
+            }
+        }
+        #endif
     }
 
     @ViewBuilder
@@ -175,6 +252,49 @@ public struct NewGameView: View {
         let state = GameState.newGame(seed: seed)
         model = GameViewModel(state: state, transport: LocalTransport(state: state))
     }
+
+    #if canImport(GameKit)
+    var onlineSubtitle: String {
+        switch GameCenterAuth.shared.status {
+        case .signedIn(let name): "Game Center — \(name)"
+        case .signedOut: "Sign in to Game Center first"
+        case .failed(let message): message
+        case .unknown: "Connecting to Game Center…"
+        }
+    }
+
+    func startOnline() {
+        showMatchmaker = true
+    }
+
+    func beginOnlineMatch(_ match: GKTurnBasedMatch) {
+        do {
+            let transport = try GameCenterTransport(match: match)
+            model = GameViewModel(state: transport.state, transport: transport)
+            // Keep playing while the app is open: when the opponent moves,
+            // Game Center pushes the event and the board reloads in place
+            // rather than waiting for the player to back out and return.
+            GameCenterTurnListener.shared.start()
+            let matchID = match.matchID
+            GameCenterTurnListener.shared.onTurnEvent = { updatedID, _ in
+                guard updatedID == matchID else { return }
+                Task { try? await transport.refresh() }
+            }
+        } catch {
+            onlineError = error.localizedDescription
+        }
+    }
+
+    func presentFromTop(_ controller: Any) {
+        guard let viewController = controller as? UIViewController else { return }
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+        var top = scene?.keyWindow?.rootViewController
+        while let presented = top?.presentedViewController { top = presented }
+        top?.present(viewController, animated: true)
+    }
+    #endif
 
     func startSolo() {
         let seed = UInt64.random(in: 0..<UInt64.max)

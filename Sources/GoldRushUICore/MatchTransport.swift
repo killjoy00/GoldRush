@@ -6,7 +6,13 @@ import GoldRushEngine
 /// means adding a conformance, not touching the screens: a view never asks
 /// "are we online?", it asks the transport whose turn it is and submits actions
 /// through it.
-public protocol MatchTransport: AnyObject, Sendable {
+/// Every transport drives the UI and is only ever touched from the view model,
+/// which is itself main-actor bound. Saying so on the protocol rather than
+/// leaving each conformer to bolt on `@unchecked Sendable` means the compiler
+/// checks the threading instead of taking our word for it -- and it is what
+/// lets a `@MainActor` type like the Game Center transport conform at all.
+@MainActor
+public protocol MatchTransport: AnyObject {
     /// Seats controlled by the person holding this device. Two for
     /// pass-and-play, one for AI and remote play.
     var localPlayers: [PlayerID] { get }
@@ -16,7 +22,7 @@ public protocol MatchTransport: AnyObject, Sendable {
     func submit(_ action: Action) async throws
 
     /// Called when the local player should be asked to act.
-    var onStateChange: (@Sendable (GameState) -> Void)? { get set }
+    var onStateChange: ((GameState) -> Void)? { get set }
 }
 
 public extension MatchTransport {
@@ -26,9 +32,10 @@ public extension MatchTransport {
 }
 
 /// Both seats on one device, with a hand-off curtain between turns.
-public final class LocalTransport: MatchTransport, @unchecked Sendable {
+@MainActor
+public final class LocalTransport: MatchTransport {
     public let localPlayers: [PlayerID] = [.p1, .p2]
-    public var onStateChange: (@Sendable (GameState) -> Void)?
+    public var onStateChange: ((GameState) -> Void)?
     private var state: GameState
 
     public init(state: GameState) {
@@ -46,9 +53,10 @@ public final class LocalTransport: MatchTransport, @unchecked Sendable {
 /// The agent runs the same `InferenceAgent` the simulator measured, so the
 /// difficulty tiers correspond to strategies with known win rates rather than
 /// to invented handicaps.
-public final class AgentTransport: MatchTransport, @unchecked Sendable {
+@MainActor
+public final class AgentTransport: MatchTransport {
     public let localPlayers: [PlayerID]
-    public var onStateChange: (@Sendable (GameState) -> Void)?
+    public var onStateChange: ((GameState) -> Void)?
 
     private var state: GameState
     private let agentSeat: PlayerID

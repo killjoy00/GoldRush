@@ -225,14 +225,42 @@ def main() -> int:
         if matching:
             print(f"Profile:        OK — App Store profile found: {matching[0]}")
         else:
-            print(f"Profile:        none yet for '{bundle_id}'.")
-            print("::warning::No App Store profile exists, so export will ask Apple to cloud sign.")
-            print("::warning::That requires the API key's role to be ADMIN -- App Manager and")
-            print("::warning::Developer keys fail here with 'Cloud signing permission error',")
-            print("::warning::after archiving successfully. If export fails, this is why.")
-            print("::warning::Reference: https://developer.apple.com/forums/thread/698117")
+            # Not a warning: cloud signing creates the profile on demand and
+            # this is the normal path on a working Admin key, so flagging it
+            # every run would be noise. The note matters only if export fails.
+            print(f"Profile:        none stored — export will ask Apple to cloud sign one.")
+            print("                If that fails with 'Cloud signing permission error', the")
+            print("                API key's role is not Admin (App Manager is not enough).")
+            print("                See https://developer.apple.com/forums/thread/698117")
     else:
         print(f"::warning::Could not check profiles (HTTP {status}): {first_error_detail(payload)}")
+
+    # 7. Is Game Center enabled on the App ID? The app ships a
+    #    com.apple.developer.game-center entitlement, and signing fails if the
+    #    identifier does not carry the matching capability.
+    #
+    #    Asked for as an `include` on the bundleIds query rather than through the
+    #    /bundleIds/{id}/bundleIdCapabilities relationship, which rejects the
+    #    pagination parameters with a 400. One request instead of two, as well.
+    status, payload = get(
+        f"bundleIds?filter[identifier]={bundle_id}&include=bundleIdCapabilities&limit=1",
+        token,
+    )
+    if status == 200 and payload.get("data"):
+        enabled = {
+            (item.get("attributes") or {}).get("capabilityType")
+            for item in payload.get("included", [])
+            if item.get("type") == "bundleIdCapabilities"
+        }
+        if "GAME_CENTER" in enabled:
+            print("Game Center:    OK — enabled on the App ID.")
+        else:
+            print("Game Center:    not listed on the App ID.")
+            print("                Automatic signing normally adds it during the archive.")
+            print("                If signing fails, enable it at developer.apple.com/account")
+            print("                -> Identifiers -> your App ID -> tick Game Center -> Save.")
+    else:
+        print(f"::warning::Could not read App ID capabilities (HTTP {status}).")
 
     if problems:
         print("")
