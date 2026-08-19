@@ -99,6 +99,15 @@ public final class GameCenterTransport: NSObject, MatchTransport, @unchecked Sen
 
     public var localPlayers: [PlayerID] { [localSeat] }
 
+    /// How long a player has to take their turn before forfeiting it.
+    ///
+    /// Stated explicitly rather than using `GKTurnTimeoutDefault`, for two
+    /// reasons: that symbol is a mutable global which Swift 6 will not let a
+    /// concurrent context read, and how long a friend gets to think is a design
+    /// decision worth making deliberately rather than inheriting. A week suits
+    /// a game people pick up between other things.
+    public static let turnTimeout: TimeInterval = 7 * 24 * 60 * 60
+
     /// Whether Game Center currently considers this device the active one.
     public var isLocalTurn: Bool {
         match.currentParticipant?.player?.gamePlayerID == GKLocalPlayer.local.gamePlayerID
@@ -163,7 +172,7 @@ public final class GameCenterTransport: NSObject, MatchTransport, @unchecked Sen
             }
             try await match.endTurn(
                 withNextParticipants: others,
-                turnTimeout: GKTurnTimeoutDefault,
+                turnTimeout: Self.turnTimeout,
                 match: data
             )
         }

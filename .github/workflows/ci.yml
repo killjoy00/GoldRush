@@ -39,6 +39,7 @@ jobs:
           swift --version
       - name: Build engine for iOS
         run: |
+          set -o pipefail
           xcodebuild build \
             -scheme GoldRushEngine \
             -destination 'generic/platform=iOS' \
@@ -46,6 +47,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO | tail -30
       - name: Typecheck the SwiftUI screens against the iOS SDK
         run: |
+          set -o pipefail
           xcodebuild build \
             -scheme GoldRushUI \
             -destination 'generic/platform=iOS' \
@@ -65,6 +67,7 @@ jobs:
         # proves GoldRush.xcodeproj is well-formed -- and it needs no Apple
         # credentials, so it runs on every push, not just release builds.
         run: |
+          set -o pipefail
           cd App
           xcodebuild build \
             -project GoldRush.xcodeproj \
@@ -87,6 +90,7 @@ jobs:
         # Archiving unsigned needs no Apple credentials, so the release path gets
         # exercised on every push rather than only when someone tries to ship.
         run: |
+          set -o pipefail
           cd App
           xcodebuild archive \
             -project GoldRush.xcodeproj \
