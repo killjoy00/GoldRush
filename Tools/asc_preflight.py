@@ -164,23 +164,62 @@ def main() -> int:
     else:
         print(f"::warning::Could not check app records (HTTP {status}): {first_error_detail(payload)}")
 
-    # 4. Can this key manage signing certificates? This is what "Cloud signing
-    #    permission error" is usually complaining about -- a Developer-role key
-    #    can read but not create distribution assets.
-    status, payload = get("certificates?limit=1", token)
+    # 4. Can this key see signing certificates at all?
+    status, payload = get("certificates?limit=200", token)
+    certificates = payload.get("data", []) if status == 200 else []
     if status == 200:
-        print("Signing access: OK — the key can read signing certificates.")
+        print(f"Signing access: OK — the key can read certificates ({len(certificates)} on the team).")
     elif status == 403:
         problems.append(
-            "The API key is not permitted to manage signing certificates (403).\n"
-            "  This is what 'Cloud signing permission error' means.\n"
+            "The API key is not permitted to read signing certificates (403).\n"
             "  Fix: the key's role must be App Manager or Admin, not Developer.\n"
-            "       App Store Connect -> Users and Access -> Integrations -> Team Keys.\n"
-            "       Roles cannot be edited: revoke the key and generate a new one,\n"
-            "       then update the ASC_KEY_ID and ASC_KEY_P8 secrets."
+            "       App Store Connect -> Users and Access -> Integrations -> Team Keys."
         )
     else:
         print(f"::warning::Could not check certificates (HTTP {status}): {first_error_detail(payload)}")
+
+    # 5. Is there a DISTRIBUTION certificate? This is the specific thing export
+    #    needs and archive does not. Archive happily signs with a development
+    #    identity, so a team with only development certificates gets all the way
+    #    to export before failing -- which is exactly the shape of
+    #    "Cloud signing permission error" plus "No profiles were found".
+    distribution_types = {"DISTRIBUTION", "IOS_DISTRIBUTION", "APPLE_DISTRIBUTION"}
+    distribution = [
+        c for c in certificates
+        if (c.get("attributes") or {}).get("certificateType") in distribution_types
+    ]
+    if certificates:
+        kinds = sorted({(c.get("attributes") or {}).get("certificateType", "?") for c in certificates})
+        print(f"                Certificate types present: {', '.join(kinds)}")
+    if distribution:
+        print(f"Distribution:   OK — {len(distribution)} distribution certificate(s) exist.")
+    else:
+        problems.append(
+            "The team has NO Apple Distribution certificate.\n"
+            "  Archive succeeds without one (it signs for development), which is why\n"
+            "  this only fails at the export step. Cloud signing tried to create one\n"
+            "  and was refused -- that is the 'Cloud signing permission error'.\n"
+            "  Most likely: the API key's role is Developer, which may read signing\n"
+            "  assets but not create distribution ones. Roles cannot be edited after\n"
+            "  creation.\n"
+            "  Fix: App Store Connect -> Users and Access -> Integrations -> Team Keys\n"
+            "       -> revoke the key -> generate a new one with Access: App Manager\n"
+            "       -> update the ASC_KEY_ID and ASC_KEY_P8 secrets.\n"
+            "  Also confirm at developer.apple.com/account that no pending Program\n"
+            "  License Agreement is blocking certificate creation."
+        )
+
+    # 6. Is there an App Store provisioning profile for this bundle ID?
+    status, payload = get("profiles?filter[profileType]=IOS_APP_STORE&limit=200", token)
+    if status == 200:
+        names = [(p.get("attributes") or {}).get("name", "") for p in payload.get("data", [])]
+        matching = [n for n in names if bundle_id in n]
+        if matching:
+            print(f"Profile:        OK — App Store profile found: {matching[0]}")
+        else:
+            print(f"Profile:        none yet for '{bundle_id}' — cloud signing must create it.")
+    else:
+        print(f"::warning::Could not check profiles (HTTP {status}): {first_error_detail(payload)}")
 
     if problems:
         print("")
