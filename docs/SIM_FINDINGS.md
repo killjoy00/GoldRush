@@ -3,7 +3,9 @@
 Produced by `GoldRushSim` on the committed engine, at the game counts stated.
 Base seed `20260818`; runs are deterministic and reproducible.
 
-**No catalog values were changed.** Proposals are at the end, for your decision.
+**Update: the §7 proposal for P5 / P2 / P6 has been applied to the catalog**
+(package "C" below — see §8 for the before/after numbers). Everything else in
+the catalog is unchanged.
 
 ---
 
@@ -255,27 +257,23 @@ GoldRushSim toggles --games 20000
 
 ---
 
-## 7. Proposals, for your decision
+## 7. Proposals, and what shipped
 
-Nothing has been changed in the catalog. In priority order:
+In priority order, as originally proposed:
 
-1. **Consider `scoringDraft` as the default.** It addresses the 25-point card
-   spread in §5 structurally, without touching a single number — a weak card
-   becomes one you chose not to take. This is the highest-leverage change
-   available and the one I would make first.
-2. **If you retune, act on these three** (judged by win rate, and all three
-   survived the agent fix):
-   - `P5 Highgrader` (36.5%) — three simultaneous majorities is too conjunctive.
-     Suggest 8 → 10 per type, or requiring only two of the three.
-   - `P2 Clean Claim` (40.3%) — a flat payout cannot compete with scaling ones.
-     Suggest 20/10/0 → 26/14/0.
-   - `P6 Volume Play` (61.8%) — always-on and unconditional. Suggest the Fool's
-     Gold penalty at −4 rather than −3.
-   Each is one integer in `ScoringCardCatalog.swift`.
-3. **`L4 Riffle Box`** is the one payout outlier flagged under both agents. Its
-   −2 per unmatched Gravel is a smaller drag than intended. Suggest −3.
-4. **Keep `persistentHiddenCards` on.** See §3.
-5. **Deck size is a weak lever** (§4). Leave it at 72.
+1. **Consider `scoringDraft` as the default.** It addresses the card spread in
+   §5 structurally, without touching a single number — a weak card becomes one
+   you chose not to take. This is the highest-leverage change available and
+   still **not applied** — it's a rules-mode default, your call, not something
+   I'd change unilaterally.
+2. **Retune P5 / P2 / P6 — applied.** Three screening packages were tested
+   before touching the catalog (a gentle version, an aggressive version, and a
+   hybrid); the hybrid won and is what shipped. Numbers and effect are in §8.
+3. **`L4 Riffle Box`** — the one payout outlier flagged under both agents.
+   **Not applied.** Flagged for a future pass if you want it.
+4. **Keep `persistentHiddenCards` on.** No change — this was always the
+   recommendation, not a proposal to cut it. See §3.
+5. **Deck size is a weak lever** (§4). Left at 72, no change.
 
 ### Known gap
 
@@ -284,6 +282,66 @@ properly measured, because neither agent exploits asymmetric information. An
 agent that models what its opponent *cannot* know would be needed to evaluate
 them, and would also make a much better single-player opponent. That is the most
 valuable remaining work on the simulator.
+
+---
+
+## 8. Applied: P5 / P2 / P6 retune ("package C")
+
+Three packages were screened at 40,000 games before any catalog value changed,
+specifically to avoid shipping a guess:
+
+| Card | Before | Package A (gentle) | Package B (aggressive) | **Package C — shipped** |
+|---|---|---|---|---|
+| P5 Highgrader | 8/type | 11 | 13 | **13** |
+| P2 Clean Claim | 20/10/0, bands ≤3/4–6 | 20/10, bands ≤4/5–7 | 24/12, bands ≤4/5–7 | **22/11, bands ≤4/5–7** |
+| P6 Volume Play | −3 Fool's Gold | −4 | −5 | **−4** |
+
+A undershot and B overshot — B flipped P6 from the strongest card in the deck
+to one of the weakest, which just relocates the imbalance rather than fixing
+it. C was the only package that brought all three within a few points of even.
+
+Screening result (40k games, win rate when held):
+
+| Card | Before | After (C, 40k screen) |
+|---|---|---|
+| P5 Highgrader | 36.5% | 48.2% |
+| P2 Clean Claim | 40.9% | 48.6% |
+| P6 Volume Play | 61.6% | 53.3% |
+
+Confirmed at full scale — 100,000 games, matching the original measurement,
+InferenceAgent mirror:
+
+| Card | Before | After (C, 100k confirm) | Payout EV before → after |
+|---|---|---|---|
+| P5 Highgrader | 36.5% | **47.8%** | 10.5 → 17.0 |
+| P2 Clean Claim | 40.9% | **48.3%** | 14.1 → 19.1 |
+| P6 Volume Play | 61.6% | **53.5%** | 18.9 → 16.8 |
+
+Full-deck spread, same run: SD **0.0350** (was 0.0476), min 43.2% (`S6 Grubstake`,
+unchanged by this tune), max 57.0% (`O4 Sharpened Steel`, also unchanged) — a
+**26% reduction in win-rate spread**, consistent with the screening estimate.
+Cross-checked under `GreedyAgent` too, where all three move the same direction.
+
+**One honest side effect.** The payout-outlier check (>1.5 SD from family mean,
+§5's criterion) now also flags `P1 Pyrite Hoarder` (+1.71 SD) alongside the
+pre-existing `L4 Riffle Box` (+1.58 SD). P1 itself is untouched — its family
+mean moved because P2's payout dropped, which pulled Prospect's average down and
+left P1 relatively further above it. Not a new problem, just the §5 metric
+reacting to a shift elsewhere in the same family. Worth knowing if you retune
+again, not urgent on its own.
+
+`docs/simdata/balance-C-inference.csv` and `balance-C-greedy.csv` hold the full
+36-card tables for this run, alongside the earlier `balance-inference.csv` /
+`balance-greedy.csv` for direct comparison.
+
+### What did not change
+
+Only the three effects above moved. `S1`–`S6`, `D1`–`D6`, `L1`–`L6`, `V1`–`V6`,
+`O1`–`O6`, and `P1`, `P3`, `P4` are untouched. Fixture 1 (§ the test suite) still
+asserts **97** unchanged — it hand-verifies the PackMule optimizer against a
+frozen snapshot of the original card definitions rather than the live catalog,
+specifically so a retune like this one can't silently invalidate it. See the
+"Decouple Fixture 1" commit for how that works.
 
 ---
 

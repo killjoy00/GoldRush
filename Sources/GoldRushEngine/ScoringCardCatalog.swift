@@ -350,10 +350,16 @@ public enum ScoringCardCatalog {
         ),
         ScoringCard(
             ScoringCardID(.prospect, 2), "Clean Claim",
-            "20 if 3 or fewer Fool's Gold; 10 if 4-6; 0 if 7+",
+            "22 if 4 or fewer Fool's Gold; 11 if 5-7; 0 if 8+",
+            // Tuned from 20/≤3, 10/4-6 (see docs/SIM_FINDINGS.md). A ~30-card
+            // collection expects ~4.2 Fool's Gold by luck alone (10 of 72
+            // cards), so the original top band sat just below average and the
+            // card mostly paid its flat middle value regardless of play. Moving
+            // the band to ≤4 brings the top payout within reach of ordinary
+            // dodging, so the card rewards a real decision instead of luck.
             [.tieredByCount(.type(.foolsGold), tiers: [
-                Tier(maxCount: 3, points: 20),
-                Tier(maxCount: 6, points: 10),
+                Tier(maxCount: 4, points: 22),
+                Tier(maxCount: 7, points: 11),
                 Tier(maxCount: Int.max, points: 0),
             ])]
         ),
@@ -372,15 +378,26 @@ public enum ScoringCardCatalog {
         ),
         ScoringCard(
             ScoringCardID(.prospect, 5), "Highgrader",
-            "8 for each of Gold Nugget, Quartz, Gold Ore where strictly more than opponent",
-            [.bonusPerTypeStrictlyMore([.goldNugget, .quartz, .goldOre], points: 8)]
+            "13 for each of Gold Nugget, Quartz, Gold Ore where strictly more than opponent",
+            // Tuned from 8 (see docs/SIM_FINDINGS.md). Leading in three
+            // independent types at once is close to conjunctive impossibility --
+            // a Strike player dominates Gold Nugget, a Vein player dominates
+            // Quartz, and this card needs to beat both plus Gold Ore. 8 points
+            // per type undervalued that difficulty; 13 pays for it properly.
+            [.bonusPerTypeStrictlyMore([.goldNugget, .quartz, .goldOre], points: 13)]
         ),
         ScoringCard(
             ScoringCardID(.prospect, 6), "Volume Play",
-            "1 per mining card in collection; -3 per Fool's Gold",
+            "1 per mining card in collection; -4 per Fool's Gold",
+            // Tuned from -3 (see docs/SIM_FINDINGS.md). Every card taken helps
+            // this one, so it never competes with the rest of a hand -- there
+            // was no real decision attached to holding it. A deeper junk
+            // penalty creates one: junk arrives bundled with everything else,
+            // so wanting volume and dodging Fool's Gold now pull against each
+            // other.
             [
                 .perTotalMiningCards(points: 1),
-                .perType(.foolsGold, points: -3),
+                .perType(.foolsGold, points: -4),
             ]
         ),
     ]
