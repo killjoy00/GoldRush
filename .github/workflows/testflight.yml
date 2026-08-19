@@ -49,16 +49,61 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
         run: |
+          set -uo pipefail
           mkdir -p ~/.appstoreconnect/private_keys
-          # Accept the secret either base64-encoded or as raw PEM text.
-          if echo "$ASC_KEY_P8" | grep -q "BEGIN PRIVATE KEY"; then
-            printf '%s' "$ASC_KEY_P8" > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
-          else
-            echo "$ASC_KEY_P8" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          RAW="$RUNNER_TEMP/asc_key_raw"
+
+          printf '%s' "$ASC_KEY_P8" > "$RAW"
+
+          # Normalise two things a copy-paste commonly does to a PEM file:
+          # Windows line endings, and newlines flattened into the literal two
+          # characters backslash-n.
+          tr -d '\r' < "$RAW" > "$RAW.n" && mv "$RAW.n" "$RAW"
+          if grep -q 'BEGIN PRIVATE KEY' "$RAW" && ! grep -q '^-----END PRIVATE KEY-----' "$RAW"; then
+            echo "note: expanding literal \\n sequences into real newlines"
+            perl -pe 's/\\n/\n/g' "$RAW" > "$RAW.n" && mv "$RAW.n" "$RAW"
           fi
-          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
-          grep -q "BEGIN PRIVATE KEY" ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8 \
-            || { echo "::error::ASC_KEY_P8 did not decode to a PEM private key"; exit 1; }
+
+          if grep -q 'BEGIN PRIVATE KEY' "$RAW"; then
+            echo "ASC_KEY_P8 looks like PEM text; using it as-is."
+            cp "$RAW" "$KEY_PATH"
+          else
+            echo "ASC_KEY_P8 is not PEM text; trying to base64-decode it."
+            # macOS ships BSD base64, which spells decode as -D. GNU coreutils
+            # spells it -d/--decode. Try each rather than assuming the runner's
+            # flavour -- this is what broke the first upload attempt.
+            tr -d '[:space:]' < "$RAW" > "$RAW.compact"
+            if   base64 -D    < "$RAW.compact" > "$KEY_PATH" 2>/dev/null && [ -s "$KEY_PATH" ]; then
+              echo "decoded with: base64 -D (BSD)"
+            elif base64 -d    < "$RAW.compact" > "$KEY_PATH" 2>/dev/null && [ -s "$KEY_PATH" ]; then
+              echo "decoded with: base64 -d"
+            elif base64 --decode < "$RAW.compact" > "$KEY_PATH" 2>/dev/null && [ -s "$KEY_PATH" ]; then
+              echo "decoded with: base64 --decode (GNU)"
+            else
+              : > "$KEY_PATH"
+            fi
+          fi
+
+          if ! grep -q 'BEGIN PRIVATE KEY' "$KEY_PATH" 2>/dev/null; then
+            # Report the shape of the secret without ever echoing its contents,
+            # so a failure here is diagnosable from the log alone.
+            LEN=$(wc -c < "$RAW" | tr -d ' ')
+            HAS_DASH=$(grep -qc '^-----' "$RAW" 2>/dev/null && echo yes || echo no)
+            IS_B64=$(grep -Eq '^[A-Za-z0-9+/=[:space:]]+$' "$RAW" && echo yes || echo no)
+            echo "::error::ASC_KEY_P8 is neither a PEM private key nor valid base64 of one."
+            echo "::error::Secret is ${LEN} characters. Begins with dashes: ${HAS_DASH}. Base64 charset only: ${IS_B64}."
+            echo "::error::Expected either the full text of AuthKey_XXXXXXXX.p8 (including the"
+            echo "::error::-----BEGIN PRIVATE KEY----- and -----END PRIVATE KEY----- lines), or its base64."
+            echo "::error::A ~250 character secret with dashes=no is usually the Key ID or Issuer ID"
+            echo "::error::pasted into the wrong secret."
+            rm -f "$RAW" "$RAW.compact"
+            exit 1
+          fi
+
+          chmod 600 "$KEY_PATH"
+          rm -f "$RAW" "$RAW.compact"
+          echo "API key installed at AuthKey_${ASC_KEY_ID}.p8 ($(wc -c < "$KEY_PATH" | tr -d ' ') bytes)."
 
       - name: Archive
         # Cloud signing: -allowProvisioningUpdates with an App Store Connect API
