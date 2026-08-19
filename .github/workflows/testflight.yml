@@ -72,17 +72,42 @@ jobs:
             echo "ASC_KEY_P8 is not PEM text; trying to base64-decode it."
             # macOS ships BSD base64, which spells decode as -D. GNU coreutils
             # spells it -d/--decode. Try each rather than assuming the runner's
-            # flavour -- this is what broke the first upload attempt.
+            # flavour.
             tr -d '[:space:]' < "$RAW" > "$RAW.compact"
-            if   base64 -D    < "$RAW.compact" > "$KEY_PATH" 2>/dev/null && [ -s "$KEY_PATH" ]; then
+            DECODED="$RUNNER_TEMP/asc_key_decoded"
+            if   base64 -D       < "$RAW.compact" > "$DECODED" 2>/dev/null && [ -s "$DECODED" ]; then
               echo "decoded with: base64 -D (BSD)"
-            elif base64 -d    < "$RAW.compact" > "$KEY_PATH" 2>/dev/null && [ -s "$KEY_PATH" ]; then
+            elif base64 -d       < "$RAW.compact" > "$DECODED" 2>/dev/null && [ -s "$DECODED" ]; then
               echo "decoded with: base64 -d"
-            elif base64 --decode < "$RAW.compact" > "$KEY_PATH" 2>/dev/null && [ -s "$KEY_PATH" ]; then
+            elif base64 --decode < "$RAW.compact" > "$DECODED" 2>/dev/null && [ -s "$DECODED" ]; then
               echo "decoded with: base64 --decode (GNU)"
+            else
+              : > "$DECODED"
+            fi
+
+            if grep -q 'BEGIN PRIVATE KEY' "$DECODED" 2>/dev/null; then
+              # The secret was base64 of the whole .p8 file.
+              echo "decoded to a full PEM file."
+              cp "$DECODED" "$KEY_PATH"
+            elif [ "$(head -c1 "$DECODED" 2>/dev/null | od -An -tx1 | tr -d ' \n')" = "30" ]; then
+              # The secret was the PEM *body* with its -----BEGIN/END----- lines
+              # stripped off -- so it decodes to raw PKCS#8 DER, which always
+              # starts with the ASN.1 SEQUENCE tag 0x30. Easy to produce by
+              # copying only the middle of the file, and trivially recoverable:
+              # put the wrapper back.
+              echo "decoded to raw DER (PEM header lines were missing); re-wrapping."
+              {
+                echo "-----BEGIN PRIVATE KEY-----"
+                fold -w 64 "$RAW.compact"
+                echo ""
+                echo "-----END PRIVATE KEY-----"
+              } > "$KEY_PATH"
+              # fold may or may not end with a newline; collapse any blank line.
+              grep -v '^$' "$KEY_PATH" > "$KEY_PATH.n" && mv "$KEY_PATH.n" "$KEY_PATH"
             else
               : > "$KEY_PATH"
             fi
+            rm -f "$DECODED"
           fi
 
           if ! grep -q 'BEGIN PRIVATE KEY' "$KEY_PATH" 2>/dev/null; then
@@ -103,6 +128,20 @@ jobs:
 
           chmod 600 "$KEY_PATH"
           rm -f "$RAW" "$RAW.compact"
+
+          # Prove the key actually parses as a private key, rather than just
+          # looking like one. A malformed key would otherwise surface much later
+          # as an opaque authentication failure inside xcodebuild.
+          if command -v openssl >/dev/null 2>&1; then
+            if openssl pkey -in "$KEY_PATH" -noout 2>/dev/null; then
+              echo "openssl parsed the key successfully."
+            else
+              echo "::error::The key was assembled but openssl cannot parse it as a private key."
+              echo "::error::Re-copy AuthKey_${ASC_KEY_ID}.p8 in full, including its BEGIN and END lines."
+              exit 1
+            fi
+          fi
+
           echo "API key installed at AuthKey_${ASC_KEY_ID}.p8 ($(wc -c < "$KEY_PATH" | tr -d ' ') bytes)."
 
       - name: Archive
