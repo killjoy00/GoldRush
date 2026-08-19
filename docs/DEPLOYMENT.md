@@ -20,7 +20,16 @@ you generate in step 1.
 4. Select **App Store Connect API** in the sidebar, then the **Team Keys** tab
 5. Click the **+** button
 6. Name it anything (e.g. `GitHub Actions`)
-7. Set **Access** to **App Manager**
+7. Set **Access** to **Admin**
+
+   > ⚠️ **It must be Admin, not App Manager.** Cloud signing for App Store
+   > distribution is gated on the Admin role. With an App Manager key the build
+   > archives and signs correctly and then fails at the very last step with
+   > "Cloud signing permission error / No profiles were found". Apple's own
+   > recovery text for that error reads: *"You haven't been given access to
+   > cloud-managed distribution certificates. Please contact your team's Account
+   > Holder or an Admin to give you access."* See
+   > https://developer.apple.com/forums/thread/698117
 8. Click **Generate**
 
 Now, from that page, collect three things:
@@ -140,7 +149,8 @@ not ask you the export-compliance question on every upload.
 | "Missing repository secrets: ..." | Step 3 was skipped or a name is misspelled. Names are case-sensitive. |
 | "ASC_KEY_P8 did not decode to a PEM private key" | The secret is truncated. Re-paste the whole file including the BEGIN/END lines. |
 | `No profiles for 'com.…' were found` | The bundle ID in step 4 does not match. Check the repository variable `GOLDRUSH_BUNDLE_ID`. |
-| `Authentication credentials are missing or invalid` | The API key lacks **App Manager** access, or the Issuer ID belongs to a different team. |
+| `Authentication credentials are missing or invalid` | The Issuer ID belongs to a different team than the key. |
+| `Cloud signing permission error` / `No profiles for '...' were found` | The API key is not **Admin**. App Manager and Developer keys cannot cloud sign for distribution. Roles cannot be edited, so revoke the key and generate a new one with Admin access. |
 | Upload succeeds, build never appears | Normal — processing takes 5–15 minutes. Check the **Activity** tab. |
 
 Every run keeps the built `.ipa` as a downloadable artifact for 14 days, so a
