@@ -42,7 +42,6 @@ public struct ChooseView: View {
             }
             Spacer(minLength: 0)
         }
-        .background(Theme.dirt)
         .alert("Take pile \(confirming == .a ? "A" : "B")?", isPresented: .init(
             get: { confirming != nil },
             set: { if !$0 { confirming = nil } }
@@ -81,9 +80,9 @@ public struct ChooseView: View {
                             .foregroundStyle(Theme.sluice)
                     }
                 }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 50), spacing: 7)], spacing: 7) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 60), spacing: 8)], spacing: 8) {
                     ForEach(cards, id: \.id.rawValue) { card in
-                        MiningCardView(type: card.type, faceDown: card.isHidden, compact: true)
+                        MiningCardView(type: card.type, faceDown: card.isHidden, size: .compact)
                     }
                 }
             }

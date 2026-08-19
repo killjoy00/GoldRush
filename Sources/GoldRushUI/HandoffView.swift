@@ -46,7 +46,7 @@ public struct HandoffView: View {
             .padding(.bottom, 34)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.dirt)
+        .background(Theme.background)
     }
 }
 #endif

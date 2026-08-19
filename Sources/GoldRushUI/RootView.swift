@@ -21,7 +21,7 @@ public struct RootView: View {
 
     public var body: some View {
         ZStack {
-            Theme.dirt.ignoresSafeArea()
+            Theme.background
 
             switch model.screen {
             case .handoff(let player):
@@ -164,6 +164,11 @@ public struct RootView: View {
 public struct NewGameView: View {
     @State private var model: GameViewModel?
     @State private var difficulty = InferenceAgent.Fidelity.full
+    /// Drafting is offered rather than imposed. The simulator found a 25-point
+    /// win-rate spread between the best and worst scoring card to be dealt, and
+    /// drafting removes that luck entirely -- but it also adds a phase to the
+    /// start of every game, which is a matter of taste rather than balance.
+    @AppStorage("goldrush.scoringDraft") private var useDraft = false
     #if canImport(GameKit)
     @State private var showMatchmaker = false
     @State private var onlineError: String?
@@ -183,9 +188,21 @@ public struct NewGameView: View {
     var menu: some View {
         VStack(spacing: 18) {
             Spacer()
-            Image(systemName: "mountain.2.fill")
-                .font(.system(size: 52))
-                .foregroundStyle(Theme.gold)
+            // The pan from the app icon, so the title screen and the home
+            // screen read as the same product.
+            ZStack {
+                Circle()
+                    .fill(RadialGradient(colors: [Theme.ember.opacity(0.55), .clear],
+                                         center: .center, startRadius: 4, endRadius: 70))
+                Circle()
+                    .strokeBorder(Theme.parchment.opacity(0.30), lineWidth: 5)
+                    .frame(width: 96, height: 96)
+                Circle()
+                    .fill(Color.black.opacity(0.35))
+                    .frame(width: 88, height: 88)
+                MiningArt(.goldNugget).frame(width: 66, height: 66)
+            }
+            .frame(width: 120, height: 120)
             Text("GOLD RUSH")
                 .font(.system(size: 38, weight: .black, design: .rounded))
                 .tracking(3)
@@ -194,6 +211,9 @@ public struct NewGameView: View {
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.parchment.opacity(0.7))
             Spacer()
+
+            setupPicker
+                .padding(.bottom, 4)
 
             Button { startPassAndPlay() } label: {
                 menuLabel("Pass and play", "Two players, one device", filled: true)
@@ -212,7 +232,7 @@ public struct NewGameView: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.dirt)
+        .background(Theme.background)
         #if canImport(GameKit)
         .sheet(isPresented: $showMatchmaker) {
             GameCenterMatchmakerView(
@@ -235,6 +255,33 @@ public struct NewGameView: View {
         #endif
     }
 
+    /// How the six scoring cards are handed out. Applies to every mode below.
+    @ViewBuilder
+    var setupPicker: some View {
+        VStack(spacing: 6) {
+            Text("SCORING CARDS")
+                .font(.system(size: 10, weight: .bold))
+                .tracking(1)
+                .foregroundStyle(Theme.gold.opacity(0.8))
+            Picker("Scoring cards", selection: $useDraft) {
+                Text("Dealt").tag(false)
+                Text("Drafted").tag(true)
+            }
+            .pickerStyle(.segmented)
+            Text(useDraft
+                 ? "Twelve cards face up; take turns picking. No luck of the deal."
+                 : "Six dealt at random to each player.")
+                .font(.system(size: 11))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Theme.parchment.opacity(0.55))
+                .frame(height: 28)
+        }
+    }
+
+    var config: GameConfig {
+        GameConfig(scoringDraft: useDraft)
+    }
+
     @ViewBuilder
     func menuLabel(_ title: String, _ subtitle: String, filled: Bool) -> some View {
         VStack(spacing: 3) {
@@ -249,7 +296,7 @@ public struct NewGameView: View {
 
     func startPassAndPlay() {
         let seed = UInt64.random(in: 0..<UInt64.max)
-        let state = GameState.newGame(seed: seed)
+        let state = GameState.newGame(config: config, seed: seed)
         model = GameViewModel(state: state, transport: LocalTransport(state: state))
     }
 
@@ -269,7 +316,7 @@ public struct NewGameView: View {
 
     func beginOnlineMatch(_ match: GKTurnBasedMatch) {
         do {
-            let transport = try GameCenterTransport(match: match)
+            let transport = try GameCenterTransport(match: match, config: config)
             model = GameViewModel(state: transport.state, transport: transport)
             // Keep playing while the app is open: when the opponent moves,
             // Game Center pushes the event and the board reloads in place
@@ -298,7 +345,7 @@ public struct NewGameView: View {
 
     func startSolo() {
         let seed = UInt64.random(in: 0..<UInt64.max)
-        let state = GameState.newGame(seed: seed)
+        let state = GameState.newGame(config: config, seed: seed)
         let fidelity = difficulty
         let transport = AgentTransport(state: state, humanSeat: .p1, seed: seed &+ 1) { view, phase, rng in
             let agent = InferenceAgent(fidelity: fidelity)

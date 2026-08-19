@@ -26,7 +26,6 @@ public struct SplitView: View {
                 ProgressView().tint(Theme.gold)
             }
         }
-        .background(Theme.dirt)
     }
 
     @ViewBuilder
@@ -89,7 +88,7 @@ public struct SplitView: View {
                     .foregroundStyle(Theme.danger.opacity(0.9))
                     .frame(maxWidth: .infinity, minHeight: 74)
             } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 62), spacing: 8)], spacing: 8) {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 80), spacing: 10)], spacing: 10) {
                     ForEach(cards, id: \.rawValue) { card in
                         cardTile(builder, card, in: pile)
                     }
@@ -118,7 +117,7 @@ public struct SplitView: View {
     func cardTile(_ builder: SplitBuilder, _ card: CardID, in pile: PileID) -> some View {
         VStack(spacing: 3) {
             MiningCardView(type: builder.type(of: card), faceDown: false,
-                           selected: builder.isFaceDown(card))
+                           selected: builder.isFaceDown(card), size: .full)
                 .onTapGesture { builder.move(card, to: pile.other) }
                 .draggable(String(card.rawValue))
 

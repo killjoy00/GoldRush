@@ -60,7 +60,6 @@ public struct RevealSelectionView: View {
             .disabled(!model.revealSelectionComplete)
             .padding(16)
         }
-        .background(Theme.dirt)
     }
 }
 #endif
