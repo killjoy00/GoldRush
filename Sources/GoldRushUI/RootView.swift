@@ -13,10 +13,21 @@ import UIKit
 /// Routes to whichever screen the game is currently asking for.
 public struct RootView: View {
     @Bindable public var model: GameViewModel
+    /// Back to the menu. Optional because the view is perfectly usable
+    /// somewhere that has nowhere to go back to; supplied by whoever presented
+    /// the game, which is the only thing that knows what "back" means.
+    public let onExit: (() -> Void)?
+    /// Start another game set up the same way.
+    public let onRematch: (() -> Void)?
     @State private var showTableau = false
+    @State private var confirmLeave = false
 
-    public init(model: GameViewModel) {
+    public init(model: GameViewModel,
+                onExit: (() -> Void)? = nil,
+                onRematch: (() -> Void)? = nil) {
         self.model = model
+        self.onExit = onExit
+        self.onRematch = onRematch
     }
 
     public var body: some View {
@@ -28,7 +39,7 @@ public struct RootView: View {
                 HandoffView(player: player) { model.completeHandoff() }
                     .transition(.opacity)
             case .scoring:
-                ScoringView(model: model)
+                ScoringView(model: model, onExit: onExit, onRematch: onRematch)
             default:
                 board
             }
@@ -65,17 +76,39 @@ public struct RootView: View {
                 }
             }
 
-            Button {
-                showTableau = true
-            } label: {
-                Label("My claim (\(model.view.collectionCounts.total))", systemImage: "square.stack.3d.up.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Theme.gold)
+            HStack(spacing: 20) {
+                Button {
+                    showTableau = true
+                } label: {
+                    Label("My claim (\(model.view.collectionCounts.total))", systemImage: "square.stack.3d.up.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.gold)
+                }
+                // Without this a match that stalls -- an opponent who never
+                // takes their turn -- leaves the app with no route out of it
+                // but force-quitting.
+                if onExit != nil {
+                    Button {
+                        confirmLeave = true
+                    } label: {
+                        Label("Leave", systemImage: "chevron.left")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.parchment.opacity(0.5))
+                    }
+                }
             }
             .padding(.bottom, 6)
         }
         .sheet(isPresented: $showTableau) {
             TableauView(view: model.view)
+        }
+        .confirmationDialog("Leave this game?",
+                            isPresented: $confirmLeave,
+                            titleVisibility: .visible) {
+            Button("Leave game", role: .destructive) { onExit?() }
+            Button("Keep playing", role: .cancel) { }
+        } message: {
+            Text("Pass-and-play and solo games can't be picked up again. An online match stays open — you can rejoin it from the menu.")
         }
     }
 
@@ -162,7 +195,13 @@ public struct RootView: View {
 
 /// Entry screen: pick an opponent and start.
 public struct NewGameView: View {
+    /// How the running game was started, so "Play again" can start another the
+    /// same way. Nil for a Game Center match, which needs matchmaking rather
+    /// than a button.
+    enum LocalStart { case passAndPlay, solo }
+
     @State private var model: GameViewModel?
+    @State private var localStart: LocalStart?
     @State private var difficulty = InferenceAgent.Fidelity.full
     /// Drafting is offered rather than imposed. The simulator found a 25-point
     /// win-rate spread between the best and worst scoring card to be dealt, and
@@ -172,15 +211,45 @@ public struct NewGameView: View {
     #if canImport(GameKit)
     @State private var showMatchmaker = false
     @State private var onlineError: String?
+    @State private var showOnlineError = false
     #endif
 
     public init() {}
 
     public var body: some View {
-        if let model {
-            RootView(model: model)
+        if let active = model {
+            RootView(model: active,
+                     onExit: { self.exitToMenu() },
+                     onRematch: rematchAction)
+                // A rematch replaces the view model, and this makes SwiftUI
+                // treat that as a new screen rather than reusing the old one's
+                // state (an open tableau sheet, a half-finished dialog).
+                .id(ObjectIdentifier(active))
         } else {
             menu
+        }
+    }
+
+    /// Ends the running game and returns to the menu.
+    func exitToMenu() {
+        #if canImport(GameKit)
+        // Stop turn events refreshing a match nothing is showing any more.
+        GameCenterTurnListener.shared.onTurnEvent = nil
+        #endif
+        model = nil
+        localStart = nil
+    }
+
+    var rematchAction: (() -> Void)? {
+        guard localStart != nil else { return nil }
+        return { self.playAgain() }
+    }
+
+    func playAgain() {
+        switch localStart {
+        case .passAndPlay: startPassAndPlay()
+        case .solo: startSolo()
+        case nil: exitToMenu()
         }
     }
 
@@ -244,6 +313,11 @@ public struct NewGameView: View {
             )
             .ignoresSafeArea()
         }
+        .alert("Couldn't start the match", isPresented: $showOnlineError) {
+            Button("OK", role: .cancel) { onlineError = nil }
+        } message: {
+            Text(onlineError ?? "")
+        }
         .task {
             GameCenterAuth.shared.authenticate { controller in
                 // Game Center's sign-in screen has to be presented from UIKit,
@@ -297,6 +371,7 @@ public struct NewGameView: View {
     func startPassAndPlay() {
         let seed = UInt64.random(in: 0..<UInt64.max)
         let state = GameState.newGame(config: config, seed: seed)
+        localStart = .passAndPlay
         model = GameViewModel(state: state, transport: LocalTransport(state: state))
     }
 
@@ -317,6 +392,7 @@ public struct NewGameView: View {
     func beginOnlineMatch(_ match: GKTurnBasedMatch) {
         do {
             let transport = try GameCenterTransport(match: match, config: config)
+            localStart = nil
             model = GameViewModel(state: transport.state, transport: transport)
             // Keep playing while the app is open: when the opponent moves,
             // Game Center pushes the event and the board reloads in place
@@ -329,6 +405,7 @@ public struct NewGameView: View {
             }
         } catch {
             onlineError = error.localizedDescription
+            showOnlineError = true
         }
     }
 
@@ -372,6 +449,7 @@ public struct NewGameView: View {
                 return nil
             }
         }
+        localStart = .solo
         model = GameViewModel(state: state, transport: transport)
     }
 }
