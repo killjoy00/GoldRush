@@ -234,6 +234,32 @@ def main() -> int:
     else:
         print(f"::warning::Could not check profiles (HTTP {status}): {first_error_detail(payload)}")
 
+    # 7. Is Game Center enabled on the App ID? The app ships a
+    #    com.apple.developer.game-center entitlement, and signing fails if the
+    #    identifier does not carry the matching capability. Xcode normally adds
+    #    it during automatic signing, but reporting it here turns a confusing
+    #    provisioning error into a named cause.
+    status, payload = get(f"bundleIds?filter[identifier]={bundle_id}&limit=1", token)
+    bundle_ref = (payload.get("data") or [{}])[0].get("id") if status == 200 else None
+    if bundle_ref:
+        status, payload = get(f"bundleIds/{bundle_ref}/bundleIdCapabilities?limit=200", token)
+        if status == 200:
+            enabled = {
+                (c.get("attributes") or {}).get("capabilityType")
+                for c in payload.get("data", [])
+            }
+            if "GAME_CENTER" in enabled:
+                print("Game Center:    OK — enabled on the App ID.")
+            else:
+                print("Game Center:    not yet enabled on the App ID.")
+                print("::warning::The app requests the Game Center entitlement but the App ID")
+                print("::warning::does not list the capability. Automatic signing usually adds it.")
+                print("::warning::If signing fails, enable it at developer.apple.com/account ->")
+                print("::warning::Certificates, IDs & Profiles -> Identifiers -> your App ID ->")
+                print("::warning::tick Game Center -> Save.")
+        else:
+            print(f"::warning::Could not read App ID capabilities (HTTP {status}).")
+
     if problems:
         print("")
         print(f"::error::App Store Connect preflight found {len(problems)} problem(s):")
