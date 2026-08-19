@@ -214,6 +214,24 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
           ls -la "$RUNNER_TEMP/export"
 
+      - name: Validate the bundle before uploading
+        # Apple runs a set of bundle checks server-side that nothing local
+        # reproduces -- Info.plist consistency, icon presence, entitlement
+        # sanity. Running them via --validate-app first means a rejected bundle
+        # costs a fast failure with a readable reason instead of a consumed
+        # TestFlight build number and a cryptic upload error.
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          IPA=$(ls "$RUNNER_TEMP/export"/*.ipa | head -1)
+          echo "Validating $IPA"
+          xcrun altool --validate-app \
+            -f "$IPA" \
+            -t ios \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
+
       - name: Upload to TestFlight
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
