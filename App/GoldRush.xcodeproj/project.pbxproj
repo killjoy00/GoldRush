@@ -6,6 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		6D0000000000000000000F03 /* GoldRushUI in Frameworks */ = {
+			isa = PBXBuildFile;
+			productRef = 6D0000000000000000000F02 /* GoldRushUI */;
+		};
+/* End PBXBuildFile section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		6D0000000000000000000A01 /* GoldRush */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -19,7 +26,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6D0000000000000000000F02 /* GoldRushUI in Frameworks */,
+				6D0000000000000000000F03 /* GoldRushUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
