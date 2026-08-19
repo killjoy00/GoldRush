@@ -31,9 +31,9 @@ public struct TableauView: View {
                                     .font(.system(size: 12, weight: .bold, design: .rounded))
                                     .foregroundStyle(Theme.goldBright)
                             }
-                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 46), spacing: 6)], spacing: 6) {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 42), spacing: 6)], spacing: 6) {
                                 ForEach(0..<n, id: \.self) { _ in
-                                    MiningCardView(type: type, compact: true)
+                                    MiningCardView(type: type, size: .chip)
                                 }
                             }
                         }
@@ -70,7 +70,7 @@ public struct TableauView: View {
             }
             .padding(16)
         }
-        .background(Theme.dirt)
+        .background(Theme.background)
     }
 }
 #endif

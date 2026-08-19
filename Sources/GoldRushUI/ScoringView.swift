@@ -35,7 +35,7 @@ public struct ScoringView: View {
             }
             .padding(16)
         }
-        .background(Theme.dirt)
+        .background(Theme.background)
     }
 
     @ViewBuilder
