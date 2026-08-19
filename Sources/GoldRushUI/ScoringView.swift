@@ -6,9 +6,20 @@ import GoldRushUICore
 /// End-of-game breakdown, itemised per scoring card.
 public struct ScoringView: View {
     @Bindable public var model: GameViewModel
+    /// Where to go once the game is over. Without it this screen is a dead end
+    /// -- the game is finished, nothing on it is interactive, and the only way
+    /// out of the app is to force-quit it.
+    public let onExit: (() -> Void)?
+    /// Start another game set up the same way. Absent for Game Center matches,
+    /// which need matchmaking rather than a button.
+    public let onRematch: (() -> Void)?
 
-    public init(model: GameViewModel) {
+    public init(model: GameViewModel,
+                onExit: (() -> Void)? = nil,
+                onRematch: (() -> Void)? = nil) {
         self.model = model
+        self.onExit = onExit
+        self.onRematch = onRematch
     }
 
     public var body: some View {
@@ -36,6 +47,51 @@ public struct ScoringView: View {
             .padding(16)
         }
         .background(Theme.background)
+        .safeAreaInset(edge: .bottom) { exitBar }
+    }
+
+    /// Pinned to the bottom rather than placed after the breakdown: the
+    /// breakdown is two full screens of cards, and a way out that has to be
+    /// scrolled to is a way out people do not find.
+    @ViewBuilder
+    var exitBar: some View {
+        if onExit != nil || onRematch != nil {
+            HStack(spacing: 10) {
+                if let onRematch {
+                    Button(action: onRematch) {
+                        barLabel("Play again", filled: false)
+                    }
+                }
+                if let onExit {
+                    Button(action: onExit) {
+                        barLabel("Main menu", filled: true)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 10)
+            .padding(.bottom, 10)
+            .background {
+                ZStack(alignment: .top) {
+                    Theme.dirtDeep.opacity(0.94)
+                    Rectangle()
+                        .fill(Theme.gold.opacity(0.22))
+                        .frame(height: 1)
+                }
+                .ignoresSafeArea(edges: .bottom)
+            }
+        }
+    }
+
+    @ViewBuilder
+    func barLabel(_ title: String, filled: Bool) -> some View {
+        Text(title)
+            .font(.system(size: 16, weight: .semibold))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 13)
+            .background(filled ? Theme.gold : Theme.dirtLight,
+                        in: RoundedRectangle(cornerRadius: 12))
+            .foregroundStyle(filled ? Theme.dirt : Theme.parchment)
     }
 
     @ViewBuilder
