@@ -70,8 +70,15 @@ public struct GameCenterMatchmakerView: UIViewControllerRepresentable {
 /// opponent moves, instead of only refreshing when the player reopens it.
 @MainActor
 public final class GameCenterTurnListener: NSObject, GKLocalPlayerListener {
-    public var onTurnEvent: ((GKTurnBasedMatch, Bool) -> Void)?
-    public var onMatchEnded: ((GKTurnBasedMatch) -> Void)?
+    /// Identified by match ID rather than by the match object.
+    ///
+    /// `GKTurnBasedMatch` is a reference type and not `Sendable`, and GameKit
+    /// delivers these callbacks off the main actor -- so handing the object
+    /// across would be a genuine data race, not a technicality. The ID is a
+    /// `String`, and the receiver reloads the match anyway, which also means it
+    /// acts on fresh data rather than on whatever GameKit happened to hand over.
+    public var onTurnEvent: ((_ matchID: String, _ didBecomeActive: Bool) -> Void)?
+    public var onMatchEnded: ((_ matchID: String) -> Void)?
 
     public static let shared = GameCenterTurnListener()
 
@@ -88,14 +95,16 @@ public final class GameCenterTurnListener: NSObject, GKLocalPlayerListener {
         receivedTurnEventFor match: GKTurnBasedMatch,
         didBecomeActive: Bool
     ) {
+        let matchID = match.matchID
         Task { @MainActor in
-            self.onTurnEvent?(match, didBecomeActive)
+            self.onTurnEvent?(matchID, didBecomeActive)
         }
     }
 
     nonisolated public func player(_ player: GKPlayer, matchEnded match: GKTurnBasedMatch) {
+        let matchID = match.matchID
         Task { @MainActor in
-            self.onMatchEnded?(match)
+            self.onMatchEnded?(matchID)
         }
     }
 }

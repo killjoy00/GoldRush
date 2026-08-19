@@ -275,8 +275,9 @@ public struct NewGameView: View {
             // Game Center pushes the event and the board reloads in place
             // rather than waiting for the player to back out and return.
             GameCenterTurnListener.shared.start()
-            GameCenterTurnListener.shared.onTurnEvent = { updated, _ in
-                guard updated.matchID == match.matchID else { return }
+            let matchID = match.matchID
+            GameCenterTurnListener.shared.onTurnEvent = { updatedID, _ in
+                guard updatedID == matchID else { return }
                 Task { try? await transport.refresh() }
             }
         } catch {
