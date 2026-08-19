@@ -61,7 +61,7 @@ public final class GameViewModel {
         // A remote opponent's move arrives asynchronously rather than as a
         // result of anything this device did, so the transport pushes it here.
         transport.onStateChange = { [weak self] updated in
-            Task { @MainActor in self?.adopt(updated) }
+            self?.adopt(updated)
         }
     }
 

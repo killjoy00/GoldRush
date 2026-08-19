@@ -44,7 +44,7 @@ jobs:
             -scheme GoldRushEngine \
             -destination 'generic/platform=iOS' \
             -skipMacroValidation \
-            CODE_SIGNING_ALLOWED=NO | tail -30
+            CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/engine-ios.log" 2>&1 || { echo "=== errors ==="; grep -E "error:" "$RUNNER_TEMP/engine-ios.log" | sort -u | head -40; exit 1; }
       - name: Typecheck the SwiftUI screens against the iOS SDK
         run: |
           set -o pipefail
@@ -52,7 +52,7 @@ jobs:
             -scheme GoldRushUI \
             -destination 'generic/platform=iOS' \
             -skipMacroValidation \
-            CODE_SIGNING_ALLOWED=NO | tail -40
+            CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/ui-ios.log" 2>&1 || { echo "=== errors ==="; grep -E "error:" "$RUNNER_TEMP/ui-ios.log" | sort -u | head -40; exit 1; }
 
   app:
     name: iOS app build (unsigned)
@@ -78,8 +78,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            DEVELOPMENT_TEAM="" \
-            | tail -40
+            DEVELOPMENT_TEAM="" > "$RUNNER_TEMP/app-build.log" 2>&1 || { echo "=== errors ==="; grep -E "error:" "$RUNNER_TEMP/app-build.log" | sort -u | head -40; exit 1; }
 
       - name: Archive the app without signing
         # `build` is not a strong enough check on this project file. A malformed
@@ -103,8 +102,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            DEVELOPMENT_TEAM="" \
-            | tail -25
+            DEVELOPMENT_TEAM="" > "$RUNNER_TEMP/app-archive.log" 2>&1 || { echo "=== errors ==="; grep -E "error:" "$RUNNER_TEMP/app-archive.log" | sort -u | head -40; exit 1; }
           test -d "$RUNNER_TEMP/CIGoldRush.xcarchive" \
             || { echo "::error::archive produced no .xcarchive"; exit 1; }
           echo "Archive created and readable."

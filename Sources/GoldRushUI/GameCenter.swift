@@ -73,8 +73,7 @@ public final class GameCenterAuth {
 /// complexity; the hidden-information rules are still enforced by the app for
 /// anyone not deliberately attacking it.
 @MainActor
-@Observable
-public final class GameCenterTransport: NSObject, MatchTransport, @unchecked Sendable {
+public final class GameCenterTransport: MatchTransport {
 
     public enum Failure: LocalizedError {
         case notAuthenticated
@@ -95,7 +94,7 @@ public final class GameCenterTransport: NSObject, MatchTransport, @unchecked Sen
     public private(set) var match: GKTurnBasedMatch
     public private(set) var state: GameState
     public private(set) var localSeat: PlayerID
-    public var onStateChange: (@Sendable (GameState) -> Void)?
+    public var onStateChange: ((GameState) -> Void)?
 
     public var localPlayers: [PlayerID] { [localSeat] }
 
@@ -143,7 +142,6 @@ public final class GameCenterTransport: NSObject, MatchTransport, @unchecked Sen
             // identically for the rest of the game.
             self.state = GameState.newGame(config: config, seed: UInt64.random(in: 0..<UInt64.max))
         }
-        super.init()
     }
 
     // MARK: - MatchTransport
