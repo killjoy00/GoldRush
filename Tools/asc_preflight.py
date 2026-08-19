@@ -172,7 +172,7 @@ def main() -> int:
     elif status == 403:
         problems.append(
             "The API key is not permitted to read signing certificates (403).\n"
-            "  Fix: the key's role must be App Manager or Admin, not Developer.\n"
+            "  Fix: the key's role must be Admin.\n"
             "       App Store Connect -> Users and Access -> Integrations -> Team Keys."
         )
     else:
@@ -199,17 +199,25 @@ def main() -> int:
             "  Archive succeeds without one (it signs for development), which is why\n"
             "  this only fails at the export step. Cloud signing tried to create one\n"
             "  and was refused -- that is the 'Cloud signing permission error'.\n"
-            "  Most likely: the API key's role is Developer, which may read signing\n"
-            "  assets but not create distribution ones. Roles cannot be edited after\n"
-            "  creation.\n"
+            "  Cloud signing for distribution requires an ADMIN key. App Manager and\n"
+            "  Developer keys can create development assets but not distribution ones,\n"
+            "  which is why archive succeeds and only export fails.\n"
             "  Fix: App Store Connect -> Users and Access -> Integrations -> Team Keys\n"
-            "       -> revoke the key -> generate a new one with Access: App Manager\n"
+            "       -> revoke the key -> generate a new one with Access: Admin\n"
             "       -> update the ASC_KEY_ID and ASC_KEY_P8 secrets.\n"
-            "  Also confirm at developer.apple.com/account that no pending Program\n"
-            "  License Agreement is blocking certificate creation."
+            "  Reference: https://developer.apple.com/forums/thread/698117"
         )
 
     # 6. Is there an App Store provisioning profile for this bundle ID?
+    #
+    #    When there is not, export falls back to cloud signing to create one --
+    #    and that is gated on the key having the ADMIN role. App Manager is not
+    #    enough, which is not obvious and is not something the API exposes: there
+    #    is no endpoint that reports a key's own role, so this can only be
+    #    flagged as the likely cause rather than detected.
+    #    Apple's recovery text for the resulting error reads "You haven't been
+    #    given access to cloud-managed distribution certificates."
+    #    See https://developer.apple.com/forums/thread/698117
     status, payload = get("profiles?filter[profileType]=IOS_APP_STORE&limit=200", token)
     if status == 200:
         names = [(p.get("attributes") or {}).get("name", "") for p in payload.get("data", [])]
@@ -217,7 +225,12 @@ def main() -> int:
         if matching:
             print(f"Profile:        OK — App Store profile found: {matching[0]}")
         else:
-            print(f"Profile:        none yet for '{bundle_id}' — cloud signing must create it.")
+            print(f"Profile:        none yet for '{bundle_id}'.")
+            print("::warning::No App Store profile exists, so export will ask Apple to cloud sign.")
+            print("::warning::That requires the API key's role to be ADMIN -- App Manager and")
+            print("::warning::Developer keys fail here with 'Cloud signing permission error',")
+            print("::warning::after archiving successfully. If export fails, this is why.")
+            print("::warning::Reference: https://developer.apple.com/forums/thread/698117")
     else:
         print(f"::warning::Could not check profiles (HTTP {status}): {first_error_detail(payload)}")
 
