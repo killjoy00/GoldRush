@@ -21,6 +21,15 @@ public protocol MatchTransport: AnyObject {
     /// shared state, however that state is shared.
     func submit(_ action: Action) async throws
 
+    /// Called once, right after the view model has wired itself to this
+    /// transport. Most transports have nothing to do here -- the human acts
+    /// first, or a remote opponent acts on their own device. `AgentTransport`
+    /// overrides it: the opening move of a drafted game does not always
+    /// belong to the human (the snake order can open on either seat), and
+    /// without this the agent would never be prompted, since it otherwise
+    /// only moves in response to a local submission.
+    func start() async
+
     /// Called when the local player should be asked to act.
     var onStateChange: ((GameState) -> Void)? { get set }
 }
@@ -29,6 +38,8 @@ public extension MatchTransport {
     func controlsLocally(_ player: PlayerID) -> Bool {
         localPlayers.contains(player)
     }
+
+    func start() async {}
 }
 
 /// Both seats on one device, with a hand-off curtain between turns.
@@ -79,6 +90,12 @@ public final class AgentTransport: MatchTransport {
     public func submit(_ action: Action) async throws {
         state = state.apply(action)
         onStateChange?(state)
+        await runAgentTurns()
+    }
+
+    /// Lets the agent open the game if the opening move is theirs -- true for
+    /// a drafted setup whenever the snake order starts on the agent's seat.
+    public func start() async {
         await runAgentTurns()
     }
 

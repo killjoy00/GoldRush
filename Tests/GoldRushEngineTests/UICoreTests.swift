@@ -154,3 +154,44 @@ struct SplitBuilderTests {
         #expect(state.isLegal(action))
     }
 }
+
+/// `AgentTransport` used to run the agent forward only in reaction to a
+/// human `submit()`. That was fine when the human always acted first -- the
+/// non-drafted setup guarantees it, since reveal selection resolves p1
+/// before p2 -- but the draft's snake order opens on p2, and solo play
+/// always seats the human as p1. Nothing ever prompted the agent: it was not
+/// the human's turn, and the human had not submitted anything for the
+/// transport to react to. Reported as drafting vs. AI hanging immediately.
+@MainActor
+@Suite("Agent transport")
+struct AgentTransportTests {
+
+    /// Always drafts whatever is first in the pool. Real strategy is
+    /// GoldRushAgents' concern; this only checks whether the agent gets
+    /// asked to act at all.
+    nonisolated static func draftsFirstLegalCard(_ view: PlayerView, _ phase: Phase, _ rng: inout SeededRNG) -> Action? {
+        guard phase == .draft, let pick = view.draftPool.first else { return nil }
+        return .draftPick(pick)
+    }
+
+    @Test("The agent opens a drafted game instead of the screen hanging")
+    func agentOpensDraftedGame() async {
+        let config = GameConfig(scoringDraft: true)
+        let state = GameState.newGame(config: config, seed: 900)
+        // The draft's snake order is a fixed constant, not seed-dependent --
+        // this is true of every drafted game, which is exactly the bug.
+        #expect(state.actingPlayer == .p2)
+
+        let transport = AgentTransport(state: state, humanSeat: .p1, seed: 1, decide: Self.draftsFirstLegalCard)
+        let model = GameViewModel(state: state, transport: transport)
+
+        // The kickoff runs on a Task scheduled from init; give it a turn.
+        await Task.yield()
+        await Task.yield()
+
+        // The agent drafted its opening pick with no human action at all,
+        // and the draft has moved on to the human's turn.
+        #expect(model.view.draftPool.count == GameConfig.draftPoolSize - 1)
+        #expect(model.isLocalTurn)
+    }
+}
