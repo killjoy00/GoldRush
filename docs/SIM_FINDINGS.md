@@ -345,6 +345,101 @@ specifically so a retune like this one can't silently invalidate it. See the
 
 ---
 
+## 9. Applied: twelve new cards (S7–P8)
+
+Twelve candidate cards were proposed, taking each family from six to eight and
+the catalog from 36 to 48. All twelve were screened at **100,000 games** with
+the `inference` agent before any of them shipped, on the same footing as § 5.
+
+Three needed new `ScoringEffect` cases: `bonusIfAtMost` (a ceiling rather than a
+floor), `bonusIfExceeds` (one of your own types leading another by a margin),
+and `bonusPerTypeWithinMargin` (parity with the opponent rather than a majority
+over them). Each is covered by a boundary-checked fixture, since an off-by-one
+in a threshold scores plausibly forever without ever looking wrong.
+
+### First screen: nine landed, three did not
+
+| Card | Win rate held | Verdict |
+|---|---|---|
+| S7 Gold Fever | 53.3% | ship |
+| S8 Assay Office | 50.4% | ship |
+| D7 Prospector's Eye | 46.4% | ship |
+| **D8 Union Crew** | **41.9%** | re-tune |
+| L7 River Rat | 53.8% | ship |
+| L8 Fine Gold | 48.4% | ship |
+| V7 Crystal Cache | 46.6% | ship |
+| V8 Lode Miner | 53.0% | ship |
+| O7 Traveling Crew | 53.6% | ship |
+| O8 Broken Handles | 55.8% | ship |
+| **P7 Lucky Strike** | **56.9%** | re-tune |
+| **P8 Grubstake Partner** | **35.5%** | re-tune |
+
+**D8** was strictly dominated by D1: the same 4-per-set rate, plus a penalty.
+There was never a reason to prefer it.
+
+**P8** was the worst card of all 48, and for two compounding reasons. Parity
+within 1 turned out to be *rare* across ~30-card collections, so it paid the
+least of anything in the deck (mean 9.5). And what it paid for — standing level
+with your opponent — is not how anyone wins.
+
+**P7** was the strongest of all 48, but the interesting part is *why*. Its
+payout (19.9) was lower than P1 Pyrite Hoarder's (21.7), yet it won 5 points
+more often. The difference is variance: SD **0.57** against P1's 8.49. Four
+conditions each met by any ordinary collection meant it paid ~20 every single
+game. It was not a scoring card so much as a flat bonus, and reliability beat
+raw magnitude.
+
+### What changed, and the confirmation run
+
+| Card | Was | Now |
+|---|---|---|
+| D8 Union Crew | 4 per set, −4 per unmatched Shovel | **5** per set, −4 per unmatched Shovel |
+| P7 Lucky Strike | 5 for each of ≥1 Nugget / ≥1 Quartz / ≥1 O+S set / ≥1 G+P set | **6** for each of **5+** Nugget / **4+** Quartz / **3+** O+S sets / **3+** G+P sets |
+| P8 Grubstake Partner | 6 per type within **1** | **7** per type within **2** |
+
+An intermediate pass is worth recording as a mistake avoided: D8 was first
+tried at 6-per-set with the penalty softened to −3, which buffed both halves at
+once and overshot to 57.3%. Buying the fairness with the base rate alone, and
+leaving the −4 bite intact, is what landed it.
+
+P7 at the raised thresholds *and* 6 points came back at 57.2% — unmoved. The
+thresholds had done their job (SD rose 0.57 → 3.43, so the card finally had a
+decision attached), but the extra point per condition cancelled the nerf out.
+Pushing the thresholds further, rather than simply paying less, is what fixed
+it: the card should be an achievement, not a formality.
+
+Confirmed at 100,000 games:
+
+| Card | First screen | Shipped |
+|---|---|---|
+| D8 Union Crew | 41.9% | **49.3%** |
+| P7 Lucky Strike | 56.9% | **49.6%** |
+| P8 Grubstake Partner | 35.5% | **50.9%** |
+
+### Effect on the deck as a whole
+
+Across all 48 cards the win-rate-when-held spread is **42.6% – 56.2%**, SD
+**3.34pp**. The 36-card catalog after package C was 3.50pp, so the deck is
+marginally *tighter* than before despite being a third larger — every one of
+the twelve new cards sits inside the range the original 36 already spanned.
+
+The two `OUTLIER` flags in the run are D6 Muck Out and P1 Pyrite Hoarder, both
+original cards, both flagged on within-family payout deviation rather than win
+rate. Neither is new and neither was touched here.
+
+Raw CSV: `docs/simdata/balance_48cards_inference_100k.csv`.
+
+### Caveat
+
+The § 5 caveat applies unchanged: these are win rates under *random dealing*,
+measured with agents that are decent but not strong. A card that rewards an
+exotic line may be undervalued here simply because no agent plays that line.
+P8 in particular pays for an objective — deliberate parity — that no agent
+pursues on purpose, so its 50.9% is the floor of what a human could do with it,
+not a measurement of the card at its best.
+
+---
+
 ## Reproducing
 
 ```bash

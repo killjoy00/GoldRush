@@ -1,4 +1,4 @@
-/// The six scoring families. Six cards each, 36 in total.
+/// The six scoring families. Eight cards each, 48 in total.
 public enum ScoringFamily: UInt8, CaseIterable, Sendable, Codable, Hashable, Comparable {
     case strike = 0
     case dig = 1
@@ -6,6 +6,11 @@ public enum ScoringFamily: UInt8, CaseIterable, Sendable, Codable, Hashable, Com
     case vein = 3
     case outfit = 4
     case prospect = 5
+
+    /// Cards per family. `ScoringCardID`'s dense indexing derives from this
+    /// rather than hardcoding it in several places, so resizing the catalog
+    /// is one edit -- as it was going from six per family to eight.
+    public static let cardCount = 8
 
     public static func < (lhs: ScoringFamily, rhs: ScoringFamily) -> Bool {
         lhs.rawValue < rhs.rawValue
@@ -52,16 +57,17 @@ public enum ScoringFamily: UInt8, CaseIterable, Sendable, Codable, Hashable, Com
 /// Stable identity of a scoring card, e.g. `S1`, `P6`.
 public struct ScoringCardID: Hashable, Sendable, Codable, Comparable, CustomStringConvertible {
     public let family: ScoringFamily
-    public let ordinal: Int  // 1...6
+    public let ordinal: Int  // 1...ScoringFamily.cardCount
 
     public init(_ family: ScoringFamily, _ ordinal: Int) {
-        precondition((1...6).contains(ordinal), "scoring card ordinal must be 1...6")
+        precondition((1...ScoringFamily.cardCount).contains(ordinal),
+                     "scoring card ordinal must be 1...\(ScoringFamily.cardCount)")
         self.family = family
         self.ordinal = ordinal
     }
 
-    /// Dense 0..<36 index, used for deterministic ordering and array keying.
-    public var index: Int { Int(family.rawValue) * 6 + (ordinal - 1) }
+    /// Dense index, used for deterministic ordering and array keying.
+    public var index: Int { Int(family.rawValue) * ScoringFamily.cardCount + (ordinal - 1) }
 
     public var code: String { "\(family.letter)\(ordinal)" }
     public var description: String { code }
@@ -70,9 +76,13 @@ public struct ScoringCardID: Hashable, Sendable, Codable, Comparable, CustomStri
         lhs.index < rhs.index
     }
 
+    /// Total cards in the catalog: every family, at `ScoringFamily.cardCount` each.
+    public static var total: Int { ScoringFamily.allCases.count * ScoringFamily.cardCount }
+
     public static func at(index: Int) -> ScoringCardID {
-        precondition((0..<36).contains(index), "scoring card index must be 0..<36")
-        return ScoringCardID(ScoringFamily(rawValue: UInt8(index / 6))!, index % 6 + 1)
+        precondition((0..<total).contains(index), "scoring card index must be 0..<\(total)")
+        return ScoringCardID(ScoringFamily(rawValue: UInt8(index / ScoringFamily.cardCount))!,
+                              index % ScoringFamily.cardCount + 1)
     }
 }
 
@@ -100,6 +110,11 @@ public struct ScoringCard: Sendable, Codable, Hashable, Identifiable {
 /// This table is expected to be re-tuned by the simulator. Every payout is an
 /// integer literal in one place; nothing here is behaviour. Adding a mechanic
 /// means adding a `ScoringEffect` case, not editing this file's shape.
+///
+/// Ordinals 7 and 8 in every family were added after the original 36 and
+/// screened by the simulator over 100k games apiece before shipping; three
+/// of them (D8, P7, P8) were re-tuned on those numbers. See
+/// docs/SIM_FINDINGS.md.
 public enum ScoringCardCatalog {
     /// The six types P3 treats as "resource types". Tools and junk are excluded:
     /// Fool's Gold should not pay a card that rewards a broad claim, and holding
@@ -152,6 +167,22 @@ public enum ScoringCardCatalog {
             "5 per Gold Nugget, max 3 counted",
             [.perTypeCapped(.goldNugget, points: 5, maxCount: 3)]
         ),
+        ScoringCard(
+            ScoringCardID(.strike, 7), "Gold Fever",
+            "1 per Gold Nugget; 3 per Fool's Gold",
+            [
+                .perType(.goldNugget, points: 1),
+                .perType(.foolsGold, points: 3),
+            ]
+        ),
+        ScoringCard(
+            ScoringCardID(.strike, 8), "Assay Office",
+            "4 per Gold Nugget; -8 per Gold Nugget beyond your 6th",
+            [
+                .perType(.goldNugget, points: 4),
+                .perTypeBeyond(.goldNugget, threshold: 6, points: -8),
+            ]
+        ),
     ]
 
     // MARK: - DIG
@@ -200,6 +231,25 @@ public enum ScoringCardCatalog {
             [
                 .perSet(.oreShovel, points: 6),
                 .perType(.foolsGold, points: -1),
+            ]
+        ),
+        ScoringCard(
+            ScoringCardID(.dig, 7), "Prospector's Eye",
+            "3 per Ore+Shovel set; +3 per unmatched Gold Ore",
+            [
+                .perSet(.oreShovel, points: 3),
+                .perUnmatched(.goldOre, points: 3),
+            ]
+        ),
+        ScoringCard(
+            ScoringCardID(.dig, 8), "Union Crew",
+            "5 per Ore+Shovel set; -4 per Shovel not in a set (Pack Mules exempt)",
+            // Tuned from 4 per set. At 4 this was strictly worse than D1 --
+            // identical rate, plus a penalty -- and won 41.9%. The extra point
+            // per set pays for the risk without blunting it.
+            [
+                .perSet(.oreShovel, points: 5),
+                .perUnmatched(.shovel, points: -4),
             ]
         ),
     ]
@@ -255,6 +305,23 @@ public enum ScoringCardCatalog {
                 .perType(.packMule, points: 1),
             ]
         ),
+        ScoringCard(
+            ScoringCardID(.sluice, 7), "River Rat",
+            "2 per Gravel; 2 per Pan; +8 if Gravel exceeds Pan by 3 or more",
+            [
+                .perType(.gravel, points: 2),
+                .perType(.pan, points: 2),
+                .bonusIfExceeds(.gravel, other: .pan, margin: 3, points: 8),
+            ]
+        ),
+        ScoringCard(
+            ScoringCardID(.sluice, 8), "Fine Gold",
+            "6 per Gravel+Pan set; -1 per Gold Nugget",
+            [
+                .perSet(.gravelPan, points: 6),
+                .perType(.goldNugget, points: -1),
+            ]
+        ),
     ]
 
     // MARK: - VEIN
@@ -300,6 +367,22 @@ public enum ScoringCardCatalog {
             [
                 .perType(.quartz, points: 2),
                 .perTool(points: 1),
+            ]
+        ),
+        ScoringCard(
+            ScoringCardID(.vein, 7), "Crystal Cache",
+            "3 per Quartz; +4 per Quartz beyond your 3rd",
+            [
+                .perType(.quartz, points: 3),
+                .perTypeBeyond(.quartz, threshold: 3, points: 4),
+            ]
+        ),
+        ScoringCard(
+            ScoringCardID(.vein, 8), "Lode Miner",
+            "6 per Quartz; -2 per Gravel+Pan set",
+            [
+                .perType(.quartz, points: 6),
+                .perSet(.gravelPan, points: -2),
             ]
         ),
     ]
@@ -348,6 +431,26 @@ public enum ScoringCardCatalog {
             [
                 .perTool(points: 1),
                 .perType(.goldNugget, points: 1),
+            ]
+        ),
+        ScoringCard(
+            ScoringCardID(.outfit, 7), "Traveling Crew",
+            "1 per Tool; +2 per resource type of which you hold 3 or more"
+                + " (Gold Nugget, Gold Ore, Gravel, Quartz, Fool's Gold)",
+            [
+                .perTool(points: 1),
+                .typesHeldAtLeast(
+                    types: [.goldNugget, .goldOre, .gravel, .quartz, .foolsGold],
+                    count: 3, points: 2
+                ),
+            ]
+        ),
+        ScoringCard(
+            ScoringCardID(.outfit, 8), "Broken Handles",
+            "2 per Tool; +8 if you hold 7 or fewer Tools",
+            [
+                .perTool(points: 2),
+                .bonusIfAtMost(.tools, count: 7, points: 8),
             ]
         ),
     ]
@@ -413,6 +516,38 @@ public enum ScoringCardCatalog {
             [
                 .perTotalMiningCards(points: 1),
                 .perType(.foolsGold, points: -4),
+            ]
+        ),
+        ScoringCard(
+            ScoringCardID(.prospect, 7), "Lucky Strike",
+            "6 for each: 5+ Gold Nugget, 4+ Quartz,"
+                + " 3+ Ore+Shovel sets, 3+ Gravel+Pan sets",
+            // Tuned from thresholds of 1 at 5 points. Any ordinary collection
+            // cleared all four, so it paid ~20 every game (SD 0.57) with no
+            // decision attached, and won 56.9%. Each threshold now scales to
+            // how scarce the thing actually is, so all four at once is an
+            // achievement rather than a formality.
+            [
+                .bonusIfAtLeast(.type(.goldNugget), count: 5, points: 6),
+                .bonusIfAtLeast(.type(.quartz), count: 4, points: 6),
+                .bonusIfAtLeast(.set(.oreShovel), count: 3, points: 6),
+                .bonusIfAtLeast(.set(.gravelPan), count: 3, points: 6),
+            ]
+        ),
+        ScoringCard(
+            ScoringCardID(.prospect, 8), "Grubstake Partner",
+            "7 per resource type where your count and your opponent's are within 2"
+                + " (Gold Nugget, Gold Ore, Gravel, Quartz, Fool's Gold)",
+            // Tuned from within-1 at 6 points, which won 35.5% -- the worst of
+            // all 48. Within-1 turned out to be rare across ~30-card
+            // collections, so the card paid the least of any in the deck AND
+            // paid for standing level, which is not how anyone wins. The wider
+            // band makes parity attainable enough to actually chase.
+            [
+                .bonusPerTypeWithinMargin(
+                    [.goldNugget, .goldOre, .gravel, .quartz, .foolsGold],
+                    margin: 2, points: 7
+                ),
             ]
         ),
     ]

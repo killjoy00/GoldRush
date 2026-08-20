@@ -139,7 +139,7 @@ public struct GameState: Sendable, Codable, Equatable {
         // ids a player observes carry no information about the shuffle.
         deck = deck.enumerated().map { MiningCard(id: CardID(UInt16($0.offset)), type: $0.element.type) }
 
-        var scoring = (0..<36).map { ScoringCardID.at(index: $0) }
+        var scoring = (0..<ScoringCardID.total).map { ScoringCardID.at(index: $0) }
         rng.shuffle(&scoring)
 
         var hands = PlayerPair<[ScoringCardID]>(repeating: [])

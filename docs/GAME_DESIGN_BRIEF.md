@@ -71,7 +71,7 @@ allocate mules to whichever slots maximise your total.
 
 ## How you score
 
-Separately, there are **36 scoring cards** in six families of six. Each player
+Separately, there are **48 scoring cards** in six families of eight. Each player
 gets **6**, and **all six score at the end** — but only **3 are made public** at
 the start. The other three stay secret the whole game.
 
@@ -84,11 +84,12 @@ The six families, by what they reward:
 - **OUTFIT** — Tools
 - **PROSPECT** — odd angles: junk, breadth, volume, cross-category majorities
 
-Within each family the six cards vary the shape of the payout: flat per-card
+Within each family the eight cards vary the shape of the payout: flat per-card
 rates, per-set rates, escalating ladders (the Nth quartz is worth more than the
-first), caps, thresholds ("+8 if you have 4+ sets"), penalties for unmatched
-cards, and **majority riders** ("+7 if you have strictly more Gold Nuggets than
-your opponent").
+first), caps, thresholds ("+8 if you have 4+ sets"), ceilings ("+8 if you hold 7
+or *fewer* Tools"), penalties for unmatched cards, **majority riders** ("+7 if
+you have strictly more Gold Nuggets than your opponent"), and one card that pays
+for staying *level* with your opponent rather than beating them.
 
 All majority comparisons require **strictly more**. Ties pay nothing to either
 player.
@@ -114,9 +115,13 @@ an advantage. It isn't — 49.9%–50.7% across three different AIs. The alterna
 apparently swamps it.
 
 **Which card you're dealt matters more than how you play.** Under random dealing,
-win rate when holding a given scoring card ranges from **36% to 62%** across the
-36 cards. That's a bigger swing than any in-game decision produces. Drafting
+win rate when holding a given scoring card ranges from **43% to 56%** across the
+48 cards. That's a bigger swing than any in-game decision produces. Drafting
 removes it entirely, which is why it exists as an option.
+
+That range used to be 36%–62%, over the original 36 cards. It narrowed because
+the worst offenders were re-tuned on simulator data, not because the problem is
+solved — the spread is still wider than anything skill contributes.
 
 **The reveal decision is real but modest** — about 4.5 points of win rate between
 the best and worst policy for choosing which 3 cards to make public.
@@ -146,9 +151,12 @@ Honest list, in rough priority order:
    permanently secret. It should create paranoia; I don't know whether it
    actually does, or whether players just shrug and move on.
 
-2. **Is 36 scoring cards too many?** Six families of six is tidy, but several
-   cards within a family are near-substitutes (a flat rate vs. a slightly
-   different flat rate). Would 24 sharper cards be better than 36 varied ones?
+2. **Is 48 scoring cards too many?** It started at 36 and grew by twelve. Six
+   families of eight is tidy, but several cards within a family are
+   near-substitutes (a flat rate vs. a slightly different flat rate). Would 24
+   sharper cards be better than 48 varied ones? Growing the catalog also means
+   any given card shows up less often, which cuts both ways: more variety per
+   game, less chance to learn what a specific card does.
 
 3. **Does the PROSPECT family belong?** The other five families each own a
    resource. PROSPECT is a grab bag — junk-hoarding, breadth, raw volume,

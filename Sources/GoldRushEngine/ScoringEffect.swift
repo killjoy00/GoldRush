@@ -92,13 +92,27 @@ public enum ScoringEffect: Sendable, Codable, Hashable {
     /// Flat bonus when a count reaches a threshold.
     case bonusIfAtLeast(Countable, count: Int, points: Int)
 
+    /// Flat bonus when a count is at most a threshold -- the mirror of
+    /// `bonusIfAtLeast` (O8: "+8 if you hold 7 or fewer Tools").
+    case bonusIfAtMost(Countable, count: Int, points: Int)
+
     /// Flat bonus when a count is STRICTLY greater than the opponent's.
     /// Ties award nothing to either player.
     case bonusIfStrictlyMore(Countable, points: Int)
 
+    /// Flat bonus when `type`'s count exceeds `other`'s by at least `margin`
+    /// (L7: "Gravel exceeds Pan by 3 or more"). Both counts are this player's
+    /// own -- not a comparison against the opponent.
+    case bonusIfExceeds(MiningType, other: MiningType, margin: Int, points: Int)
+
     /// Points for each listed type held in strictly greater number than the
     /// opponent (P5).
     case bonusPerTypeStrictlyMore([MiningType], points: Int)
+
+    /// Points for each listed type where this player's count and the
+    /// opponent's are within `margin` of each other, in either direction
+    /// (P8: "your count and your opponent's are within 1").
+    case bonusPerTypeWithinMargin([MiningType], margin: Int, points: Int)
 
     /// Step function over a count (P2).
     case tieredByCount(Countable, tiers: [Tier])
@@ -110,7 +124,7 @@ public enum ScoringEffect: Sendable, Codable, Hashable {
     /// which makes the comparison well-defined without a fixpoint.
     public var isOpponentRelative: Bool {
         switch self {
-        case .bonusIfStrictlyMore, .bonusPerTypeStrictlyMore: true
+        case .bonusIfStrictlyMore, .bonusPerTypeStrictlyMore, .bonusPerTypeWithinMargin: true
         default: false
         }
     }
