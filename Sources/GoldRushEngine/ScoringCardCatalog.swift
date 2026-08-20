@@ -32,6 +32,21 @@ public enum ScoringFamily: UInt8, CaseIterable, Sendable, Codable, Hashable, Com
         case .prospect: "Prospect"
         }
     }
+
+    /// What this family pays you for, in one phrase. Kept beside the family
+    /// itself for the same reason `ScoringCard.text` sits beside its effects:
+    /// so the rules the player reads cannot drift away from the rules the
+    /// engine actually applies.
+    public var rewardSummary: String {
+        switch self {
+        case .strike: "Gold Nuggets"
+        case .dig: "Ore + Shovel sets"
+        case .sluice: "Gravel + Pan sets"
+        case .vein: "Quartz"
+        case .outfit: "Tools"
+        case .prospect: "odd angles — junk, breadth, sheer volume"
+        }
+    }
 }
 
 /// Stable identity of a scoring card, e.g. `S1`, `P6`.
