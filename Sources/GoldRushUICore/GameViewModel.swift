@@ -63,6 +63,15 @@ public final class GameViewModel {
         transport.onStateChange = { [weak self] updated in
             self?.adopt(updated)
         }
+
+        // Give the transport a chance to act before anything has been
+        // submitted. Only AgentTransport does anything with this, and only
+        // when the game opens on the agent's seat -- a drafted setup can
+        // start that way, and without this hook nothing would ever prompt it.
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.transport.start()
+        }
     }
 
     /// The seat to show: the acting player when this device controls them,

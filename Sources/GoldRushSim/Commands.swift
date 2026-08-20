@@ -88,10 +88,10 @@ enum Sim {
             p1: { AgentFactory.make(agentName)! }, p2: { AgentFactory.make(agentName)! }
         )
 
-        var contribution = [Stats](repeating: Stats(), count: 36)
-        var holderScore = [Stats](repeating: Stats(), count: 36)
-        var held = [Int](repeating: 0, count: 36)
-        var heldWins = [Int](repeating: 0, count: 36)
+        var contribution = [Stats](repeating: Stats(), count: ScoringCardID.total)
+        var holderScore = [Stats](repeating: Stats(), count: ScoringCardID.total)
+        var held = [Int](repeating: 0, count: ScoringCardID.total)
+        var heldWins = [Int](repeating: 0, count: ScoringCardID.total)
 
         for record in records {
             for (player, hand) in [(PlayerID.p1, record.hands.p1), (PlayerID.p2, record.hands.p2)] {
@@ -113,7 +113,9 @@ enum Sim {
         var familyMean = [Double](repeating: 0, count: ScoringFamily.allCases.count)
         var familySD = [Double](repeating: 0, count: ScoringFamily.allCases.count)
         for family in ScoringFamily.allCases {
-            let values = (0..<6).map { contribution[Int(family.rawValue) * 6 + $0].mean }
+            let values = (0..<ScoringFamily.cardCount).map {
+                contribution[Int(family.rawValue) * ScoringFamily.cardCount + $0].mean
+            }
             let mean = values.reduce(0, +) / Double(values.count)
             let variance = values.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(values.count - 1)
             familyMean[Int(family.rawValue)] = mean
@@ -122,7 +124,7 @@ enum Sim {
 
         print("# balance: games=\(games) agent=\(agentName) deck=\(config.deckSize)")
         print("card,name,family,contribution_ev,contribution_sd,holder_score_ev,win_rate_held,win_rate_delta,family_mean,deviation_sd,flag")
-        for index in 0..<36 {
+        for index in 0..<ScoringCardID.total {
             let id = ScoringCardID.at(index: index)
             let card = ScoringCardCatalog[id]
             let slot = Int(id.family.rawValue)

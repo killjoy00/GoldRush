@@ -153,6 +153,70 @@ struct ScoringFixtureTests {
         #expect(b.total == 10)
     }
 
+    // MARK: - Fixture 3: the effects added for the second wave of cards
+
+    /// `bonusIfAtMost`, `bonusIfExceeds` and `bonusPerTypeWithinMargin` arrived
+    /// with S7-P8 and are the only effects no earlier fixture exercises. Each
+    /// is checked on both sides of its boundary, because an off-by-one in a
+    /// threshold is exactly the sort of thing that scores plausibly forever.
+    @Test("O8 pays its bonus at 7 Tools and withholds it at 8")
+    func atMostBoundary() {
+        let o8 = ScoringCardID(.outfit, 8)
+        // 4 Shovel + 3 Pan = 7 Tools: 2 each, plus the 8-point bonus.
+        let sevenTools = MiningCounts(shovel: 4, pan: 3)
+        #expect(Scoring.scoreSolo(counts: sevenTools, hand: [o8]).total == 22)
+        // One more Tool loses the bonus outright, so 8 Tools scores less than 7.
+        let eightTools = MiningCounts(shovel: 4, pan: 4)
+        #expect(Scoring.scoreSolo(counts: eightTools, hand: [o8]).total == 16)
+    }
+
+    @Test("L7 pays its rider only once Gravel leads Pan by 3")
+    func exceedsBoundary() {
+        let l7 = ScoringCardID(.sluice, 7)
+        // 5 Gravel vs 3 Pan is a lead of 2: 16 points, no rider.
+        #expect(Scoring.scoreSolo(counts: MiningCounts(gravel: 5, pan: 3), hand: [l7]).total == 16)
+        // 6 vs 3 is a lead of 3: 18 points plus the 8-point rider.
+        #expect(Scoring.scoreSolo(counts: MiningCounts(gravel: 6, pan: 3), hand: [l7]).total == 26)
+    }
+
+    @Test("P8 counts a type as level only while the gap is at most 2")
+    func withinMarginBoundary() {
+        let p8 = ScoringCardID(.prospect, 8)
+        // Gold Nugget 5 v 7 (gap 2, pays) and Quartz 4 v 4 (gap 0, pays).
+        // Gold Ore 1 v 5 (gap 4), Gravel and Fool's Gold 0 v 0 (gap 0, pays).
+        let mine = MiningCounts(goldNugget: 5, goldOre: 1, quartz: 4)
+        let theirs = MiningCounts(goldNugget: 7, goldOre: 5, quartz: 4)
+        let result = Scoring.score(counts: mine, hand: [p8], opponentCounts: theirs, opponentHand: [p8])
+        #expect(result.total == 28)  // 4 types within 2, at 7 each
+
+        // The comparison is symmetric: widening one gap past 2 costs 7.
+        let further = MiningCounts(goldNugget: 8, goldOre: 5, quartz: 4)
+        let narrowed = Scoring.score(counts: mine, hand: [p8], opponentCounts: further, opponentHand: [p8])
+        #expect(narrowed.total == 21)
+    }
+
+    @Test("Every card in the catalog is reachable and scores without trapping")
+    func everyCardScores() {
+        // The catalog grew from 36 to 48 by way of a parametric card count.
+        // This walks all of it, so a family left short or an id that does not
+        // round-trip through its own index fails here rather than at a table
+        // lookup mid-game.
+        let counts = MiningCounts(
+            goldNugget: 6, foolsGold: 4, goldOre: 5, shovel: 3,
+            gravel: 5, pan: 3, quartz: 3, packMule: 2
+        )
+        for index in 0..<ScoringCardID.total {
+            let id = ScoringCardID.at(index: index)
+            #expect(id.index == index)
+            #expect(ScoringCardCatalog[id].id == id)
+            #expect(!ScoringCardCatalog[id].effects.isEmpty)
+            // Both the solo and the opposed path, since comparison riders
+            // only evaluate when an opponent board exists.
+            _ = Scoring.scoreSolo(counts: counts, hand: [id]).total
+            _ = Scoring.score(counts: counts, hand: [id], opponentCounts: counts, opponentHand: [id]).total
+        }
+    }
+
     // MARK: - Deck composition
 
     @Test("Mining deck is exactly 72 cards in the specified proportions")
@@ -174,17 +238,17 @@ struct ScoringFixtureTests {
         #expect(ids == Array(0..<72).map(UInt16.init))
     }
 
-    @Test("Scoring deck is 36 cards, 6 families of 6, no duplicate identities")
+    @Test("Scoring deck is one full catalog of families, no duplicate identities")
     func scoringDeckShape() {
-        #expect(ScoringCardCatalog.all.count == 36)
+        #expect(ScoringCardCatalog.all.count == ScoringCardID.total)
         for family in ScoringFamily.allCases {
             let members = ScoringCardCatalog.all.filter { $0.family == family }
-            #expect(members.count == 6)
-            #expect(Set(members.map(\.id.ordinal)) == Set(1...6))
+            #expect(members.count == ScoringFamily.cardCount)
+            #expect(Set(members.map(\.id.ordinal)) == Set(1...ScoringFamily.cardCount))
         }
-        #expect(Set(ScoringCardCatalog.all.map(\.id.index)).count == 36)
+        #expect(Set(ScoringCardCatalog.all.map(\.id.index)).count == ScoringCardID.total)
         // The index table must line up with the identity it claims to store.
-        for index in 0..<36 {
+        for index in 0..<ScoringCardID.total {
             #expect(ScoringCardCatalog.byIndex[index].id.index == index)
         }
     }

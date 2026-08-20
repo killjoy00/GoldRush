@@ -179,14 +179,26 @@ public enum Scoring {
         case .bonusIfAtLeast(let countable, let count, let points):
             return board.count(countable) >= count ? points : 0
 
+        case .bonusIfAtMost(let countable, let count, let points):
+            return board.count(countable) <= count ? points : 0
+
         case .bonusIfStrictlyMore(let countable, let points):
             guard let opponent else { return 0 }
             return board.count(countable) > opponent.count(countable) ? points : 0
+
+        case .bonusIfExceeds(let type, let other, let margin, let points):
+            return board.counts[type] - board.counts[other] >= margin ? points : 0
 
         case .bonusPerTypeStrictlyMore(let types, let points):
             guard let opponent else { return 0 }
             var sum = 0
             for type in types where board.counts[type] > opponent.counts[type] { sum += points }
+            return sum
+
+        case .bonusPerTypeWithinMargin(let types, let margin, let points):
+            guard let opponent else { return 0 }
+            var sum = 0
+            for type in types where abs(board.counts[type] - opponent.counts[type]) <= margin { sum += points }
             return sum
 
         case .tieredByCount(let countable, let tiers):

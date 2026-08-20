@@ -202,6 +202,7 @@ public struct NewGameView: View {
 
     @State private var model: GameViewModel?
     @State private var localStart: LocalStart?
+    @State private var showRules = false
     @State private var difficulty = InferenceAgent.Fidelity.full
     /// Drafting is offered rather than imposed. The simulator found a 25-point
     /// win-rate spread between the best and worst scoring card to be dealt, and
@@ -297,6 +298,17 @@ public struct NewGameView: View {
             .disabled(!GameCenterAuth.shared.isSignedIn)
             .opacity(GameCenterAuth.shared.isSignedIn ? 1 : 0.5)
             #endif
+
+            Button { showRules = true } label: {
+                Label("How to play", systemImage: "book.closed.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.parchment.opacity(0.7))
+                    .padding(.top, 2)
+            }
+            .sheet(isPresented: $showRules) {
+                RulesView { showRules = false }
+            }
+
             Spacer()
         }
         .padding(24)
