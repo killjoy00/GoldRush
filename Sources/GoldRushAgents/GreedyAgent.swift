@@ -2,9 +2,10 @@ import GoldRushEngine
 
 /// Plays its own sheet and nothing else.
 ///
-/// As splitter it divides the draw into two piles of equal value TO ITSELF,
-/// which is the textbook I-cut-you-choose response when you have no model of
-/// your opponent: whichever pile you lose, you keep the same value. As chooser
+/// As splitter it maximises the worse of the two piles by its own valuation,
+/// among cuts of near-equal size -- the textbook I-cut-you-choose response
+/// when you have no model of your opponent, with the sharp edge that the two
+/// piles must also be comparably large. As chooser
 /// it takes the pile worth more to itself, pricing face-down cards at the
 /// expectation of its own tracked residual deck.
 ///
@@ -13,6 +14,10 @@ import GoldRushEngine
 /// opponent chasing a different family.
 public struct GreedyAgent: GameAgent {
     public let name = "greedy"
+
+    /// Largest difference in card count between the two piles a split may
+    /// offer. One keeps a 7-card draw at 4/3 and a 9-card draw at 5/4.
+    static let sizeSlack = 1
 
     public init() {}
 
@@ -43,12 +48,32 @@ public struct GreedyAgent: GameAgent {
             return Valuation.marginal(adding: additions, to: current, hand: hand)
         }
 
+        // Maximise the worse pile, over cuts of near-equal SIZE.
+        //
+        // Both halves of that were measured. Against a chooser that simply
+        // takes the bigger pile, the original objective -- minimise the value
+        // gap -- won 44.0%, and swapping it for maximin alone moved it only to
+        // 45.0%. Adding the size restriction took it to 61.7%. Size balance was
+        // carrying almost all of it.
+        //
+        // The reason is that a value-balanced cut need not be a size-balanced
+        // one: "one Gold Nugget" and "six pieces of junk" can price the same to
+        // this agent, and it was happy to offer that. Any chooser who weighs
+        // volume at all -- and volume is genuinely worth something, for
+        // per-card scoring, for sets, and for the Gold Nugget tiebreak -- takes
+        // the big pile every time, so the splitter kept the small one all game.
+        //
+        // Maximin stays because it is strictly the better objective: equalising
+        // is satisfied by two piles that are equally BAD, and a cut can destroy
+        // value rather than merely move it. Concentrate the ore in one pile and
+        // the shovels in the other and every set dies, evenly.
         var bestCut = (a: [ids[0]], b: Array(ids.dropFirst()))
-        var bestGap = Int.max
+        var bestFloor = Int.min
         for cut in SplitEnumerator.cuts(of: ids) {
-            let gap = abs(value(cut.a) - value(cut.b))
-            if gap < bestGap {
-                bestGap = gap
+            guard abs(cut.a.count - cut.b.count) <= GreedyAgent.sizeSlack else { continue }
+            let floor = min(value(cut.a), value(cut.b))
+            if floor > bestFloor {
+                bestFloor = floor
                 bestCut = cut
             }
         }

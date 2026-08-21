@@ -103,11 +103,13 @@ public enum MatchRunner {
 
 /// Builds agents by name, so the CLI can wire them without a switch in six places.
 public enum AgentFactory {
-    public static let names = ["naive", "random", "greedy", "inference", "inference-basic", "inference-placement"]
+    public static let names = ["naive", "random", "greedy", "balanced", "maximin", "inference", "inference-basic", "inference-placement"]
 
     public static func make(_ name: String) -> (any GameAgent)? {
         switch name {
         case "naive": NaiveAgent()
+        case "balanced": BalancedAgent(sizeSlack: 1)
+        case "maximin": BalancedAgent(sizeSlack: 99)
         case "random": RandomAgent()
         case "greedy": GreedyAgent()
         case "inference", "inference-full": InferenceAgent(fidelity: .full)

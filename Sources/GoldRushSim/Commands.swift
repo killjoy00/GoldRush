@@ -167,6 +167,9 @@ enum Sim {
             // Does a smart CHOICE beat a naive choice, holding the splitter naive?
             ("greedy-choose", { hybrid("naive", "greedy") }, "naive", { agent("naive") }),
             ("inference-choose", { hybrid("naive", "inference") }, "naive", { agent("naive") }),
+            // Is it maximin that helps, or is it size balance? Test each alone.
+            ("maximin-split", { hybrid("maximin", "naive") }, "naive", { agent("naive") }),
+            ("balanced-split", { hybrid("balanced", "naive") }, "naive", { agent("naive") }),
         ]
 
         for (label, make1, label2, make2) in combos {
