@@ -35,6 +35,11 @@ public struct RulesView: View {
         }
         .background(Theme.background)
         .safeAreaInset(edge: .top) { titleBar }
+        // Pinned under the rules rather than floated over the board. This is
+        // the one screen a player reads rather than plays, so it is the one
+        // place a banner costs nothing: no card is ever hidden behind it, and
+        // nobody is mid-decision while it loads.
+        .safeAreaInset(edge: .bottom) { AdSlot.bannerView }
     }
 
     // MARK: - Chrome

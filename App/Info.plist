@@ -37,5 +37,23 @@
 	     asking the export-compliance question on every single upload. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- The AdMob app ID, not the ad unit ID. The SDK deliberately traps on
+	     launch if this key is missing or malformed, rather than failing
+	     quietly at the first ad request. -->
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3388571830343061~3849777872</string>
+	<!-- Google's own SKAdNetwork identifier, so ad installs can be attributed
+	     without asking the user for tracking permission. Google publishes a
+	     longer list covering the other networks that can bid; adding those is
+	     a revenue optimisation rather than a requirement, and is deliberately
+	     left out here rather than transcribed from a page by hand. See
+	     docs/DEPLOYMENT.md. -->
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
 </dict>
 </plist>

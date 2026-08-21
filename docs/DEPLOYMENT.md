@@ -155,3 +155,61 @@ not ask you the export-compliance question on every upload.
 
 Every run keeps the built `.ipa` as a downloadable artifact for 14 days, so a
 failed upload does not mean a lost build.
+
+---
+
+## Advertising
+
+The app shows a single AdMob banner, pinned under the **How to play** screen.
+That is the only screen a player reads rather than plays, so it is the one
+place a banner hides no card and interrupts no decision.
+
+### Where the SDK lives, and why
+
+In the **app target only**. The Google Mobile Ads SDK is an iOS-only binary
+framework, and `GoldRushUI` has to keep building on Linux so the engine tests
+can run. `AdSlot` in GoldRushUI is the seam: the app fills it at launch, and
+anything that does not -- Linux, the tests, a preview -- finds it empty and
+renders nothing. This is the first third-party dependency in the project and
+it is deliberately confined to the one target that cannot avoid it.
+
+### Configuration
+
+| Thing | Value |
+|---|---|
+| SPM package | `github.com/googleads/swift-package-manager-google-mobile-ads`, up to next major from 12.0.0 |
+| App ID | `Info.plist` -> `GADApplicationIdentifier` |
+| Ad unit ID | `GoldRushApp.bannerAdUnitID` |
+
+The SDK **traps on launch** if `GADApplicationIdentifier` is missing or
+malformed, rather than failing quietly at the first ad request. If the app dies
+immediately on a fresh build, check that key first.
+
+### Non-personalised ads, and the tracking prompt
+
+The app never asks for tracking permission, so iOS returns a zeroed advertising
+identifier and Google would serve non-personalised ads regardless. The request
+also sets `npa=1` explicitly, so the behaviour does not depend on inferring
+that, and so the privacy policy's claim is true by construction rather than by
+accident.
+
+The consequence for the store listing: **App Privacy answers "not used for
+tracking"**, and there is no ATT prompt. Turning on personalised ads later
+means adding the ATT prompt, changing that answer to yes, and re-submitting.
+
+### SKAdNetworkItems
+
+Only Google's own identifier (`cstr6suwn9.skadnetwork`) is listed. Google
+publishes a longer list covering every network that can bid; adding those
+improves attribution and therefore revenue, but it is an optimisation rather
+than a requirement, and roughly a hundred identifiers transcribed by hand is a
+good way to introduce a typo nobody will ever notice. Paste the current list
+from Google's documentation if the app ever earns enough for it to matter.
+
+### What CI cannot check
+
+CI compiles the SDK and archives the app, which catches a broken API or a
+mis-wired project file. It **cannot** tell you whether a banner actually
+appears -- that needs a real device. Look at the How to play screen on the
+first build carrying ads before submitting anything to review.
+
