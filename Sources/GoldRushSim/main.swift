@@ -41,6 +41,7 @@ guard let args = Args(CommandLine.arguments) else {
 switch args.subcommand {
 case "balance": Sim.balance(args)
 case "seat": Sim.seat(args)
+case "dissect": Sim.dissect(args)
 case "hidden": Sim.hidden(args)
 case "reveal": Sim.reveal(args)
 case "deck": Sim.deck(args)
