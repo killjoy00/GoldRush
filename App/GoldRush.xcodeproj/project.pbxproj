@@ -11,6 +11,10 @@
 			isa = PBXBuildFile;
 			productRef = 6D0000000000000000000F02 /* GoldRushUI */;
 		};
+		6D0000000000000000000F06 /* GoogleMobileAds in Frameworks */ = {
+			isa = PBXBuildFile;
+			productRef = 6D0000000000000000000F05 /* GoogleMobileAds */;
+		};
 /* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -27,6 +31,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				6D0000000000000000000F03 /* GoldRushUI in Frameworks */,
+				6D0000000000000000000F06 /* GoogleMobileAds in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -70,6 +75,7 @@
 			name = GoldRush;
 			packageProductDependencies = (
 				6D0000000000000000000F02 /* GoldRushUI */,
+				6D0000000000000000000F05 /* GoogleMobileAds */,
 			);
 			productName = GoldRush;
 			productReference = 6D0000000000000000000D02 /* GoldRush.app */;
@@ -101,6 +107,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				6D0000000000000000000F01 /* XCLocalSwiftPackageReference ".." */,
+				6D0000000000000000000F04 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6D0000000000000000000C02 /* Products */;
@@ -250,6 +257,17 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		6D0000000000000000000F04 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCLocalSwiftPackageReference section */
 		6D0000000000000000000F01 /* XCLocalSwiftPackageReference ".." */ = {
 			isa = XCLocalSwiftPackageReference;
@@ -261,6 +279,11 @@
 		6D0000000000000000000F02 /* GoldRushUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = GoldRushUI;
+		};
+		6D0000000000000000000F05 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6D0000000000000000000F04 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
