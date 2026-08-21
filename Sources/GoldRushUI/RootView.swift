@@ -275,28 +275,51 @@ public struct NewGameView: View {
     var menu: some View {
         VStack(spacing: 18) {
             Spacer()
-            // The pan from the app icon, so the title screen and the home
-            // screen read as the same product.
+            // The app icon's composition, rebuilt in vectors: two cards fanned
+            // behind a nugget. The title screen and the home screen should be
+            // recognisably the same object.
             ZStack {
-                Circle()
-                    .fill(RadialGradient(colors: [Theme.ember.opacity(0.55), .clear],
-                                         center: .center, startRadius: 4, endRadius: 70))
-                Circle()
-                    .strokeBorder(Theme.parchment.opacity(0.30), lineWidth: 5)
-                    .frame(width: 96, height: 96)
-                Circle()
-                    .fill(Color.black.opacity(0.35))
-                    .frame(width: 88, height: 88)
-                MiningArt(.goldNugget).frame(width: 66, height: 66)
+                RadialGradient(colors: [Theme.ember.opacity(0.75), .clear],
+                               center: .center, startRadius: 6, endRadius: 108)
+                ForEach([-1.0, 1.0], id: \.self) { side in
+                    RoundedRectangle(cornerRadius: 9)
+                        .fill(Theme.dirtDeep)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 9)
+                                .strokeBorder(Theme.gold.opacity(0.55), lineWidth: 1.5)
+                        }
+                        .frame(width: 56, height: 82)
+                        .rotationEffect(.degrees(21 * side))
+                        .offset(x: 31 * side, y: 2)
+                }
+                MiningArt(.goldNugget)
+                    .frame(width: 84, height: 84)
+                    .shadow(color: Theme.ember.opacity(0.9), radius: 14)
             }
-            .frame(width: 120, height: 120)
-            Text("GOLD RUSH")
-                .font(.system(size: 38, weight: .black, design: .rounded))
-                .tracking(3)
-                .foregroundStyle(Theme.goldBright)
-            Text("Split the claim. Let them choose.")
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.parchment.opacity(0.7))
+            .frame(width: 190, height: 124)
+
+            VStack(spacing: 5) {
+                Text("GOLD RUSH")
+                    .font(.system(size: 42, weight: .black, design: .rounded))
+                    .tracking(4)
+                    .foregroundStyle(
+                        LinearGradient(colors: [Theme.goldBright, Theme.gold, Theme.goldDeep],
+                                       startPoint: .top, endPoint: .bottom)
+                    )
+                    .shadow(color: .black.opacity(0.55), radius: 5, y: 3)
+                // A hairline rule either side of the tagline, the way a claim
+                // notice would have been set.
+                HStack(spacing: 9) {
+                    rule
+                    Text("SPLIT THE CLAIM")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(2.4)
+                        .foregroundStyle(Theme.parchment.opacity(0.75))
+                        .fixedSize()
+                    rule
+                }
+                .frame(maxWidth: 260)
+            }
             Spacer()
 
             setupPicker
@@ -356,6 +379,14 @@ public struct NewGameView: View {
             }
         }
         #endif
+    }
+
+    @ViewBuilder
+    var rule: some View {
+        Rectangle()
+            .fill(LinearGradient(colors: [.clear, Theme.gold.opacity(0.55)],
+                                 startPoint: .leading, endPoint: .trailing))
+            .frame(height: 1)
     }
 
     /// How the six scoring cards are handed out. Applies to every mode below.

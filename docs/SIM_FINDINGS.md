@@ -440,6 +440,90 @@ not a measurement of the card at its best.
 
 ---
 
+## 10. The agents were not beating "take the biggest pile"
+
+`NaiveAgent` deals the draw alternately into two piles and always takes the
+pile with more cards, never consulting a scoring card. It is the first
+heuristic a new player reaches for, and it is a real strategy, so it is the
+honest bar. Every agent in § 1–§ 6 was measured without it existing.
+
+Both seats averaged, 20k games:
+
+| | before the fix | after |
+|---|---|---|
+| inference vs naive | 50.9% | **63.4%** |
+| greedy vs naive | **48.6%** (a loss) | **65.6%** |
+
+### Which half was broken
+
+The `dissect` subcommand pairs one agent's splitter with another's chooser, so
+a result can be attributed rather than guessed at. Against the naive baseline,
+40k games:
+
+| | win rate |
+|---|---|
+| smart choosing (greedy) | 53.5% |
+| smart choosing (inference) | 51.5% |
+| smart splitting (inference) | 48.2% |
+| smart splitting (greedy) | 44.0% |
+
+Choosing well was worth about **+3.5pp**. Splitting "well" was worth **−6pp**.
+They cancelled, which is exactly why the finished agents came out level with a
+baseline that reads nothing.
+
+### It was not the objective, it was the sizes
+
+Two candidate causes, separated by measurement:
+
+| splitter objective | vs naive |
+|---|---|
+| minimise the value gap (Greedy's original) | 44.0% |
+| maximise the floor — maximin, no size limit | 45.0% |
+| maximin, piles within one card of each other | **61.7%** |
+
+Maximin is the better objective on principle and is worth a point, but **size
+balance was carrying almost all of it.** A value-balanced cut need not be a
+size-balanced one: "one Gold Nugget" and "six pieces of junk" can price the
+same to the splitter, and it offered that division happily. Any chooser who
+weighs volume at all — and volume genuinely scores, through per-card cards,
+through sets, and through the Gold Nugget tiebreak — takes the big pile every
+time, so the splitter kept the small one all game.
+
+Both agents now maximise `min(value(A), value(B))` over cuts whose sizes
+differ by at most one. `BalancedAgent` is kept as the ablation — `maximin` is
+the size restriction off, `balanced` is it on — so the table above regenerates
+rather than being a claim about a version of the code that no longer exists.
+
+Seat balance is unchanged and slightly tighter: **49.5%–50.4%** across all four
+agents, against 49.1%–50.4% before.
+
+### What this costs the card measurements
+
+Every number in § 5 and § 9 was produced by the agents this section just
+changed, so they are all measured against a weaker player than the app now
+ships. Re-running § 9's balance sweep with the fixed splitter (100k games,
+`inference`, raw CSV in `docs/simdata/balance_48cards_fixed_splitter_100k.csv`):
+
+- Deck-wide spread **43.1%–57.1%, SD 3.87pp**, against 42.6%–56.2% and 3.34pp
+  before. Comparable, slightly wider.
+- The largest movers are **P8 Grubstake Partner 50.9% → 56.7%** and **P2 Clean
+  Claim 48.9% → 54.4%**, both up; **S7 Gold Fever 52.6% → 48.1%** down.
+- The only within-family payout outlier is D6 Muck Out, as before.
+
+P8 is the awkward one: § 9 tuned it *to* 50.9% against the old agent, and a
+better splitter puts it at 56.7%. Nothing is broken — the spread is in the same
+band and no card is wild — but the honest reading is that the catalog is tuned
+against a moving target, and a retune should wait until the agents stop
+improving rather than chase them.
+
+### Still open
+
+`inference` and `greedy` are now a dead heat head-to-head (49.8%), so the
+opponent-modelling machinery continues to earn nothing measurable. That is a
+separate problem from the one this section fixed.
+
+---
+
 ## Reproducing
 
 ```bash

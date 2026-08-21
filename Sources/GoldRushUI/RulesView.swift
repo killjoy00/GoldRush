@@ -20,6 +20,7 @@ public struct RulesView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 premise
+                firstGame
                 theRound
                 theDeck
                 sets
@@ -76,17 +77,24 @@ public struct RulesView: View {
                 .foregroundStyle(Theme.goldBright)
                 .fixedSize(horizontal: false, vertical: true)
             Text("""
-                 One of you divides a handful of cards into two piles. \
-                 The other picks which pile to take. You swap roles every \
-                 round, eight rounds in all.
+                 You know this one. Two children, one slice of cake: whoever \
+                 cuts it, the other picks first. Suddenly the cutter is very \
+                 careful.
 
-                 Cut it evenly and your opponent has no good choice. Cut it \
-                 greedily and they will simply take the better half.
+                 That is the whole game. You divide a handful of cards into \
+                 two piles, and your opponent takes whichever they want. Cut \
+                 it evenly and they have no good choice. Cut it greedily and \
+                 they will simply take the better half and leave you the \
+                 scraps.
                  """)
                 .font(.system(size: 14))
                 .lineSpacing(3)
                 .foregroundStyle(Theme.parchment.opacity(0.85))
                 .fixedSize(horizontal: false, vertical: true)
+
+            calloutBox("If you only remember one thing",
+                       "Cut so that you would be happy with either pile. "
+                       + "Because you might get either one.")
         }
         .padding(.bottom, 2)
     }
@@ -95,15 +103,38 @@ public struct RulesView: View {
     var theRound: some View {
         section("A round, step by step") {
             VStack(alignment: .leading, spacing: 11) {
-                step(1, "The **splitter** privately draws 7 cards. Only they see them.")
-                step(2, "They deal those cards into **two piles**. Each pile needs at least one card.")
-                step(3, "They turn **one card face down**, in whichever pile they like.")
-                step(4, "The **chooser** takes a pile, sight unseen on the face-down card. The splitter keeps the other.")
-                step(5, "Whoever takes a face-down card sees it. Their opponent never does.")
-                Text("Then the roles swap, and the next round begins.")
-                    .font(.system(size: 13, weight: .medium))
+                step(1, "You privately draw **7 cards**. Your opponent cannot see them.")
+                step(2, "You deal them into **two piles**. Each needs at least one card, and the app keeps them within one card of each other.")
+                step(3, "You turn **one card face down**, in whichever pile you like. Your opponent will have to choose without knowing what it is.")
+                step(4, "Your opponent takes a pile. **You keep the other one.**")
+                step(5, "Whoever ends up holding a face-down card gets to look at it. The other player never does.")
+
+                divider
+                Text("Who splits when")
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Theme.gold.opacity(0.9))
-                    .padding(.top, 2)
+                bullet("**Together** (the default) — you both split your own pile at the same time, then you each choose from the other's. **4 rounds.** Nobody waits.")
+                bullet("**Take turns** — one of you splits while the other waits, then you swap. **8 rounds.**")
+                Text("Either way you split four times and choose four times, and the same 60 cards come out. Pick it on the home screen.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.parchment.opacity(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// The three things a new player actually needs, before any detail.
+    @ViewBuilder
+    var firstGame: some View {
+        section("If this is your first game") {
+            VStack(alignment: .leading, spacing: 10) {
+                bullet("**You are collecting mining cards.** They are worth nothing by themselves — your scoring cards decide what counts.")
+                bullet("**Look at your scoring cards before you split.** They are the only thing that tells you which pile is actually better.")
+                bullet("**Sets beat singles.** An Ore with a Shovel is worth far more than two loose Ore. Never split a pair across both piles if you can help it.")
+                Text("Play a round against the prospector and it will make sense faster than reading will.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(Theme.parchment.opacity(0.55))
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -270,7 +301,7 @@ public struct RulesView: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Theme.gold.opacity(0.9))
                 bullet("**Dealt** — six at random each, never more than two from one family.")
-                bullet("**Drafted** — twelve face up, take turns picking. No luck of the deal.")
+                bullet("**Drafted** — you get a pack of six, keep one, and pass the rest to your opponent. Back and forth until you both hold six. No luck of the deal — but note your opponent watches you take five of your six, so only your **very first pick** stays secret.")
                 Text("Pick either one on the home screen before you start.")
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.parchment.opacity(0.55))
@@ -311,9 +342,10 @@ public struct RulesView: View {
     var lastRounds: some View {
         section("The last two rounds") {
             Text("""
-                 Rounds 7 and 8 are bigger: **9 cards** drawn instead of 7, and \
-                 **two** turned face down instead of one. Games are usually won or \
-                 lost here.
+                 The final round is bigger: **9 cards** instead of 7, and \
+                 **two** turned face down instead of one. Twice the cards \
+                 hidden, twice the guessing. Games are usually won or lost \
+                 here, so keep something in reserve for it.
                  """)
                 .font(.system(size: 13))
                 .lineSpacing(2)
@@ -355,6 +387,25 @@ public struct RulesView: View {
             RoundedRectangle(cornerRadius: 14)
                 .strokeBorder(Theme.gold.opacity(0.12), lineWidth: 1)
         }
+    }
+
+    /// A single sentence worth more than the paragraph around it.
+    @ViewBuilder
+    func calloutBox(_ title: String, _ body: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title.uppercased())
+                .font(.system(size: 10, weight: .bold))
+                .tracking(1)
+                .foregroundStyle(Theme.dirt.opacity(0.7))
+            Text(body)
+                .font(.system(size: 13, weight: .medium))
+                .lineSpacing(2)
+                .foregroundStyle(Theme.dirt)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.gold, in: RoundedRectangle(cornerRadius: 11))
     }
 
     @ViewBuilder
