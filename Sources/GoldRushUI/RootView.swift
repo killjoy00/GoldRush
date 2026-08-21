@@ -170,12 +170,19 @@ public struct RootView: View {
     @ViewBuilder
     var draft: some View {
         VStack(spacing: 10) {
-            Text("Draft a scoring card")
+            Text(model.view.hand.isEmpty ? "Open your pack" : "Take one card")
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundStyle(Theme.goldBright)
-            Text("You hold \(model.view.hand.count) of \(GameConfig.handSize)")
+            // The opening pick is the one card the opponent never sees, and it
+            // is worth saying so out loud: it is the only secret either player
+            // gets in a drafted game, and it is gone after this tap.
+            Text(model.view.hand.isEmpty
+                 ? "This pick stays secret. Everything you take after it, your opponent will see."
+                 : "Take one, pass the rest. You hold \(model.view.hand.count) of \(GameConfig.handSize).")
                 .font(.system(size: 11))
+                .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.parchment.opacity(0.65))
+                .padding(.horizontal, 28)
             ScrollView {
                 VStack(spacing: 8) {
                     ForEach(model.draftLegalPicks, id: \.index) { id in
@@ -355,7 +362,7 @@ public struct NewGameView: View {
             }
             .pickerStyle(.segmented)
             Text(useDraft
-                 ? "Twelve cards face up; take turns picking. No luck of the deal."
+                 ? "Open a pack, take one card, pass the rest. No luck of the deal."
                  : "Six dealt at random to each player.")
                 .font(.system(size: 11))
                 .multilineTextAlignment(.center)

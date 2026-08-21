@@ -83,9 +83,21 @@ public struct GameState: Sendable, Codable, Equatable {
 
     /// Reveal selections submitted so far this phase.
     private var revealSubmitted: PlayerPair<Bool>
-    /// Remaining face-up pool during a draft.
-    public private(set) var draftPool: [ScoringCardID]
-    private var draftPickIndex: Int
+    /// The pack currently in front of each player during a draft.
+    ///
+    /// Two packs are dealt and passed back and forth: you see a pack, take one
+    /// card, and hand the remainder to your opponent. That produces exactly the
+    /// information structure this game wants, for free. You see every card in
+    /// the pack you open, so you learn all three of your opponent's picks from
+    /// it; but the pack THEY opened reaches you with their first pick already
+    /// gone, and you never learn what it was. Each player therefore finishes
+    /// the draft knowing five of the opponent's six cards, with one permanent
+    /// unknown -- which is why a drafted game needs no reveal phase.
+    public private(set) var draftPacks: PlayerPair<[ScoringCardID]>
+    /// Picked this pass. Both players pick before the packs swap.
+    private var draftSubmitted: PlayerPair<Bool>
+    /// The one card each player's opponent never sees.
+    public private(set) var draftFirstPick: PlayerPair<ScoringCardID?>
 
     // MARK: - Lookup
 
@@ -109,8 +121,12 @@ public struct GameState: Sendable, Codable, Equatable {
     public var actingPlayer: PlayerID? {
         switch phase {
         case .draft:
-            guard draftPickIndex < GameConfig.draftOrder.count else { return nil }
-            return GameConfig.draftOrder[draftPickIndex]
+            // Both players pick from their own pack before the packs swap, so
+            // this resolves p1 then p2 the same way reveal selection does. The
+            // order leaks nothing: neither player can see the other's pack.
+            if !draftSubmitted.p1 { return .p1 }
+            if !draftSubmitted.p2 { return .p2 }
+            return nil
         case .revealSelection, .additionalReveal:
             if !revealSubmitted.p1 { return .p1 }
             if !revealSubmitted.p2 { return .p2 }
@@ -143,7 +159,7 @@ public struct GameState: Sendable, Codable, Equatable {
         rng.shuffle(&scoring)
 
         var hands = PlayerPair<[ScoringCardID]>(repeating: [])
-        var draftPool: [ScoringCardID] = []
+        var draftPacks = PlayerPair<[ScoringCardID]>(repeating: [])
 
         if config.scoringDraft {
             // Two cards from each of the six families.
@@ -160,7 +176,14 @@ public struct GameState: Sendable, Codable, Equatable {
                 pool.append(contentsOf: members.prefix(GameConfig.familyCap))
             }
             rng.shuffle(&pool)
-            draftPool = pool
+            // Cut the twelve into two packs, one opened by each player. Because
+            // the pool holds exactly two of every family, no player can end up
+            // over the family cap however the packs fall -- including on the
+            // final forced pick, where there is only one card left to take.
+            draftPacks = PlayerPair(
+                p1: Array(pool.prefix(GameConfig.draftPackSize)),
+                p2: Array(pool.suffix(GameConfig.draftPackSize))
+            )
         } else {
             // Deal 6 each. A card that would give a player a third of one family
             // is set aside and replaced, per the redeal rule.
@@ -195,8 +218,9 @@ public struct GameState: Sendable, Codable, Equatable {
             currentDraw: [],
             pendingSplit: nil,
             revealSubmitted: PlayerPair(repeating: false),
-            draftPool: draftPool,
-            draftPickIndex: 0
+            draftPacks: draftPacks,
+            draftSubmitted: PlayerPair(repeating: false),
+            draftFirstPick: PlayerPair(repeating: nil)
         )
     }
 
@@ -213,7 +237,7 @@ public struct GameState: Sendable, Codable, Equatable {
         switch action {
         case .draftPick(let id):
             guard phase == .draft else { throw .wrongPhase(expected: .draft, actual: phase) }
-            guard draftPool.contains(id) else { throw .cardNotInPool(id) }
+            guard draftPacks[actor].contains(id) else { throw .cardNotInPool(id) }
             let held = hands[actor].count { $0.family == id.family }
             guard held < GameConfig.familyCap else { throw .familyCapExceeded(id.family) }
 
@@ -281,11 +305,30 @@ public struct GameState: Sendable, Codable, Equatable {
 
         switch action {
         case .draftPick(let id):
+            if next.hands[actor].isEmpty { next.draftFirstPick[actor] = id }
             next.hands[actor].append(id)
-            next.draftPool.removeAll { $0 == id }
-            next.draftPickIndex += 1
-            if next.draftPickIndex >= GameConfig.draftOrder.count {
-                next.phase = .revealSelection
+            next.draftPacks[actor].removeAll { $0 == id }
+            next.draftSubmitted[actor] = true
+
+            if next.draftSubmitted.p1 && next.draftSubmitted.p2 {
+                next.draftSubmitted = PlayerPair(repeating: false)
+                // Pass the packs. What is left of the pack you opened goes to
+                // your opponent, and theirs comes to you.
+                next.draftPacks = PlayerPair(p1: next.draftPacks.p2, p2: next.draftPacks.p1)
+
+                if next.hands.p1.count >= GameConfig.handSize
+                    && next.hands.p2.count >= GameConfig.handSize {
+                    // No reveal phase after a draft. Your opponent watched you
+                    // take everything except your opening pick, so publishing
+                    // those five cards tells them nothing they had not already
+                    // worked out -- and pretending otherwise would hide the
+                    // information from the UI, not from the player.
+                    for player in [PlayerID.p1, .p2] {
+                        let first = next.draftFirstPick[player]
+                        next.revealed[player] = next.hands[player].filter { $0 != first }
+                    }
+                    next.beginRound()
+                }
             }
 
         case .selectRevealedScoringCards(let ids):

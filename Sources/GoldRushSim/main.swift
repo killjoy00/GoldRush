@@ -24,7 +24,7 @@ COMMON OPTIONS
   --deck-size N|LIST deck size, or a comma list for `deck`
 
 RULES TOGGLES
-  --scoring-draft          snake draft instead of a blind deal
+  --scoring-draft          pack draft instead of a blind deal
   --progressive-reveal     reveal 2 at setup, a 3rd after round 4
   --no-persistent-hidden   face-down cards reveal to both players on claim
   --no-motherlode          all 8 rounds draw 7

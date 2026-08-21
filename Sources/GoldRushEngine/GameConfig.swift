@@ -93,8 +93,12 @@ public struct GameConfig: Sendable, Codable, Equatable, Hashable {
     public static let familyCap = 2
     public static let draftPoolSize = 12
 
-    /// Snake order for the drafted setup: P2,P1,P1,P2,P2,P1,P1,P2,P2,P1,P1,P2.
-    public static let draftOrder: [PlayerID] = [
-        .p2, .p1, .p1, .p2, .p2, .p1, .p1, .p2, .p2, .p1, .p1, .p2,
-    ]
+    /// The drafted setup deals two packs and passes them back and forth: you
+    /// look at a pack, take one card, and hand the rest to your opponent.
+    ///
+    /// The size follows from the hand: two packs of six is twelve cards, each
+    /// pack is drafted down to nothing over six passes, and each player ends
+    /// with six. It also produces the information structure the game wants for
+    /// free -- see `GameState.draftPacks`.
+    public static let draftPackSize = handSize
 }

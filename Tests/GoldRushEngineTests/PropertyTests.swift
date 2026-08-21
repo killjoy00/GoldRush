@@ -327,7 +327,7 @@ struct PropertyTests {
         #expect(Set(state.hands.p1).isDisjoint(with: Set(state.hands.p2)))
     }
 
-    @Test("The snake draft gives each player six cards under the family cap",
+    @Test("The pack draft gives each player six cards under the family cap",
           arguments: seeds.prefix(20))
     func draftProducesLegalHands(seed: UInt64) {
         let config = GameConfig(scoringDraft: true)
@@ -340,8 +340,36 @@ struct PropertyTests {
                 #expect(state.hands[player].count { $0.family == family } <= GameConfig.familyCap)
             }
         }
-        #expect(GameConfig.draftOrder.count { $0 == .p1 } == 6)
-        #expect(GameConfig.draftOrder.count { $0 == .p2 } == 6)
+        // Both packs are drafted to nothing; nothing is left over.
+        #expect(state.draftPacks.p1.isEmpty)
+        #expect(state.draftPacks.p2.isEmpty)
+    }
+
+    /// The whole reason the pack draft replaced the shared pool: it hands each
+    /// player exactly one permanent unknown without a reveal phase existing.
+    @Test("A drafted game leaves each player one secret card and no reveal phase",
+          arguments: seeds.prefix(20))
+    func draftHidesOnlyTheOpeningPick(seed: UInt64) {
+        let config = GameConfig(scoringDraft: true)
+        let result = PlaythroughHarness.play(config: config, seed: seed)
+        let state = result.finalState
+
+        for player in PlayerID.allCases {
+            let first = try! #require(state.draftFirstPick[player])
+            // Five of six public, and the one held back is the opening pick.
+            #expect(state.revealed[player].count == GameConfig.handSize - 1)
+            #expect(!state.revealed[player].contains(first))
+            #expect(Set(state.revealed[player]) == Set(state.hands[player]).subtracting([first]))
+            // The opponent's view agrees: they see five, not six.
+            let theirView = state.view(for: player.opponent)
+            #expect(theirView.opponentRevealed.count == GameConfig.handSize - 1)
+            #expect(!theirView.opponentRevealed.contains(first))
+        }
+        // A drafted game never enters reveal selection at all.
+        #expect(!result.actions.contains { action in
+            if case .selectRevealedScoringCards = action { return true }
+            return false
+        })
     }
 
     @Test("Progressive reveal exposes two cards up front and a third after round 4",

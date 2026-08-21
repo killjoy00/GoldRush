@@ -60,7 +60,7 @@ struct PlaythroughHarness {
 
             switch state.phase {
             case .draft:
-                let legal = state.draftPool.filter { candidate in
+                let legal = state.draftPacks[actor].filter { candidate in
                     state.hands[actor].count { $0.family == candidate.family } < GameConfig.familyCap
                 }
                 let pick = legal[rng.next(upperBound: legal.count)]
