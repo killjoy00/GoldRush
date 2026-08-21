@@ -38,6 +38,9 @@ public struct RootView: View {
             case .handoff(let player):
                 HandoffView(player: player) { model.completeHandoff() }
                     .transition(.opacity)
+            case .roundRecap:
+                RoundRecapView(model: model) { model.acknowledgeRecap() }
+                    .transition(.opacity)
             case .scoring:
                 ScoringView(model: model, onExit: onExit, onRematch: onRematch)
             default:

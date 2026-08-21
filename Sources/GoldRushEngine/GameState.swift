@@ -10,6 +10,27 @@ public enum Phase: Sendable, Codable, Equatable, Hashable {
     case finished
 }
 
+/// What happened in the round that just ended.
+///
+/// Kept on the state because it would otherwise be destroyed the instant the
+/// round advanced, and "what did they take?" is the single question the game
+/// gives you no way to answer. It is not new information -- both players were
+/// entitled to all of it as it happened -- so `PlayerView` projects it under
+/// exactly the same visibility rules as the live piles.
+public struct RoundOutcome: Sendable, Codable, Equatable, Hashable {
+    public let round: Int
+    /// The split each player made, keyed by the player who made it.
+    public let splits: PlayerPair<PendingSplit?>
+    /// Which pile each player took from their opponent's split.
+    public let taken: PlayerPair<PileID?>
+
+    public init(round: Int, splits: PlayerPair<PendingSplit?>, taken: PlayerPair<PileID?>) {
+        self.round = round
+        self.splits = splits
+        self.taken = taken
+    }
+}
+
 /// A split awaiting the chooser's decision.
 public struct PendingSplit: Sendable, Codable, Equatable, Hashable {
     public let pileA: [CardID]
@@ -89,6 +110,10 @@ public struct GameState: Sendable, Codable, Equatable {
     /// simultaneous round cannot leak one player's division to the other.
     private var splitSubmitted: PlayerPair<Bool>
     private var chooseSubmitted: PlayerPair<Bool>
+    /// Which pile each chooser has taken this round, pending resolution.
+    private var takenPile: PlayerPair<PileID?>
+    /// The round that just finished, for the recap screen.
+    public private(set) var lastRound: RoundOutcome?
 
     /// Reveal selections submitted so far this phase.
     private var revealSubmitted: PlayerPair<Bool>
@@ -231,6 +256,8 @@ public struct GameState: Sendable, Codable, Equatable {
             pendingSplits: PlayerPair(repeating: nil),
             splitSubmitted: PlayerPair(repeating: false),
             chooseSubmitted: PlayerPair(repeating: false),
+            takenPile: PlayerPair(repeating: nil),
+            lastRound: nil,
             revealSubmitted: PlayerPair(repeating: false),
             draftPacks: draftPacks,
             draftSubmitted: PlayerPair(repeating: false),
@@ -401,8 +428,15 @@ public struct GameState: Sendable, Codable, Equatable {
             // The splitter drew every card, so it already knows them all.
 
             next.chooseSubmitted[chooser] = true
+            next.takenPile[chooser] = pile
             if config.choosers(round: round).allSatisfy({ next.chooseSubmitted[$0] }) {
+                // Snapshot before tearing the round down; this is the only
+                // moment both splits and both choices exist together.
+                next.lastRound = RoundOutcome(
+                    round: round, splits: next.pendingSplits, taken: next.takenPile
+                )
                 next.chooseSubmitted = PlayerPair(repeating: false)
+                next.takenPile = PlayerPair(repeating: nil)
                 next.pendingSplits = PlayerPair(repeating: nil)
                 next.currentDraw = PlayerPair(repeating: [])
                 next.advanceAfterChoose()

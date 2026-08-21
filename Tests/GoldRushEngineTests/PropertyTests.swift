@@ -497,6 +497,82 @@ struct PropertyTests {
 @Suite("The face-down rule")
 struct FaceDownRuleTests {
 
+    // MARK: - The round recap
+
+    /// The recap exists so a player can see what their opponent took. It must
+    /// not become a back door to the one thing the game promises to keep
+    /// secret.
+    @Test("The recap never reveals a face-down card the player passed on",
+          arguments: PropertyTests.seeds.prefix(25))
+    func recapKeepsPassedOverCardsHidden(seed: UInt64) {
+        var (state, splitter, chooser, draw) = Self.openingRound(seed: seed)
+
+        // Bury one card in pile B, then have the chooser take pile A.
+        let secret = draw[3]
+        state = state.apply(.split(
+            pileA: draw.filter { $0 != secret }, pileB: [secret], faceDown: [secret]
+        ))
+        state = state.apply(.choose(pile: .a))
+
+        let chooserView = state.view(for: chooser)
+        let recap = try! #require(chooserView.lastRound.first)
+        #expect(recap.splitter == splitter)
+        #expect(recap.taken == .a)
+        #expect(!recap.mine)
+        // The buried card sat in the pile they passed on, so it stays hidden.
+        let passed = recap.cards(recap.kept)
+        #expect(passed.contains { $0.id == secret && $0.isHidden })
+        // Everything they actually claimed is legible.
+        #expect(recap.cards(recap.taken).allSatisfy { !$0.isHidden })
+
+        // The splitter dealt the cards, so their own recap hides nothing.
+        let splitterView = state.view(for: splitter)
+        let ownRecap = try! #require(splitterView.lastRound.first)
+        #expect(ownRecap.mine)
+        #expect((ownRecap.pileA + ownRecap.pileB).allSatisfy { !$0.isHidden })
+    }
+
+    @Test("A claimed face-down card is legible in the recap that follows",
+          arguments: PropertyTests.seeds.prefix(15))
+    func recapShowsCardsYouClaimed(seed: UInt64) {
+        var (state, _, chooser, draw) = Self.openingRound(seed: seed)
+        let secret = draw[3]
+        state = state.apply(.split(
+            pileA: draw.filter { $0 != secret }, pileB: [secret], faceDown: [secret]
+        ))
+        // This time the chooser takes the pile the buried card is in.
+        state = state.apply(.choose(pile: .b))
+
+        let recap = try! #require(state.view(for: chooser).lastRound.first)
+        #expect(recap.cards(.b).allSatisfy { !$0.isHidden })
+    }
+
+    @Test("Splitting together produces a recap of both splits",
+          arguments: PropertyTests.seeds.prefix(15))
+    func recapCoversBothSplitsWhenSimultaneous(seed: UInt64) {
+        let config = GameConfig(simultaneousSplit: true)
+        var state = GameState.newGame(config: config, seed: seed)
+        state = state.apply(.selectRevealedScoringCards(Array(state.hands.p1.prefix(3))))
+        state = state.apply(.selectRevealedScoringCards(Array(state.hands.p2.prefix(3))))
+
+        while state.phase == .split, let actor = state.actingPlayer {
+            let draw = state.currentDraw[actor]
+            state = state.apply(.split(pileA: [draw[0]], pileB: Array(draw.dropFirst()),
+                                       faceDown: [draw[0]]))
+        }
+        while state.phase == .choose, state.actingPlayer != nil {
+            state = state.apply(.choose(pile: .a))
+        }
+
+        for player in PlayerID.allCases {
+            let recap = state.view(for: player).lastRound
+            #expect(recap.count == 2)
+            // Exactly one of the two splits is your own.
+            #expect(recap.count { $0.mine } == 1)
+        }
+    }
+
+
     /// Sets up a game and hands back the pieces of one fully controlled round.
     static func openingRound(seed: UInt64) -> (state: GameState, splitter: PlayerID, chooser: PlayerID, draw: [CardID]) {
         var state = GameState.newGame(seed: seed)

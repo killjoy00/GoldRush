@@ -84,6 +84,29 @@ public struct PlayerView: Sendable, Equatable {
     /// permanent secret.
     public let draftPool: [ScoringCardID]
 
+    /// One split from the round that just ended, as this player may see it.
+    public struct ResolvedSplit: Sendable, Equatable {
+        /// Who dealt these two piles.
+        public let splitter: PlayerID
+        public let pileA: [VisibleCard]
+        public let pileB: [VisibleCard]
+        /// Which pile the chooser took. The splitter kept the other.
+        public let taken: PileID
+        /// True when this player is the one who made the split.
+        public let mine: Bool
+
+        public var kept: PileID { taken.other }
+        public func cards(_ pile: PileID) -> [VisibleCard] { pile == .a ? pileA : pileB }
+    }
+
+    /// What happened last round, for the recap. Empty before the first round
+    /// resolves.
+    ///
+    /// A card stays hidden here for exactly as long as it stays hidden
+    /// everywhere else: if your opponent buried a card and you passed on that
+    /// pile, the recap will not tell you what it was either.
+    public let lastRound: [ResolvedSplit]
+
     public var isMyTurn: Bool { actingPlayer == player }
     public let actingPlayer: PlayerID?
 
@@ -167,6 +190,39 @@ public struct PlayerView: Sendable, Equatable {
             self.piles = (pileCards(split.pileA), pileCards(split.pileB))
         } else {
             self.piles = nil
+        }
+
+        if let outcome = state.lastRound {
+            var resolved: [ResolvedSplit] = []
+            // Seat order, so the recap reads the same on both devices.
+            for splitter in [PlayerID.p1, .p2] {
+                guard let split = outcome.splits[splitter],
+                      let taken = outcome.taken[splitter.opponent] else { continue }
+                let isMine = splitter == player
+                let iChose = splitter.opponent == player
+                func pileCards(_ ids: [CardID], _ pile: PileID) -> [VisibleCard] {
+                    ids.map { id in
+                        // Your own split is entirely yours to see. Otherwise a
+                        // buried card is visible only if you ended up holding
+                        // it -- which is the same rule that governed the choice.
+                        let claimed = iChose && pile == taken
+                        if isMine || claimed || !split.faceDown.contains(id) {
+                            return .known(id, state.type(id))
+                        }
+                        return .hidden(id)
+                    }
+                }
+                resolved.append(ResolvedSplit(
+                    splitter: splitter,
+                    pileA: pileCards(split.pileA, .a),
+                    pileB: pileCards(split.pileB, .b),
+                    taken: taken,
+                    mine: isMine
+                ))
+            }
+            self.lastRound = resolved
+        } else {
+            self.lastRound = []
         }
 
         if state.phase == .choose, let mine = state.pendingSplits[player] {
