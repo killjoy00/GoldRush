@@ -77,9 +77,18 @@ public struct GameState: Sendable, Codable, Equatable {
     /// Every card each player has legitimately observed.
     public private(set) var observations: PlayerPair<CardSet>
 
-    /// Cards drawn for the current round. The splitter has seen all of them.
-    public private(set) var currentDraw: [CardID]
-    public private(set) var pendingSplit: PendingSplit?
+    /// Cards drawn for the current round, per player. Only a player who is
+    /// splitting this round has a draw; the other entry is empty.
+    ///
+    /// Per-player even when splitting alternates, so one code path covers both
+    /// round structures instead of two that have to agree with each other.
+    public private(set) var currentDraw: PlayerPair<[CardID]>
+    /// The split each player has made and their opponent has yet to choose from.
+    public private(set) var pendingSplits: PlayerPair<PendingSplit?>
+    /// Committed this phase. Splits stay sealed until both are in, so a
+    /// simultaneous round cannot leak one player's division to the other.
+    private var splitSubmitted: PlayerPair<Bool>
+    private var chooseSubmitted: PlayerPair<Bool>
 
     /// Reveal selections submitted so far this phase.
     private var revealSubmitted: PlayerPair<Bool>
@@ -132,9 +141,12 @@ public struct GameState: Sendable, Codable, Equatable {
             if !revealSubmitted.p2 { return .p2 }
             return nil
         case .split:
-            return config.splitter(round: round)
+            // Resolved p1 before p2 so the action sequence is deterministic.
+            // That leaks nothing: PlayerView withholds a split until both are
+            // committed, exactly as it does for reveal selection.
+            return config.splitters(round: round).first { !splitSubmitted[$0] }
         case .choose:
-            return config.chooser(round: round)
+            return config.choosers(round: round).first { !chooseSubmitted[$0] }
         case .finished:
             return nil
         }
@@ -215,8 +227,10 @@ public struct GameState: Sendable, Codable, Equatable {
             hands: hands,
             revealed: PlayerPair(repeating: []),
             observations: PlayerPair(repeating: CardSet()),
-            currentDraw: [],
-            pendingSplit: nil,
+            currentDraw: PlayerPair(repeating: []),
+            pendingSplits: PlayerPair(repeating: nil),
+            splitSubmitted: PlayerPair(repeating: false),
+            chooseSubmitted: PlayerPair(repeating: false),
             revealSubmitted: PlayerPair(repeating: false),
             draftPacks: draftPacks,
             draftSubmitted: PlayerPair(repeating: false),
@@ -264,11 +278,13 @@ public struct GameState: Sendable, Codable, Equatable {
             guard phase == .split else { throw .wrongPhase(expected: .split, actual: phase) }
             guard !pileA.isEmpty else { throw .pileEmpty(.a) }
             guard !pileB.isEmpty else { throw .pileEmpty(.b) }
-            // Every drawn card must appear exactly once across the two piles.
+            // Every card THIS player drew must appear exactly once across the
+            // two piles -- their own draw, not the other splitter's.
+            let mine = currentDraw[actor]
             let combined = pileA + pileB
-            guard combined.count == currentDraw.count,
+            guard combined.count == mine.count,
                   Set(combined).count == combined.count,
-                  Set(combined) == Set(currentDraw)
+                  Set(combined) == Set(mine)
             else { throw .splitDoesNotMatchDraw }
 
             let expected = config.faceDownCount(round: round)
@@ -280,7 +296,10 @@ public struct GameState: Sendable, Codable, Equatable {
 
         case .choose:
             guard phase == .choose else { throw .wrongPhase(expected: .choose, actual: phase) }
-            guard pendingSplit != nil else { throw .wrongPhase(expected: .choose, actual: phase) }
+            // You choose from the split your opponent made.
+            guard pendingSplits[actor.opponent] != nil else {
+                throw .wrongPhase(expected: .choose, actual: phase)
+            }
         }
     }
 
@@ -349,13 +368,20 @@ public struct GameState: Sendable, Codable, Equatable {
             }
 
         case .split(let pileA, let pileB, let faceDown):
-            next.pendingSplit = PendingSplit(pileA: pileA, pileB: pileB, faceDown: CardSet(faceDown))
-            next.phase = .choose
+            next.pendingSplits[actor] = PendingSplit(
+                pileA: pileA, pileB: pileB, faceDown: CardSet(faceDown)
+            )
+            next.splitSubmitted[actor] = true
+            // Nobody chooses until every split this round is sealed.
+            if config.splitters(round: round).allSatisfy({ next.splitSubmitted[$0] }) {
+                next.splitSubmitted = PlayerPair(repeating: false)
+                next.phase = .choose
+            }
 
         case .choose(let pile):
-            guard let split = next.pendingSplit else { return self }
-            let chooser = config.chooser(round: round)
-            let splitter = config.splitter(round: round)
+            let chooser = actor
+            let splitter = actor.opponent
+            guard let split = next.pendingSplits[splitter] else { return self }
             let taken = split.pile(pile)
             let left = split.pile(pile.other)
 
@@ -374,9 +400,13 @@ public struct GameState: Sendable, Codable, Equatable {
             }
             // The splitter drew every card, so it already knows them all.
 
-            next.pendingSplit = nil
-            next.currentDraw = []
-            next.advanceAfterChoose()
+            next.chooseSubmitted[chooser] = true
+            if config.choosers(round: round).allSatisfy({ next.chooseSubmitted[$0] }) {
+                next.chooseSubmitted = PlayerPair(repeating: false)
+                next.pendingSplits = PlayerPair(repeating: nil)
+                next.currentDraw = PlayerPair(repeating: [])
+                next.advanceAfterChoose()
+            }
         }
 
         return next
@@ -385,22 +415,26 @@ public struct GameState: Sendable, Codable, Equatable {
     // MARK: - Round transitions
 
     private mutating func beginRound() {
-        let count = config.drawCount(round: round)
-        let available = deck.count - drawn
-        let take = min(count, available)
-        var drawnIDs: [CardID] = []
-        drawnIDs.reserveCapacity(take)
-        for offset in 0..<take {
-            drawnIDs.append(deck[drawn + offset].id)
-        }
-        drawn += take
-        currentDraw = drawnIDs
+        currentDraw = PlayerPair(repeating: [])
+        // Dealt in seat order so a simultaneous round is reproducible from its
+        // seed rather than from whoever the UI happened to prompt first.
+        for splitter in config.splitters(round: round) {
+            let count = config.drawCount(round: round)
+            let available = deck.count - drawn
+            let take = min(count, available)
+            var drawnIDs: [CardID] = []
+            drawnIDs.reserveCapacity(take)
+            for offset in 0..<take {
+                drawnIDs.append(deck[drawn + offset].id)
+            }
+            drawn += take
+            currentDraw[splitter] = drawnIDs
 
-        // The splitter draws privately, so it observes the whole draw -- including
-        // cards that will end up in the pile it loses. This asymmetry is the
-        // reason splitting costs nothing informationally.
-        let splitter = config.splitter(round: round)
-        for id in drawnIDs { observations[splitter].insert(id) }
+            // A splitter draws privately, so it observes its whole draw --
+            // including cards that will end up in the pile it loses. This
+            // asymmetry is why splitting costs nothing informationally.
+            for id in drawnIDs { observations[splitter].insert(id) }
+        }
 
         phase = .split
     }

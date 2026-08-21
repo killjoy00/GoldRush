@@ -84,7 +84,7 @@ struct PlaythroughHarness {
                 state = state.apply(action)
 
             case .split:
-                let draw = state.currentDraw
+                let draw = state.currentDraw[actor]
                 let split = randomLegalSplit(
                     draw: draw,
                     faceDownCount: config.faceDownCount(round: state.round),
@@ -97,10 +97,12 @@ struct PlaythroughHarness {
                 state = state.apply(action)
 
             case .choose:
-                guard let pending = state.pendingSplit else { break }
+                // You always choose from the split your opponent made, whether
+                // splitting alternates or happens simultaneously.
+                let chooser = actor
+                let splitter = actor.opponent
+                guard let pending = state.pendingSplits[splitter] else { break }
                 let round = state.round
-                let splitter = config.splitter(round: round)
-                let chooser = config.chooser(round: round)
                 let taken: PileID = rng.next(upperBound: 2) == 0 ? .a : .b
                 let drawnThisRound = pending.pileA + pending.pileB
                 let leftBehind = pending.pile(taken.other)

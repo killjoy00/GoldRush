@@ -25,6 +25,7 @@ COMMON OPTIONS
 
 RULES TOGGLES
   --scoring-draft          pack draft instead of a blind deal
+  --simultaneous-split     both players split every round (4 rounds, not 8)
   --progressive-reveal     reveal 2 at setup, a 3rd after round 4
   --no-persistent-hidden   face-down cards reveal to both players on claim
   --no-motherlode          all 8 rounds draw 7

@@ -9,8 +9,17 @@ public enum HiddenPolicy: Sendable, Codable, Equatable, Hashable {
 
 /// Every rules variant, settable from the CLI so the simulator can A/B them.
 public struct GameConfig: Sendable, Codable, Equatable, Hashable {
-    /// Replaces the blind deal with a snake draft from a face-up pool of 12.
+    /// Replaces the blind deal with a pack draft: two packs of six, passed
+    /// back and forth a card at a time.
     public var scoringDraft: Bool
+    /// Both players split their own draw every round and each chooses from the
+    /// other's, instead of one player splitting while the other waits.
+    ///
+    /// Halves the number of turns anyone waits through, which is what makes a
+    /// remote game bearable. It is a genuinely different game rather than a
+    /// presentation change -- see `roundCount` below -- so it is a toggle the
+    /// simulator can A/B rather than a silent rewrite of the rules.
+    public var simultaneousSplit: Bool
     /// Reveal 2 at setup, then 1 more after round 4, instead of 3 up front.
     public var progressiveReveal: Bool
     /// When false, face-down cards are revealed to BOTH players on claim.
@@ -25,29 +34,38 @@ public struct GameConfig: Sendable, Codable, Equatable, Hashable {
 
     public init(
         scoringDraft: Bool = false,
+        simultaneousSplit: Bool = false,
         progressiveReveal: Bool = false,
         persistentHiddenCards: Bool = true,
         motherlodeRounds: Bool = true,
         hiddenPolicy: HiddenPolicy = .standard,
         deckSize: Int = MiningDeck.standardSize,
-        roundCount: Int = 8
+        roundCount: Int? = nil
     ) {
         self.scoringDraft = scoringDraft
+        self.simultaneousSplit = simultaneousSplit
         self.progressiveReveal = progressiveReveal
         self.persistentHiddenCards = persistentHiddenCards
         self.motherlodeRounds = motherlodeRounds
         self.hiddenPolicy = hiddenPolicy
         self.deckSize = deckSize
-        self.roundCount = roundCount
+        // Two splits a round instead of one, so half the rounds cover the same
+        // ground. Four rounds of two draws is 3x(7+7) + (9+9) = 60 cards, the
+        // same 60 the eight-round game deals, and it still gives each player
+        // four splits and four choices. Every invariant the sequential game is
+        // measured against carries over exactly.
+        self.roundCount = roundCount ?? (simultaneousSplit ? 4 : 8)
     }
 
     public static let standard = GameConfig()
 
     // MARK: - Derived round structure
 
-    /// Rounds 7 and 8 are Motherlode rounds when the toggle is on.
+    /// The big finish. Two rounds of it when players alternate, one when they
+    /// split together -- either way it is the last 18 cards of the 60.
     public func isMotherlode(round: Int) -> Bool {
-        motherlodeRounds && round >= roundCount - 1
+        guard motherlodeRounds else { return false }
+        return simultaneousSplit ? round == roundCount : round >= roundCount - 1
     }
 
     /// 7 normally, 9 in a Motherlode round. Independent of `deckSize`.
@@ -78,16 +96,29 @@ public struct GameConfig: Sendable, Codable, Equatable, Hashable {
         splitter(round: round).opponent
     }
 
+    /// Everyone who draws and splits this round. Both players when splitting is
+    /// simultaneous; just the round's splitter when it alternates.
+    public func splitters(round: Int) -> [PlayerID] {
+        simultaneousSplit ? [.p1, .p2] : [splitter(round: round)]
+    }
+
+    /// Everyone who takes a pile this round. You always choose from the split
+    /// your opponent made, so this is exactly the opponents of `splitters`.
+    public func choosers(round: Int) -> [PlayerID] {
+        splitters(round: round).map(\.opponent)
+    }
+
     public var totalDrawn: Int {
-        (1...roundCount).reduce(0) { $0 + drawCount(round: $1) }
+        (1...roundCount).reduce(0) { $0 + drawCount(round: $1) * splitters(round: $1).count }
     }
 
     /// How many scoring cards are public from the start.
     public var initialRevealCount: Int { progressiveReveal ? 2 : 3 }
     /// How many are public by the end.
     public var finalRevealCount: Int { 3 }
-    /// Progressive reveal adds its extra card once this round completes.
-    public var progressiveRevealAfterRound: Int { 4 }
+    /// Progressive reveal adds its extra card once this round completes: the
+    /// midpoint, whichever round structure is in play.
+    public var progressiveRevealAfterRound: Int { roundCount / 2 }
 
     public static let handSize = 6
     public static let familyCap = 2

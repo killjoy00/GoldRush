@@ -18,6 +18,7 @@ enum Sim {
     static func config(from args: Args, overrides: (inout GameConfig) -> Void = { _ in }) -> GameConfig {
         var config = GameConfig(
             scoringDraft: args.has("scoring-draft"),
+            simultaneousSplit: args.has("simultaneous-split"),
             progressiveReveal: args.has("progressive-reveal"),
             persistentHiddenCards: !args.has("no-persistent-hidden"),
             motherlodeRounds: !args.has("no-motherlode"),

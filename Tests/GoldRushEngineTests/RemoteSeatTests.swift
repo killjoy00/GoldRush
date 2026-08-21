@@ -76,7 +76,7 @@ struct RemoteSeatTests {
         // P1 splits on their own device; the result arrives here.
         var rng = SeededRNG(seed: seed)
         let split = PlaythroughHarness.randomLegalSplit(
-            draw: state.currentDraw,
+            draw: state.currentDraw[state.actingPlayer ?? .p1],
             faceDownCount: state.config.faceDownCount(round: state.round),
             rng: &rng)
         state = state.apply(.split(
@@ -117,7 +117,7 @@ struct RemoteSeatTests {
             switch state.phase {
             case .split:
                 let split = PlaythroughHarness.randomLegalSplit(
-                    draw: state.currentDraw,
+                    draw: state.currentDraw[state.actingPlayer ?? .p1],
                     faceDownCount: state.config.faceDownCount(round: state.round),
                     rng: &rng)
                 state = state.apply(.split(

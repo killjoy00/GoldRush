@@ -216,6 +216,13 @@ public struct NewGameView: View {
     /// drafting removes that luck entirely -- but it also adds a phase to the
     /// start of every game, which is a matter of taste rather than balance.
     @AppStorage("goldrush.scoringDraft") private var useDraft = false
+    /// Defaults on. Waiting through your opponent's whole turn is the single
+    /// worst thing about a remote game, and splitting together halves it --
+    /// four rounds of two splits deal the same 60 cards as eight rounds of
+    /// one. Kept as one setting across every mode rather than "online is a
+    /// different game", and it travels inside the match data, so both devices
+    /// play whatever the host chose.
+    @AppStorage("goldrush.simultaneousSplit") private var splitTogether = true
     #if canImport(GameKit)
     @State private var showMatchmaker = false
     @State private var onlineError: String?
@@ -368,11 +375,29 @@ public struct NewGameView: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.parchment.opacity(0.55))
                 .frame(height: 28)
+
+            Text("SPLITTING")
+                .font(.system(size: 10, weight: .bold))
+                .tracking(1)
+                .foregroundStyle(Theme.gold.opacity(0.8))
+                .padding(.top, 2)
+            Picker("Splitting", selection: $splitTogether) {
+                Text("Together").tag(true)
+                Text("Take turns").tag(false)
+            }
+            .pickerStyle(.segmented)
+            Text(splitTogether
+                 ? "Both split at once, then both choose. 4 rounds, no waiting."
+                 : "One splits, the other chooses, then swap. 8 rounds.")
+                .font(.system(size: 11))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Theme.parchment.opacity(0.55))
+                .frame(height: 28)
         }
     }
 
     var config: GameConfig {
-        GameConfig(scoringDraft: useDraft)
+        GameConfig(scoringDraft: useDraft, simultaneousSplit: splitTogether)
     }
 
     @ViewBuilder
