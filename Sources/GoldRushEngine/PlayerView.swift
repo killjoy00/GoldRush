@@ -65,10 +65,47 @@ public struct PlayerView: Sendable, Equatable {
 
     /// The draw awaiting a split. Populated only for the splitter, who drew it.
     public let currentDraw: [VisibleCard]
-    /// The two piles awaiting a choice. Populated during `.choose`.
+    /// The two piles YOU are choosing from -- the ones your opponent made.
+    /// Face-down cards read as hidden, because you must decide without them.
     public let piles: (a: [VisibleCard], b: [VisibleCard])?
-    /// Cards still available in a scoring draft. Face-up, so public.
+    /// The split you made, awaiting your opponent's decision. Fully known to
+    /// you; you dealt it.
+    ///
+    /// Separate from `piles` because when both players split at once there are
+    /// two divisions on the table simultaneously, and they are not the same
+    /// object seen from two angles: one is yours and complete, the other is
+    /// theirs and partly buried.
+    public let myPiles: (a: [VisibleCard], b: [VisibleCard])?
+    /// The pack in front of THIS player during a draft.
+    ///
+    /// Deliberately your own pack only. The pack your opponent is looking at
+    /// is the one you will be handed next, minus whatever they take from it,
+    /// and never seeing it beforehand is what makes their opening pick a
+    /// permanent secret.
     public let draftPool: [ScoringCardID]
+
+    /// One split from the round that just ended, as this player may see it.
+    public struct ResolvedSplit: Sendable, Equatable {
+        /// Who dealt these two piles.
+        public let splitter: PlayerID
+        public let pileA: [VisibleCard]
+        public let pileB: [VisibleCard]
+        /// Which pile the chooser took. The splitter kept the other.
+        public let taken: PileID
+        /// True when this player is the one who made the split.
+        public let mine: Bool
+
+        public var kept: PileID { taken.other }
+        public func cards(_ pile: PileID) -> [VisibleCard] { pile == .a ? pileA : pileB }
+    }
+
+    /// What happened last round, for the recap. Empty before the first round
+    /// resolves.
+    ///
+    /// A card stays hidden here for exactly as long as it stays hidden
+    /// everywhere else: if your opponent buried a card and you passed on that
+    /// pile, the recap will not tell you what it was either.
+    public let lastRound: [ResolvedSplit]
 
     public var isMyTurn: Bool { actingPlayer == player }
     public let actingPlayer: PlayerID?
@@ -80,6 +117,7 @@ public struct PlayerView: Sendable, Equatable {
             && lhs.opponentRevealed == rhs.opponentRevealed && lhs.unseen == rhs.unseen
             && lhs.currentDraw == rhs.currentDraw
             && lhs.piles?.a == rhs.piles?.a && lhs.piles?.b == rhs.piles?.b
+            && lhs.myPiles?.a == rhs.myPiles?.a && lhs.myPiles?.b == rhs.myPiles?.b
     }
 
     public init(state: GameState, player: PlayerID) {
@@ -113,7 +151,7 @@ public struct PlayerView: Sendable, Equatable {
 
         self.hand = state.hands[player]
         self.myRevealed = state.revealed[player]
-        self.draftPool = state.draftPool
+        self.draftPool = state.draftPacks[player]
         // Reveals are simultaneous: the opponent's picks stay private until both
         // players have committed, so resolving p1 before p2 in the action
         // sequence leaks nothing.
@@ -130,28 +168,70 @@ public struct PlayerView: Sendable, Equatable {
         self.unseen = pool - observedCounts
         self.unseenTotal = self.unseen.total
 
-        // Only the splitter drew, so only the splitter sees the draw.
-        if state.phase == .split, state.config.splitter(round: state.round) == player {
-            self.currentDraw = state.currentDraw.map { .known($0, state.type($0)) }
+        // You only ever see your own draw. When both players split at once,
+        // the other draw is on the table at the same moment -- and must stay
+        // invisible, or simultaneous splitting would hand each player a look
+        // at cards they never drew.
+        if state.phase == .split {
+            self.currentDraw = state.currentDraw[player].map { .known($0, state.type($0)) }
         } else {
             self.currentDraw = []
         }
 
-        if state.phase == .choose, let split = state.pendingSplit {
-            // The splitter knows both piles fully; the chooser sees face-up cards
-            // only, and must decide without knowing what is face down.
-            let isSplitter = state.config.splitter(round: state.round) == player
+        // The piles you are choosing from are always the ones your opponent
+        // made. You see their face-up cards only, and must decide without
+        // knowing what they buried.
+        if state.phase == .choose, let split = state.pendingSplits[player.opponent] {
             func pileCards(_ ids: [CardID]) -> [VisibleCard] {
                 ids.map { id in
-                    if isSplitter || !split.faceDown.contains(id) {
-                        return .known(id, state.type(id))
-                    }
-                    return .hidden(id)
+                    split.faceDown.contains(id) ? .hidden(id) : .known(id, state.type(id))
                 }
             }
             self.piles = (pileCards(split.pileA), pileCards(split.pileB))
         } else {
             self.piles = nil
+        }
+
+        if let outcome = state.lastRound {
+            var resolved: [ResolvedSplit] = []
+            // Seat order, so the recap reads the same on both devices.
+            for splitter in [PlayerID.p1, .p2] {
+                guard let split = outcome.splits[splitter],
+                      let taken = outcome.taken[splitter.opponent] else { continue }
+                let isMine = splitter == player
+                let iChose = splitter.opponent == player
+                func pileCards(_ ids: [CardID], _ pile: PileID) -> [VisibleCard] {
+                    ids.map { id in
+                        // Your own split is entirely yours to see. Otherwise a
+                        // buried card is visible only if you ended up holding
+                        // it -- which is the same rule that governed the choice.
+                        let claimed = iChose && pile == taken
+                        if isMine || claimed || !split.faceDown.contains(id) {
+                            return .known(id, state.type(id))
+                        }
+                        return .hidden(id)
+                    }
+                }
+                resolved.append(ResolvedSplit(
+                    splitter: splitter,
+                    pileA: pileCards(split.pileA, .a),
+                    pileB: pileCards(split.pileB, .b),
+                    taken: taken,
+                    mine: isMine
+                ))
+            }
+            self.lastRound = resolved
+        } else {
+            self.lastRound = []
+        }
+
+        if state.phase == .choose, let mine = state.pendingSplits[player] {
+            func known(_ ids: [CardID]) -> [VisibleCard] {
+                ids.map { .known($0, state.type($0)) }
+            }
+            self.myPiles = (known(mine.pileA), known(mine.pileB))
+        } else {
+            self.myPiles = nil
         }
     }
 

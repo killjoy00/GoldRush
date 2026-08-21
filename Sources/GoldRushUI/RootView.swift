@@ -38,6 +38,9 @@ public struct RootView: View {
             case .handoff(let player):
                 HandoffView(player: player) { model.completeHandoff() }
                     .transition(.opacity)
+            case .roundRecap:
+                RoundRecapView(model: model) { model.acknowledgeRecap() }
+                    .transition(.opacity)
             case .scoring:
                 ScoringView(model: model, onExit: onExit, onRematch: onRematch)
             default:
@@ -170,12 +173,19 @@ public struct RootView: View {
     @ViewBuilder
     var draft: some View {
         VStack(spacing: 10) {
-            Text("Draft a scoring card")
+            Text(model.view.hand.isEmpty ? "Open your pack" : "Take one card")
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundStyle(Theme.goldBright)
-            Text("You hold \(model.view.hand.count) of \(GameConfig.handSize)")
+            // The opening pick is the one card the opponent never sees, and it
+            // is worth saying so out loud: it is the only secret either player
+            // gets in a drafted game, and it is gone after this tap.
+            Text(model.view.hand.isEmpty
+                 ? "This pick stays secret. Everything you take after it, your opponent will see."
+                 : "Take one, pass the rest. You hold \(model.view.hand.count) of \(GameConfig.handSize).")
                 .font(.system(size: 11))
+                .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.parchment.opacity(0.65))
+                .padding(.horizontal, 28)
             ScrollView {
                 VStack(spacing: 8) {
                     ForEach(model.draftLegalPicks, id: \.index) { id in
@@ -209,6 +219,13 @@ public struct NewGameView: View {
     /// drafting removes that luck entirely -- but it also adds a phase to the
     /// start of every game, which is a matter of taste rather than balance.
     @AppStorage("goldrush.scoringDraft") private var useDraft = false
+    /// Defaults on. Waiting through your opponent's whole turn is the single
+    /// worst thing about a remote game, and splitting together halves it --
+    /// four rounds of two splits deal the same 60 cards as eight rounds of
+    /// one. Kept as one setting across every mode rather than "online is a
+    /// different game", and it travels inside the match data, so both devices
+    /// play whatever the host chose.
+    @AppStorage("goldrush.simultaneousSplit") private var splitTogether = true
     #if canImport(GameKit)
     @State private var showMatchmaker = false
     @State private var onlineError: String?
@@ -258,28 +275,51 @@ public struct NewGameView: View {
     var menu: some View {
         VStack(spacing: 18) {
             Spacer()
-            // The pan from the app icon, so the title screen and the home
-            // screen read as the same product.
+            // The app icon's composition, rebuilt in vectors: two cards fanned
+            // behind a nugget. The title screen and the home screen should be
+            // recognisably the same object.
             ZStack {
-                Circle()
-                    .fill(RadialGradient(colors: [Theme.ember.opacity(0.55), .clear],
-                                         center: .center, startRadius: 4, endRadius: 70))
-                Circle()
-                    .strokeBorder(Theme.parchment.opacity(0.30), lineWidth: 5)
-                    .frame(width: 96, height: 96)
-                Circle()
-                    .fill(Color.black.opacity(0.35))
-                    .frame(width: 88, height: 88)
-                MiningArt(.goldNugget).frame(width: 66, height: 66)
+                RadialGradient(colors: [Theme.ember.opacity(0.75), .clear],
+                               center: .center, startRadius: 6, endRadius: 108)
+                ForEach([-1.0, 1.0], id: \.self) { side in
+                    RoundedRectangle(cornerRadius: 9)
+                        .fill(Theme.dirtDeep)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 9)
+                                .strokeBorder(Theme.gold.opacity(0.55), lineWidth: 1.5)
+                        }
+                        .frame(width: 56, height: 82)
+                        .rotationEffect(.degrees(21 * side))
+                        .offset(x: 31 * side, y: 2)
+                }
+                MiningArt(.goldNugget)
+                    .frame(width: 84, height: 84)
+                    .shadow(color: Theme.ember.opacity(0.9), radius: 14)
             }
-            .frame(width: 120, height: 120)
-            Text("GOLD RUSH")
-                .font(.system(size: 38, weight: .black, design: .rounded))
-                .tracking(3)
-                .foregroundStyle(Theme.goldBright)
-            Text("Split the claim. Let them choose.")
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.parchment.opacity(0.7))
+            .frame(width: 190, height: 124)
+
+            VStack(spacing: 5) {
+                Text("GOLD RUSH")
+                    .font(.system(size: 42, weight: .black, design: .rounded))
+                    .tracking(4)
+                    .foregroundStyle(
+                        LinearGradient(colors: [Theme.goldBright, Theme.gold, Theme.goldDeep],
+                                       startPoint: .top, endPoint: .bottom)
+                    )
+                    .shadow(color: .black.opacity(0.55), radius: 5, y: 3)
+                // A hairline rule either side of the tagline, the way a claim
+                // notice would have been set.
+                HStack(spacing: 9) {
+                    rule
+                    Text("SPLIT THE CLAIM")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(2.4)
+                        .foregroundStyle(Theme.parchment.opacity(0.75))
+                        .fixedSize()
+                    rule
+                }
+                .frame(maxWidth: 260)
+            }
             Spacer()
 
             setupPicker
@@ -341,6 +381,14 @@ public struct NewGameView: View {
         #endif
     }
 
+    @ViewBuilder
+    var rule: some View {
+        Rectangle()
+            .fill(LinearGradient(colors: [.clear, Theme.gold.opacity(0.55)],
+                                 startPoint: .leading, endPoint: .trailing))
+            .frame(height: 1)
+    }
+
     /// How the six scoring cards are handed out. Applies to every mode below.
     @ViewBuilder
     var setupPicker: some View {
@@ -355,8 +403,26 @@ public struct NewGameView: View {
             }
             .pickerStyle(.segmented)
             Text(useDraft
-                 ? "Twelve cards face up; take turns picking. No luck of the deal."
+                 ? "Open a pack, take one card, pass the rest. No luck of the deal."
                  : "Six dealt at random to each player.")
+                .font(.system(size: 11))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Theme.parchment.opacity(0.55))
+                .frame(height: 28)
+
+            Text("SPLITTING")
+                .font(.system(size: 10, weight: .bold))
+                .tracking(1)
+                .foregroundStyle(Theme.gold.opacity(0.8))
+                .padding(.top, 2)
+            Picker("Splitting", selection: $splitTogether) {
+                Text("Together").tag(true)
+                Text("Take turns").tag(false)
+            }
+            .pickerStyle(.segmented)
+            Text(splitTogether
+                 ? "Both split at once, then both choose. 4 rounds, no waiting."
+                 : "One splits, the other chooses, then swap. 8 rounds.")
                 .font(.system(size: 11))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.parchment.opacity(0.55))
@@ -365,7 +431,7 @@ public struct NewGameView: View {
     }
 
     var config: GameConfig {
-        GameConfig(scoringDraft: useDraft)
+        GameConfig(scoringDraft: useDraft, simultaneousSplit: splitTogether)
     }
 
     @ViewBuilder

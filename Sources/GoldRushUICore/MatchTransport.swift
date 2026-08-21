@@ -24,9 +24,8 @@ public protocol MatchTransport: AnyObject {
     /// Called once, right after the view model has wired itself to this
     /// transport. Most transports have nothing to do here -- the human acts
     /// first, or a remote opponent acts on their own device. `AgentTransport`
-    /// overrides it: the opening move of a drafted game does not always
-    /// belong to the human (the snake order can open on either seat), and
-    /// without this the agent would never be prompted, since it otherwise
+    /// overrides it: the opening move does not always belong to the human,
+    /// and without this the agent would never be prompted, since it otherwise
     /// only moves in response to a local submission.
     func start() async
 
@@ -94,7 +93,7 @@ public final class AgentTransport: MatchTransport {
     }
 
     /// Lets the agent open the game if the opening move is theirs -- true for
-    /// a drafted setup whenever the snake order starts on the agent's seat.
+    /// any setup whose opening move falls on the agent's seat.
     public func start() async {
         await runAgentTurns()
     }

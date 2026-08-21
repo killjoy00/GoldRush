@@ -18,6 +18,7 @@ enum Sim {
     static func config(from args: Args, overrides: (inout GameConfig) -> Void = { _ in }) -> GameConfig {
         var config = GameConfig(
             scoringDraft: args.has("scoring-draft"),
+            simultaneousSplit: args.has("simultaneous-split"),
             progressiveReveal: args.has("progressive-reveal"),
             persistentHiddenCards: !args.has("no-persistent-hidden"),
             motherlodeRounds: !args.has("no-motherlode"),
@@ -141,6 +142,52 @@ enum Sim {
         }
     }
 
+    // MARK: - dissect
+
+    /// Which half of I-cut-you-choose is actually carrying an agent?
+    static func dissect(_ args: Args) {
+        let games = args.int("games", default: 20000)
+        let threads = args.int("threads", default: ProcessInfo.processInfo.activeProcessorCount)
+        let config = config(from: args)
+        let seed = args.uint64("seed", default: 424242)
+
+        @Sendable func agent(_ name: String) -> any GameAgent { AgentFactory.make(name)! }
+        @Sendable func hybrid(_ splitName: String, _ chooseName: String) -> Hybrid {
+            Hybrid(name: "\(splitName)-split/\(chooseName)-choose",
+                   splitter: agent(splitName), chooser: agent(chooseName))
+        }
+
+        print("# dissect: games=\(games) -- each row is P1 vs P2, both seats averaged")
+        print("p1,p2,p1_win_rate,ci95,p1_mean_score,p2_mean_score")
+
+        let combos: [(String, @Sendable () -> any GameAgent, String, @Sendable () -> any GameAgent)] = [
+            // Does a smart SPLIT beat a naive split, holding the chooser naive?
+            ("greedy-split", { hybrid("greedy", "naive") }, "naive", { agent("naive") }),
+            ("inference-split", { hybrid("inference", "naive") }, "naive", { agent("naive") }),
+            // Does a smart CHOICE beat a naive choice, holding the splitter naive?
+            ("greedy-choose", { hybrid("naive", "greedy") }, "naive", { agent("naive") }),
+            ("inference-choose", { hybrid("naive", "inference") }, "naive", { agent("naive") }),
+            // Is it maximin that helps, or is it size balance? Test each alone.
+            ("maximin-split", { hybrid("maximin", "naive") }, "naive", { agent("naive") }),
+            ("balanced-split", { hybrid("balanced", "naive") }, "naive", { agent("naive") }),
+        ]
+
+        for (label, make1, label2, make2) in combos {
+            // Play both seats and average, so seat effects cannot flatter a result.
+            let forward = run(games: games / 2, config: config, baseSeed: seed, threads: threads,
+                              p1: { make1() }, p2: { make2() })
+            let reverse = run(games: games / 2, config: config, baseSeed: seed &+ 1, threads: threads,
+                              p1: { make2() }, p2: { make1() })
+            let wins = forward.count(where: \.p1Won) + reverse.count(where: { !$0.p1Won })
+            let n = forward.count + reverse.count
+            let rate = Double(wins) / Double(n)
+            let mine = (forward.map(\.p1Score).reduce(0,+) + reverse.map(\.p2Score).reduce(0,+)) / n
+            let theirs = (forward.map(\.p2Score).reduce(0,+) + reverse.map(\.p1Score).reduce(0,+)) / n
+            print([label, label2, fmt(rate, 4), fmt(winRateCI(rate: rate, n: n), 4),
+                   fmt(Double(mine)), fmt(Double(theirs))].joined(separator: ","))
+        }
+    }
+
     // MARK: - seat
 
     static func seat(_ args: Args) {
@@ -156,7 +203,7 @@ enum Sim {
 
         // Mirror matches isolate the seat: identical strategies, so any gap is
         // structural rather than a strength difference.
-        for name in ["random", "greedy", "inference"] {
+        for name in ["naive", "random", "greedy", "inference"] {
             let records = run(
                 games: games, config: config, baseSeed: seed, threads: threads,
                 p1: { AgentFactory.make(name)! }, p2: { AgentFactory.make(name)! }
@@ -165,7 +212,8 @@ enum Sim {
         }
         // Cross matchups, both orderings, so agent strength can be separated
         // from seat advantage.
-        for (a, b) in [("greedy", "random"), ("inference", "greedy"), ("inference", "random")] {
+        for (a, b) in [("greedy", "random"), ("inference", "greedy"), ("inference", "random"),
+                       ("inference", "naive"), ("greedy", "naive"), ("naive", "random")] {
             for (p1n, p2n) in [(a, b), (b, a)] {
                 let records = run(
                     games: games, config: config, baseSeed: seed, threads: threads,
@@ -237,6 +285,33 @@ enum Sim {
 
     /// An agent identical to InferenceAgent except that it reveals at random.
     /// The control group for "does the reveal decision matter".
+    /// Splits with one strategy and chooses with another.
+    ///
+    /// I-cut-you-choose has two entirely separate skills, and an agent that is
+    /// no better than the naive baseline could be failing at either. This takes
+    /// them apart so the measurement says which.
+    struct Hybrid: GameAgent {
+        let name: String
+        let splitter: any GameAgent
+        let chooser: any GameAgent
+
+        func split(_ view: PlayerView, rng: inout SeededRNG) -> SplitDecision {
+            splitter.split(view, rng: &rng)
+        }
+        func choose(_ view: PlayerView, rng: inout SeededRNG) -> PileID {
+            chooser.choose(view, rng: &rng)
+        }
+        func selectReveal(_ view: PlayerView, count: Int, rng: inout SeededRNG) -> [ScoringCardID] {
+            splitter.selectReveal(view, count: count, rng: &rng)
+        }
+        func draftPick(_ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG) -> ScoringCardID {
+            splitter.draftPick(view, legal: legal, rng: &rng)
+        }
+        func revealAdditional(_ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG) -> ScoringCardID {
+            splitter.revealAdditional(view, legal: legal, rng: &rng)
+        }
+    }
+
     struct RandomRevealInference: GameAgent {
         let inner = InferenceAgent()
         var name: String { "inference-random-reveal" }

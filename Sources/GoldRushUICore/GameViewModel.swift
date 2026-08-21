@@ -10,6 +10,8 @@ public enum Screen: Sendable, Equatable {
     case handoff(to: PlayerID)
     case split
     case choose
+    /// What the round just did: both splits, and which piles were taken.
+    case roundRecap
     case scoring
 }
 
@@ -29,6 +31,14 @@ public final class GameViewModel {
     public private(set) var splitBuilder: SplitBuilder?
     /// Reveal picks being assembled on the reveal screen.
     public private(set) var revealSelection: [ScoringCardID] = []
+
+    /// The round the recap is currently showing, if it is showing one.
+    ///
+    /// Held in the view model rather than the engine: the recap is a local
+    /// pause for reading, not a turn. Making it a phase would put an
+    /// acknowledgement round-trip between every round of a remote game, which
+    /// is exactly the waiting simultaneous splitting exists to remove.
+    private var recapForRound: Int?
 
     private let transport: any MatchTransport
     private let usesHandoff: Bool
@@ -91,9 +101,21 @@ public final class GameViewModel {
     /// Accepts state that arrived from elsewhere -- the opponent's device.
     public func adopt(_ updated: GameState) {
         guard updated != state else { return }
+        let before = state.lastRound?.round
         state = updated
+        noteRoundEnded(previously: before)
         viewingPlayer = Self.seat(preferring: updated.actingPlayer, within: localSeats)
         refresh()
+    }
+
+    /// Queues the recap when a round has resolved since the last look.
+    ///
+    /// Skipped on the final round: the scoring screen supersedes it, and
+    /// making someone dismiss a recap to reach their result is friction at the
+    /// exact moment they want the answer.
+    private func noteRoundEnded(previously: Int?) {
+        guard !state.isFinished, let last = state.lastRound, last.round != previously else { return }
+        recapForRound = last.round
     }
 
     /// The only window onto the game the UI is given.
@@ -107,6 +129,23 @@ public final class GameViewModel {
 
     public var round: Int { state.round }
     public var isFinished: Bool { state.isFinished }
+
+    /// Whether a finished round is waiting to be read.
+    var hasUnreadRecap: Bool {
+        guard let last = state.lastRound else { return false }
+        return recapForRound == last.round
+    }
+
+    /// Dismisses the recap and moves on to the next round.
+    public func acknowledgeRecap() {
+        recapForRound = nil
+        refresh()
+    }
+
+    /// The splits from the round just finished, as this player may see them.
+    public var recapSplits: [PlayerView.ResolvedSplit] { view.lastRound }
+
+    public var recapRound: Int { state.lastRound?.round ?? state.round }
 
     static func screen(for state: GameState, viewing: PlayerID) -> Screen {
         switch state.phase {
@@ -188,8 +227,10 @@ public final class GameViewModel {
         // merely unlikely.
         guard isLocalTurn else { return }
 
+        let before = state.lastRound?.round
         try? await transport.submit(action)
         state = state.apply(action)
+        noteRoundEnded(previously: before)
 
         if let next = state.actingPlayer, next != viewingPlayer,
            usesHandoff, !state.isFinished {
@@ -207,6 +248,14 @@ public final class GameViewModel {
 
     private func refresh() {
         guard !awaitingHandoff else { return }
+        // The recap sits in front of whatever comes next. On a shared device
+        // that means it lands after the curtain, so the player about to act is
+        // the one who reads it.
+        if hasUnreadRecap {
+            screen = .roundRecap
+            splitBuilder = nil
+            return
+        }
         screen = Self.screen(for: state, viewing: viewingPlayer)
         if state.phase == .split, state.actingPlayer == viewingPlayer,
            localSeats.contains(viewingPlayer) {

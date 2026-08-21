@@ -59,7 +59,7 @@ struct SerializationTests {
                     Array(hand.prefix(state.config.initialRevealCount))))
             case .split:
                 let split = PlaythroughHarness.randomLegalSplit(
-                    draw: state.currentDraw,
+                    draw: state.currentDraw[state.actingPlayer ?? .p1],
                     faceDownCount: state.config.faceDownCount(round: state.round),
                     rng: &rng)
                 state = state.apply(.split(
@@ -94,7 +94,7 @@ struct SerializationTests {
             switch state.phase {
             case .split:
                 let split = PlaythroughHarness.randomLegalSplit(
-                    draw: state.currentDraw,
+                    draw: state.currentDraw[state.actingPlayer ?? .p1],
                     faceDownCount: state.config.faceDownCount(round: state.round),
                     rng: &rng)
                 return state.apply(.split(

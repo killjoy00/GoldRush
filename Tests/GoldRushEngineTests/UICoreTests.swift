@@ -156,12 +156,14 @@ struct SplitBuilderTests {
 }
 
 /// `AgentTransport` used to run the agent forward only in reaction to a
-/// human `submit()`. That was fine when the human always acted first -- the
-/// non-drafted setup guarantees it, since reveal selection resolves p1
-/// before p2 -- but the draft's snake order opens on p2, and solo play
-/// always seats the human as p1. Nothing ever prompted the agent: it was not
-/// the human's turn, and the human had not submitted anything for the
-/// transport to react to. Reported as drafting vs. AI hanging immediately.
+/// human `submit()`, so nothing ever prompted the agent when the opening move
+/// was not the human's: it was not the human's turn, and the human had not
+/// submitted anything for the transport to react to. Reported as drafting vs.
+/// the AI hanging immediately.
+///
+/// The `start()` hook fixes it in general rather than for that one setup, and
+/// this suite pins the general property -- which is why it seats the human
+/// second rather than relying on any particular phase opening on p2.
 @MainActor
 @Suite("Agent transport")
 struct AgentTransportTests {
@@ -174,24 +176,27 @@ struct AgentTransportTests {
         return .draftPick(pick)
     }
 
-    @Test("The agent opens a drafted game instead of the screen hanging")
-    func agentOpensDraftedGame() async {
+    @Test("The agent opens a game whose first move is not the human's")
+    func agentOpensWhenItActsFirst() async {
+        // Seat the human second so the opening move belongs to the agent. The
+        // original bug was the drafted setup opening on a seat the human did
+        // not hold; the pack draft happens to open on p1 now, so this
+        // constructs the general case rather than depending on that detail.
         let config = GameConfig(scoringDraft: true)
         let state = GameState.newGame(config: config, seed: 900)
-        // The draft's snake order is a fixed constant, not seed-dependent --
-        // this is true of every drafted game, which is exactly the bug.
-        #expect(state.actingPlayer == .p2)
+        #expect(state.actingPlayer == .p1)
 
-        let transport = AgentTransport(state: state, humanSeat: .p1, seed: 1, decide: Self.draftsFirstLegalCard)
+        let transport = AgentTransport(state: state, humanSeat: .p2, seed: 1, decide: Self.draftsFirstLegalCard)
         let model = GameViewModel(state: state, transport: transport)
 
         // The kickoff runs on a Task scheduled from init; give it a turn.
         await Task.yield()
         await Task.yield()
 
-        // The agent drafted its opening pick with no human action at all,
-        // and the draft has moved on to the human's turn.
-        #expect(model.view.draftPool.count == GameConfig.draftPoolSize - 1)
+        // The agent drafted its opening pick with no human action at all, and
+        // play has come round to the human.
         #expect(model.isLocalTurn)
+        #expect(model.state.hands.p1.count == 1)
+        #expect(model.state.hands.p2.isEmpty)
     }
 }
