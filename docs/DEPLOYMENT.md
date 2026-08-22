@@ -160,9 +160,10 @@ failed upload does not mean a lost build.
 
 ## Advertising
 
-The app shows a single AdMob banner, pinned under the **How to play** screen.
-That is the only screen a player reads rather than plays, so it is the one
-place a banner hides no card and interrupts no decision.
+The app shows a single AdMob banner, pinned under the **home screen** (the
+menu shown before a game starts). That is the screen every session opens on,
+and it is never a board, a split, or a choice, so a banner there never lands
+mid-decision.
 
 ### Where the SDK lives, and why
 
@@ -210,6 +211,6 @@ from Google's documentation if the app ever earns enough for it to matter.
 
 CI compiles the SDK and archives the app, which catches a broken API or a
 mis-wired project file. It **cannot** tell you whether a banner actually
-appears -- that needs a real device. Look at the How to play screen on the
-first build carrying ads before submitting anything to review.
+appears -- that needs a real device. Look at the home screen on the first
+build carrying ads before submitting anything to review.
 

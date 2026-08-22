@@ -354,6 +354,11 @@ public struct NewGameView: View {
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
+        // Pinned to the home screen rather than How to play: this is the
+        // screen every session opens on, so it is the one placement that
+        // shows an ad without ever being able to land mid-decision -- nothing
+        // here is a board, a split, or a choice.
+        .safeAreaInset(edge: .bottom) { AdSlot.bannerView }
         #if canImport(GameKit)
         .sheet(isPresented: $showMatchmaker) {
             GameCenterMatchmakerView(
