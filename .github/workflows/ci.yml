@@ -106,3 +106,88 @@ jobs:
           test -d "$RUNNER_TEMP/CIGoldRush.xcarchive" \
             || { echo "::error::archive produced no .xcarchive"; exit 1; }
           echo "Archive created and readable."
+
+  ipad-compat-screenshot:
+    name: iPad compatibility-mode screenshot
+    # Nobody on this project has a Mac or an iPad, so this is the only way
+    # to actually SEE the rendering App Review saw: build for the Simulator,
+    # boot the same device/OS the rejection named, launch, and screenshot.
+    # An iPhone-only app (TARGETED_DEVICE_FAMILY=1) runs on iPad in a small
+    # iPhone-shaped "compatibility mode" window rather than a real iPad
+    # layout, and there is no way to opt an iPhone-only app out of that --
+    # so this job renders the same window App Review does, on every push,
+    # rather than trusting the layout math to be right.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
+      - name: Build for the iOS Simulator
+        run: |
+          set -o pipefail
+          cd App
+          xcodebuild build \
+            -project GoldRush.xcodeproj \
+            -scheme GoldRush \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            -skipMacroValidation \
+            GOLDRUSH_BUNDLE_ID=com.goldrush.ci \
+            CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/sim-build.log" 2>&1 || { echo "=== errors ==="; grep -E "error:" "$RUNNER_TEMP/sim-build.log" | sort -u | head -40; exit 1; }
+
+      - name: Boot the review device and screenshot the home screen
+        run: |
+          set -o pipefail
+          echo "=== Available iPad device types ==="
+          xcrun simctl list devicetypes | grep -i ipad || true
+          echo "=== Available iOS/iPadOS runtimes ==="
+          xcrun simctl list runtimes
+
+          # Match the rejection's named device ("iPad Air 11-inch (M3)") by
+          # substring rather than the exact string, since Apple's device-type
+          # identifiers do not always match the marketing name verbatim.
+          # jq rather than an embedded multi-line python3 script, which is
+          # awkward to indent correctly inside a YAML block scalar.
+          DEVICE_TYPE=$(xcrun simctl list devicetypes -j | jq -r \
+            '.devicetypes[] | select(.name | ascii_downcase | contains("ipad air 11")) | .identifier' | head -n1)
+          if [ -z "$DEVICE_TYPE" ]; then
+            echo "::warning::No 'iPad Air 11-inch' simulator device type found; falling back to any iPad Air."
+            DEVICE_TYPE=$(xcrun simctl list devicetypes -j | jq -r \
+              '.devicetypes[] | select(.name | ascii_downcase | contains("ipad air")) | .identifier' | head -n1)
+          fi
+          test -n "$DEVICE_TYPE" || { echo "::error::No iPad Air simulator device type available on this runner."; exit 1; }
+          echo "Using device type: $DEVICE_TYPE"
+
+          RUNTIME=$(xcrun simctl list runtimes -j | jq -r \
+            '[.runtimes[] | select(.isAvailable and (.name | contains("iPadOS")))] | sort_by(.version) | last | .identifier // empty')
+          if [ -z "$RUNTIME" ]; then
+            RUNTIME=$(xcrun simctl list runtimes -j | jq -r \
+              '[.runtimes[] | select(.isAvailable and (.name | contains("iOS")))] | sort_by(.version) | last | .identifier // empty')
+          fi
+          test -n "$RUNTIME" || { echo "::error::No usable simulator runtime found."; exit 1; }
+          echo "Using runtime: $RUNTIME"
+
+          DEVICE_ID=$(xcrun simctl create ReviewIPad "$DEVICE_TYPE" "$RUNTIME")
+          echo "Created device: $DEVICE_ID"
+          xcrun simctl boot "$DEVICE_ID"
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+
+          APP_PATH=$(find "$RUNNER_TEMP/dd/Build/Products" -maxdepth 2 -name "GoldRush.app" -path "*iphonesimulator*" | head -1)
+          test -n "$APP_PATH" || { echo "::error::Could not find built GoldRush.app for the simulator."; find "$RUNNER_TEMP/dd/Build/Products" -maxdepth 2; exit 1; }
+          echo "App: $APP_PATH"
+
+          xcrun simctl install "$DEVICE_ID" "$APP_PATH"
+          xcrun simctl launch "$DEVICE_ID" com.goldrush.ci
+          sleep 4
+          mkdir -p "$RUNNER_TEMP/screenshots"
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshots/home-screen.png"
+          xcrun simctl shutdown "$DEVICE_ID" || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ipad-compat-screenshot
+          path: ${{ runner.temp }}/screenshots/*.png
+          if-no-files-found: warn
+          retention-days: 14

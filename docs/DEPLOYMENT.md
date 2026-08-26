@@ -158,6 +158,53 @@ failed upload does not mean a lost build.
 
 ---
 
+## Device compatibility
+
+The app ships **iPhone-only** (`TARGETED_DEVICE_FAMILY = 1`). Every screen is
+laid out vertically for a phone, and nobody on this project has an iPad to
+check what any of it looks like in landscape or at iPad proportions, so
+claiming iPad support nobody has ever viewed would be worse than not claiming
+it. This is also what avoids error 90474 (an iPad-supporting app must declare
+all four orientations to support multitasking; this app is portrait-only).
+
+**This does not mean the app is iPhone-exclusive on the App Store.** An
+iPhone-only app is still installable on iPad — iPadOS runs it in a small,
+iPhone-shaped "compatibility mode" window rather than a real iPad layout, and
+there is no supported way to opt an iPhone-only app out of that. App Review
+tests this, on a real iPad, as a matter of course.
+
+That window is considerably shorter than any iPhone the app was actually
+designed against. A screen built as a fixed-height `VStack` with `Spacer()`s
+assuming iPhone-sized slack has nowhere to put the overflow in that window and
+clips it — which is exactly the "top and bottom of the screen is cut off"
+rejection this project hit under Guideline 4, reviewed on an iPad Air.
+
+**The fix, applied everywhere a full-screen view uses this pattern**
+(`RootView.menu`, `RootView.waitingForOpponent`, `HandoffView`): wrap the
+content in `GeometryReader { proxy in ScrollView { ... .frame(minHeight:
+proxy.size.height) } }` instead of a bare `VStack`. On a normal iPhone screen
+the `Spacer()`s still expand to fill `proxy.size.height`, so the look is
+unchanged. On a canvas too short for the content, the frame's `minHeight` is
+just a floor — the `VStack` takes its natural (taller) size instead, and the
+`ScrollView` scrolls through the difference rather than clipping it. Screens
+that already wrap their content in `ScrollView` for an unrelated reason
+(`SplitView`, `ChooseView`, `RevealSelectionView`, `ScoringView`,
+`RoundRecapView`) do not need this — they already degrade the same way.
+
+### Seeing it, without a Mac or an iPad
+
+The `ipad-compat-screenshot` CI job builds the app for the iOS Simulator,
+boots the same device model App Review's rejection named, launches the app,
+and uploads a screenshot as a build artifact. It looks up the device type and
+runtime by substring match against whatever the runner actually has rather
+than a hardcoded identifier, since Apple's simulator identifiers do not
+always match the marketing name. **Look at that screenshot after any change
+to a full-screen view, before assuming a layout fix actually worked** — this
+is the same "verify, don't guess" reasoning behind archiving unsigned on
+every push: the alternative is finding out from a rejection two days later.
+
+---
+
 ## Advertising
 
 The app shows a single AdMob banner, pinned under the **home screen** (the

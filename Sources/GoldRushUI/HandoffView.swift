@@ -17,35 +17,43 @@ public struct HandoffView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 22) {
-            Spacer()
-            Image(systemName: "hand.raised.fill")
-                .font(.system(size: 54))
-                .foregroundStyle(Theme.gold)
-            Text("Pass the device to")
-                .font(.system(size: 16))
-                .foregroundStyle(Theme.parchment.opacity(0.75))
-            Text(player.displayName)
-                .font(.system(size: 34, weight: .heavy, design: .rounded))
-                .foregroundStyle(Theme.goldBright)
-            Text("Everything on screen is private to this player.")
-                .font(.system(size: 12))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(Theme.parchment.opacity(0.6))
-                .padding(.horizontal, 40)
-            Spacer()
-            Button(action: onContinue) {
-                Text("I'm \(player.displayName) — show my board")
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 15)
-                    .background(Theme.gold, in: RoundedRectangle(cornerRadius: 13))
-                    .foregroundStyle(Theme.dirt)
+        // GeometryReader + ScrollView, not a bare VStack: on a canvas shorter
+        // than an iPhone's -- iPad's compatibility mode for an iPhone-only
+        // app renders one -- a fixed VStack has nowhere to put the overflow
+        // and clips it instead of showing it.
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 22) {
+                    Spacer(minLength: 12)
+                    Image(systemName: "hand.raised.fill")
+                        .font(.system(size: 54))
+                        .foregroundStyle(Theme.gold)
+                    Text("Pass the device to")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Theme.parchment.opacity(0.75))
+                    Text(player.displayName)
+                        .font(.system(size: 34, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Theme.goldBright)
+                    Text("Everything on screen is private to this player.")
+                        .font(.system(size: 12))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(Theme.parchment.opacity(0.6))
+                        .padding(.horizontal, 40)
+                    Spacer(minLength: 12)
+                    Button(action: onContinue) {
+                        Text("I'm \(player.displayName) — show my board")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 15)
+                            .background(Theme.gold, in: RoundedRectangle(cornerRadius: 13))
+                            .foregroundStyle(Theme.dirt)
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 34)
+                }
+                .frame(minWidth: proxy.size.width, minHeight: proxy.size.height)
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 34)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
     }
 }
