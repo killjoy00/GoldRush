@@ -117,23 +117,31 @@ public struct RootView: View {
 
     @ViewBuilder
     var waitingForOpponent: some View {
-        VStack(spacing: 14) {
-            Spacer()
-            ProgressView().tint(Theme.gold)
-            Text("Waiting for your opponent")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Theme.parchment)
-            Text(waitingDetail)
-                .font(.system(size: 12))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(Theme.parchment.opacity(0.65))
-                .padding(.horizontal, 40)
-            Text("You can close the app — it's your move when they're done.")
-                .font(.system(size: 11))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(Theme.parchment.opacity(0.45))
-                .padding(.horizontal, 40)
-            Spacer()
+        // GeometryReader + ScrollView so a canvas shorter than an iPhone's --
+        // iPad's compatibility mode for an iPhone-only app renders one -- can
+        // scroll this instead of clipping it top and bottom.
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 14) {
+                    Spacer(minLength: 12)
+                    ProgressView().tint(Theme.gold)
+                    Text("Waiting for your opponent")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.parchment)
+                    Text(waitingDetail)
+                        .font(.system(size: 12))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(Theme.parchment.opacity(0.65))
+                        .padding(.horizontal, 40)
+                    Text("You can close the app — it's your move when they're done.")
+                        .font(.system(size: 11))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(Theme.parchment.opacity(0.45))
+                        .padding(.horizontal, 40)
+                    Spacer(minLength: 12)
+                }
+                .frame(minWidth: proxy.size.width, minHeight: proxy.size.height)
+            }
         }
     }
 
@@ -273,86 +281,97 @@ public struct NewGameView: View {
 
     @ViewBuilder
     var menu: some View {
-        VStack(spacing: 18) {
-            Spacer()
-            // The app icon's composition, rebuilt in vectors: two cards fanned
-            // behind a nugget. The title screen and the home screen should be
-            // recognisably the same object.
-            ZStack {
-                RadialGradient(colors: [Theme.ember.opacity(0.75), .clear],
-                               center: .center, startRadius: 6, endRadius: 108)
-                ForEach([-1.0, 1.0], id: \.self) { side in
-                    RoundedRectangle(cornerRadius: 9)
-                        .fill(Theme.dirtDeep)
-                        .overlay {
+        // GeometryReader + ScrollView rather than a bare VStack: on a canvas
+        // shorter than an iPhone's -- iPad's compatibility mode for an
+        // iPhone-only app renders one -- the fixed VStack this used to be had
+        // nowhere to put the overflow and simply clipped it top and bottom.
+        // `minHeight: proxy.size.height` keeps today's vertically-centered
+        // look on a normal screen (the Spacers still expand to fill it) while
+        // letting a shorter one scroll instead of clip.
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 18) {
+                    Spacer(minLength: 12)
+                    // The app icon's composition, rebuilt in vectors: two cards fanned
+                    // behind a nugget. The title screen and the home screen should be
+                    // recognisably the same object.
+                    ZStack {
+                        RadialGradient(colors: [Theme.ember.opacity(0.75), .clear],
+                                       center: .center, startRadius: 6, endRadius: 108)
+                        ForEach([-1.0, 1.0], id: \.self) { side in
                             RoundedRectangle(cornerRadius: 9)
-                                .strokeBorder(Theme.gold.opacity(0.55), lineWidth: 1.5)
+                                .fill(Theme.dirtDeep)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 9)
+                                        .strokeBorder(Theme.gold.opacity(0.55), lineWidth: 1.5)
+                                }
+                                .frame(width: 56, height: 82)
+                                .rotationEffect(.degrees(21 * side))
+                                .offset(x: 31 * side, y: 2)
                         }
-                        .frame(width: 56, height: 82)
-                        .rotationEffect(.degrees(21 * side))
-                        .offset(x: 31 * side, y: 2)
+                        MiningArt(.goldNugget)
+                            .frame(width: 84, height: 84)
+                            .shadow(color: Theme.ember.opacity(0.9), radius: 14)
+                    }
+                    .frame(width: 190, height: 124)
+
+                    VStack(spacing: 5) {
+                        Text("GOLD RUSH")
+                            .font(.system(size: 42, weight: .black, design: .rounded))
+                            .tracking(4)
+                            .foregroundStyle(
+                                LinearGradient(colors: [Theme.goldBright, Theme.gold, Theme.goldDeep],
+                                               startPoint: .top, endPoint: .bottom)
+                            )
+                            .shadow(color: .black.opacity(0.55), radius: 5, y: 3)
+                        // A hairline rule either side of the tagline, the way a claim
+                        // notice would have been set.
+                        HStack(spacing: 9) {
+                            rule
+                            Text("SPLIT THE CLAIM")
+                                .font(.system(size: 10, weight: .bold))
+                                .tracking(2.4)
+                                .foregroundStyle(Theme.parchment.opacity(0.75))
+                                .fixedSize()
+                            rule
+                        }
+                        .frame(maxWidth: 260)
+                    }
+                    Spacer()
+
+                    setupPicker
+                        .padding(.bottom, 4)
+
+                    Button { startPassAndPlay() } label: {
+                        menuLabel("Pass and play", "Two players, one device", filled: true)
+                    }
+                    Button { startSolo() } label: {
+                        menuLabel("Play the prospector", "Single player vs the AI", filled: false)
+                    }
+                    #if canImport(GameKit)
+                    Button { startOnline() } label: {
+                        menuLabel("Play a friend online", onlineSubtitle, filled: false)
+                    }
+                    .disabled(!GameCenterAuth.shared.isSignedIn)
+                    .opacity(GameCenterAuth.shared.isSignedIn ? 1 : 0.5)
+                    #endif
+
+                    Button { showRules = true } label: {
+                        Label("How to play", systemImage: "book.closed.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.parchment.opacity(0.7))
+                            .padding(.top, 2)
+                    }
+                    .sheet(isPresented: $showRules) {
+                        RulesView { showRules = false }
+                    }
+
+                    Spacer(minLength: 12)
                 }
-                MiningArt(.goldNugget)
-                    .frame(width: 84, height: 84)
-                    .shadow(color: Theme.ember.opacity(0.9), radius: 14)
+                .padding(24)
+                .frame(minWidth: proxy.size.width, minHeight: proxy.size.height)
             }
-            .frame(width: 190, height: 124)
-
-            VStack(spacing: 5) {
-                Text("GOLD RUSH")
-                    .font(.system(size: 42, weight: .black, design: .rounded))
-                    .tracking(4)
-                    .foregroundStyle(
-                        LinearGradient(colors: [Theme.goldBright, Theme.gold, Theme.goldDeep],
-                                       startPoint: .top, endPoint: .bottom)
-                    )
-                    .shadow(color: .black.opacity(0.55), radius: 5, y: 3)
-                // A hairline rule either side of the tagline, the way a claim
-                // notice would have been set.
-                HStack(spacing: 9) {
-                    rule
-                    Text("SPLIT THE CLAIM")
-                        .font(.system(size: 10, weight: .bold))
-                        .tracking(2.4)
-                        .foregroundStyle(Theme.parchment.opacity(0.75))
-                        .fixedSize()
-                    rule
-                }
-                .frame(maxWidth: 260)
-            }
-            Spacer()
-
-            setupPicker
-                .padding(.bottom, 4)
-
-            Button { startPassAndPlay() } label: {
-                menuLabel("Pass and play", "Two players, one device", filled: true)
-            }
-            Button { startSolo() } label: {
-                menuLabel("Play the prospector", "Single player vs the AI", filled: false)
-            }
-            #if canImport(GameKit)
-            Button { startOnline() } label: {
-                menuLabel("Play a friend online", onlineSubtitle, filled: false)
-            }
-            .disabled(!GameCenterAuth.shared.isSignedIn)
-            .opacity(GameCenterAuth.shared.isSignedIn ? 1 : 0.5)
-            #endif
-
-            Button { showRules = true } label: {
-                Label("How to play", systemImage: "book.closed.fill")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Theme.parchment.opacity(0.7))
-                    .padding(.top, 2)
-            }
-            .sheet(isPresented: $showRules) {
-                RulesView { showRules = false }
-            }
-
-            Spacer()
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.background)
         // Pinned to the home screen rather than How to play: this is the
         // screen every session opens on, so it is the one placement that
