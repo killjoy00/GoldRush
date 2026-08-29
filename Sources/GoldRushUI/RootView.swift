@@ -495,7 +495,14 @@ public struct NewGameView: View {
         switch GameCenterAuth.shared.status {
         case .signedIn(let name): "Game Center — \(name)"
         case .signedOut: "Sign in to Game Center first"
-        case .failed(let message): message
+        // GameKit's own wording here is a sentence of internal jargon --
+        // "The requested operation could not be completed because local
+        // player has not been authenticated" -- and it wraps to two lines
+        // inside the button. It is also the state any device that is simply
+        // not signed in lands in, App Review's included, so it is the string
+        // most people see rather than an edge case. The underlying message
+        // stays available on GameCenterAuth.status for diagnosis.
+        case .failed: "Sign in to Game Center first"
         case .unknown: "Connecting to Game Center…"
         }
     }
