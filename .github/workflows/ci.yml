@@ -179,10 +179,31 @@ jobs:
 
           xcrun simctl install "$DEVICE_ID" "$APP_PATH"
           xcrun simctl launch "$DEVICE_ID" com.goldrush.ci
-          sleep 4
+          # The launch animation and the ad slot both settle late; a short
+          # wait screenshots a half-drawn screen and wastes the round trip.
+          sleep 8
           mkdir -p "$RUNNER_TEMP/screenshots"
           xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshots/home-screen.png"
           xcrun simctl shutdown "$DEVICE_ID" || true
+
+          # The first version of this fix passed CI and was rejected anyway:
+          # the home screen scrolled, but App Review looks at the screen
+          # rather than scrolling it, so the buttons below the fold still
+          # read as "cut off". The screenshot alone did not make that
+          # obvious, so print the geometry the layout actually has to fit
+          # inside, and how much of the frame the app window occupies.
+          echo "=== screenshot geometry ==="
+          python3 - "$RUNNER_TEMP/screenshots/home-screen.png" <<'PY'
+          import struct, sys
+          path = sys.argv[1]
+          with open(path, 'rb') as fh:
+              head = fh.read(32)
+          # PNG: 8-byte signature, then the IHDR chunk carries width/height.
+          w, h = struct.unpack('>II', head[16:24])
+          print(f"screenshot pixels: {w} x {h}")
+          # The compatibility window is rendered at 2x, so points are half.
+          print(f"approx points at 2x: {w // 2} x {h // 2}")
+          PY
 
       - uses: actions/upload-artifact@v4
         if: always()

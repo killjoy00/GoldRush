@@ -289,15 +289,25 @@ public struct NewGameView: View {
         // look on a normal screen (the Spacers still expand to fill it) while
         // letting a shorter one scroll instead of clip.
         GeometryReader { proxy in
+            // On a short canvas the full-size hero and title simply do not
+            // leave room for the buttons, and a ScrollView alone does not
+            // solve that: App Review looks at the screen rather than
+            // scrolling it, and reported the bottom "cut off" even once it
+            // scrolled. So the chrome shrinks to make the whole menu fit.
+            // 780pt keeps every current iPhone (844pt and up) on the full-size
+            // layout; it catches the small ones and iPad's iPhone-compatibility
+            // window, which is what App Review saw.
+            let compact = proxy.size.height < 780
             ScrollView {
-                VStack(spacing: 18) {
-                    Spacer(minLength: 12)
+                VStack(spacing: compact ? 10 : 18) {
+                    Spacer(minLength: compact ? 4 : 12)
                     // The app icon's composition, rebuilt in vectors: two cards fanned
                     // behind a nugget. The title screen and the home screen should be
                     // recognisably the same object.
                     ZStack {
                         RadialGradient(colors: [Theme.ember.opacity(0.75), .clear],
-                                       center: .center, startRadius: 6, endRadius: 108)
+                                       center: .center, startRadius: 6,
+                                       endRadius: compact ? 74 : 108)
                         ForEach([-1.0, 1.0], id: \.self) { side in
                             RoundedRectangle(cornerRadius: 9)
                                 .fill(Theme.dirtDeep)
@@ -305,20 +315,20 @@ public struct NewGameView: View {
                                     RoundedRectangle(cornerRadius: 9)
                                         .strokeBorder(Theme.gold.opacity(0.55), lineWidth: 1.5)
                                 }
-                                .frame(width: 56, height: 82)
+                                .frame(width: compact ? 39 : 56, height: compact ? 57 : 82)
                                 .rotationEffect(.degrees(21 * side))
-                                .offset(x: 31 * side, y: 2)
+                                .offset(x: (compact ? 21 : 31) * side, y: 2)
                         }
                         MiningArt(.goldNugget)
-                            .frame(width: 84, height: 84)
-                            .shadow(color: Theme.ember.opacity(0.9), radius: 14)
+                            .frame(width: compact ? 58 : 84, height: compact ? 58 : 84)
+                            .shadow(color: Theme.ember.opacity(0.9), radius: compact ? 10 : 14)
                     }
-                    .frame(width: 190, height: 124)
+                    .frame(width: compact ? 132 : 190, height: compact ? 86 : 124)
 
-                    VStack(spacing: 5) {
+                    VStack(spacing: compact ? 3 : 5) {
                         Text("GOLD RUSH")
-                            .font(.system(size: 42, weight: .black, design: .rounded))
-                            .tracking(4)
+                            .font(.system(size: compact ? 30 : 42, weight: .black, design: .rounded))
+                            .tracking(compact ? 2.5 : 4)
                             .foregroundStyle(
                                 LinearGradient(colors: [Theme.goldBright, Theme.gold, Theme.goldDeep],
                                                startPoint: .top, endPoint: .bottom)
@@ -329,7 +339,7 @@ public struct NewGameView: View {
                         HStack(spacing: 9) {
                             rule
                             Text("SPLIT THE CLAIM")
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.system(size: compact ? 9 : 10, weight: .bold))
                                 .tracking(2.4)
                                 .foregroundStyle(Theme.parchment.opacity(0.75))
                                 .fixedSize()
@@ -337,20 +347,20 @@ public struct NewGameView: View {
                         }
                         .frame(maxWidth: 260)
                     }
-                    Spacer()
+                    Spacer(minLength: compact ? 2 : 8)
 
-                    setupPicker
-                        .padding(.bottom, 4)
+                    setupPicker(compact: compact)
+                        .padding(.bottom, compact ? 0 : 4)
 
                     Button { startPassAndPlay() } label: {
-                        menuLabel("Pass and play", "Two players, one device", filled: true)
+                        menuLabel("Pass and play", "Two players, one device", filled: true, compact: compact)
                     }
                     Button { startSolo() } label: {
-                        menuLabel("Play the prospector", "Single player vs the AI", filled: false)
+                        menuLabel("Play the prospector", "Single player vs the AI", filled: false, compact: compact)
                     }
                     #if canImport(GameKit)
                     Button { startOnline() } label: {
-                        menuLabel("Play a friend online", onlineSubtitle, filled: false)
+                        menuLabel("Play a friend online", onlineSubtitle, filled: false, compact: compact)
                     }
                     .disabled(!GameCenterAuth.shared.isSignedIn)
                     .opacity(GameCenterAuth.shared.isSignedIn ? 1 : 0.5)
@@ -366,9 +376,10 @@ public struct NewGameView: View {
                         RulesView { showRules = false }
                     }
 
-                    Spacer(minLength: 12)
+                    Spacer(minLength: compact ? 4 : 12)
                 }
-                .padding(24)
+                .padding(.horizontal, compact ? 18 : 24)
+                .padding(.vertical, compact ? 12 : 24)
                 .frame(minWidth: proxy.size.width, minHeight: proxy.size.height)
             }
         }
@@ -415,8 +426,8 @@ public struct NewGameView: View {
 
     /// How the six scoring cards are handed out. Applies to every mode below.
     @ViewBuilder
-    var setupPicker: some View {
-        VStack(spacing: 6) {
+    func setupPicker(compact: Bool) -> some View {
+        VStack(spacing: compact ? 4 : 6) {
             Text("SCORING CARDS")
                 .font(.system(size: 10, weight: .bold))
                 .tracking(1)
@@ -429,10 +440,12 @@ public struct NewGameView: View {
             Text(useDraft
                  ? "Open a pack, take one card, pass the rest. No luck of the deal."
                  : "Six dealt at random to each player.")
-                .font(.system(size: 11))
+                .font(.system(size: compact ? 10 : 11))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.parchment.opacity(0.55))
-                .frame(height: 28)
+                // Fixed so the layout does not jump as the caption changes
+                // length. Two lines at the compact size still fit in 26.
+                .frame(height: compact ? 26 : 28)
 
             Text("SPLITTING")
                 .font(.system(size: 10, weight: .bold))
@@ -447,10 +460,10 @@ public struct NewGameView: View {
             Text(splitTogether
                  ? "Both split at once, then both choose. 4 rounds, no waiting."
                  : "One splits, the other chooses, then swap. 8 rounds.")
-                .font(.system(size: 11))
+                .font(.system(size: compact ? 10 : 11))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.parchment.opacity(0.55))
-                .frame(height: 28)
+                .frame(height: compact ? 26 : 28)
         }
     }
 
@@ -459,13 +472,13 @@ public struct NewGameView: View {
     }
 
     @ViewBuilder
-    func menuLabel(_ title: String, _ subtitle: String, filled: Bool) -> some View {
-        VStack(spacing: 3) {
-            Text(title).font(.system(size: 16, weight: .semibold))
-            Text(subtitle).font(.system(size: 11)).opacity(0.75)
+    func menuLabel(_ title: String, _ subtitle: String, filled: Bool, compact: Bool = false) -> some View {
+        VStack(spacing: compact ? 1 : 3) {
+            Text(title).font(.system(size: compact ? 15 : 16, weight: .semibold))
+            Text(subtitle).font(.system(size: compact ? 10 : 11)).opacity(0.75)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
+        .padding(.vertical, compact ? 10 : 14)
         .background(filled ? Theme.gold : Theme.dirtLight, in: RoundedRectangle(cornerRadius: 13))
         .foregroundStyle(filled ? Theme.dirt : Theme.parchment)
     }
@@ -482,7 +495,14 @@ public struct NewGameView: View {
         switch GameCenterAuth.shared.status {
         case .signedIn(let name): "Game Center — \(name)"
         case .signedOut: "Sign in to Game Center first"
-        case .failed(let message): message
+        // GameKit's own wording here is a sentence of internal jargon --
+        // "The requested operation could not be completed because local
+        // player has not been authenticated" -- and it wraps to two lines
+        // inside the button. It is also the state any device that is simply
+        // not signed in lands in, App Review's included, so it is the string
+        // most people see rather than an edge case. The underlying message
+        // stays available on GameCenterAuth.status for diagnosis.
+        case .failed: "Sign in to Game Center first"
         case .unknown: "Connecting to Game Center…"
         }
     }
