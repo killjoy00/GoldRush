@@ -163,6 +163,11 @@ face-down card is revealed to both players on claim, it is only secret during th
 choice, and the permanent asymmetry — the reason to place a card face down at all
 — disappears. The default (`true`) is correct.
 
+**Update:** §12 builds the agent this section says does not exist yet, and
+re-runs this experiment against it. The gap was real, but smaller than
+expected, and only in one of the two round structures — worth reading before
+concluding the mechanic still does not matter.
+
 ---
 
 ## 4. Residual-deck uncertainty
@@ -587,6 +592,91 @@ not chased.
 
 Raw CSVs: `docs/simdata/balance_48cards_before_D6_retune_100k.csv` and
 `..._after_D6_retune_100k.csv`.
+
+---
+
+## 12. Applied: an agent that models what its opponent cannot know
+
+§3 and §7's "still open" note both point at the same gap: nothing in the
+simulator ever modelled what the OPPONENT has and has not seen, as distinct
+from what this player has. `OpponentModel.unseen` was simply
+`view.unseen` — this player's own uncertainty, relabelled. Correct turn one,
+wrong almost everywhere after: every round a player splits, they see their
+whole draw, not just what became public, so the two players' uncertainty
+about the deck diverges immediately and never resyncs.
+
+### What was actually missing
+
+Telling the two apart needs information the engine did not retain: how much
+of the deck each player has personally drawn through over the whole match,
+not just the round in front of them. `GameState` now keeps `splitLog` — for
+every split, the draw size, how many cards were buried, who split, and which
+pile was taken. Never a card identity: draw sizes and pile choices are not
+secrets, both players watch them happen live, the same way they already watch
+who takes a pile. `PlayerView.splitLog` is therefore the one field on that
+type that is identical for both players — it is exactly what they both saw.
+
+From that, `OpponentModel.unseen` computes the opponent's unseen COUNT
+exactly (verified by property test, not merely argued — `OpponentModelTests`
+drives full random games in both round structures and confirms the model's
+number matches the opponent's own reported truth at every split decision, 60
+scenarios, zero exceptions). The pool's per-type COMPOSITION cannot be exact
+the same way — which specific cards the opponent saw while splitting is not
+public, that is the whole point of the mechanic — so it is estimated by
+apportioning this player's own unseen pool to match, by largest remainder so
+the estimate's total never drifts from the count it was built from.
+
+### Why simultaneous splitting matters more here
+
+When splitting alternates, the opponent is never mid-draw at the moment this
+player is asked to split — nothing in the fix applies yet, the count was
+already right. When both players split every round, the opponent's
+current-round draw is dealt, and privately seen by them, before either split
+is submitted — before `splitLog` has an entry for it. That draw's SIZE is
+still public (everyone knows the round's draw count), so it is added in
+directly rather than reconstructed from history. This is the term with no
+sequential-mode analogue, and it is where most of the measured effect below
+comes from.
+
+### Measured against its own prior behaviour
+
+`inference-naive-model` is the pre-fix `OpponentModel` kept as a named agent
+purely for this comparison (`AgentFactory`; never selected by the app) — the
+same ablation pattern `BalancedAgent`/`NaiveAgent` already established.
+`GoldRushSim seat`, both seats averaged, 15k games:
+
+| Round structure | New vs. old win rate | 95% CI |
+|---|---|---|
+| Sequential (splitting alternates) | 50.6% | ±0.80pp |
+| Simultaneous (`simultaneousSplit`, the app default) | 51.5% | ±0.80pp |
+
+Sequential is inside the noise, as the mechanism above predicts. Simultaneous
+is not — both seat orderings landed at 51.5-51.6%, consistently outside the
+interval. Small, but real, in the mode the app actually defaults to.
+
+This also reopens §3 on better footing than "failed experiment," though not
+by much: re-running `hidden` (`inference` vs `greedy`, 50k games) shows
+persistence still barely moving the needle (49.42% vs 49.49% at one hidden
+card). That comparison was never going to move: `GreedyAgent` does not reason
+about a specific hidden card's likely identity at all, so a sharper guess
+about which card the opponent is hiding has nothing to exploit on the other
+side of the table. The fix is real and is now measured on itself rather than
+against an opponent structurally unable to show it.
+
+### Still open
+
+The same ceiling §3 named originally: `GreedyAgent`, not `InferenceAgent`, is
+what `hidden` and `reveal` measure against, and it still does not read a
+hidden card's likely identity at all. Measuring the mechanic's full value
+would need `hidden`/`reveal` re-pointed at `inference` vs `inference`, or a
+`GreedyAgent` upgraded to use `OpponentModel` too — either is real work
+separate from this fix.
+
+Test coverage: `Tests/GoldRushEngineTests/OpponentModelTests.swift` — a
+hand-computed two-round worked example, the general exactness property across
+both round structures and both `persistentHiddenCards` settings (60
+scenarios, full random games to completion), and that the composition
+estimate always sums back to the exact count.
 
 ---
 

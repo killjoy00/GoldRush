@@ -107,6 +107,14 @@ public struct PlayerView: Sendable, Equatable {
     /// pile, the recap will not tell you what it was either.
     public let lastRound: [ResolvedSplit]
 
+    /// Every split's public outcome for the whole match so far -- draw sizes,
+    /// who split, who took which pile, how many cards were buried. Never card
+    /// identities, so unlike everything else on this type it is identical for
+    /// both players: it is exactly what both of them watched happen live.
+    /// Exists so an agent can work out how much of the deck its opponent has
+    /// personally drawn through, without being told what any of it was.
+    public let splitLog: [SplitRecord]
+
     public var isMyTurn: Bool { actingPlayer == player }
     public let actingPlayer: PlayerID?
 
@@ -152,6 +160,7 @@ public struct PlayerView: Sendable, Equatable {
         self.hand = state.hands[player]
         self.myRevealed = state.revealed[player]
         self.draftPool = state.draftPacks[player]
+        self.splitLog = state.splitLog
         // Reveals are simultaneous: the opponent's picks stay private until both
         // players have committed, so resolving p1 before p2 in the action
         // sequence leaks nothing.

@@ -84,14 +84,111 @@ public struct OpponentModel: Sendable {
     public let knownCounts: MiningCounts
     /// Cards in their collection whose identity was never observed.
     public let hiddenCount: Int
-    /// The pool those hidden cards were drawn from, as far as this player knows.
+    /// The pool this player believes the OPPONENT is still uncertain about --
+    /// not this player's own uncertainty. See `opponentUnseen` below.
     public let unseen: MiningCounts
 
     public init(view: PlayerView) {
         self.revealedHand = view.opponentRevealed
         self.knownCounts = view.opponentKnownCounts
         self.hiddenCount = view.opponentHiddenCount
+        self.unseen = Self.opponentUnseen(view: view)
+    }
+
+    /// Ablation only: reproduces the model's PRE-`splitLog` behaviour, where
+    /// the opponent's uncertainty was silently assumed to equal this player's
+    /// own. Exists so the fix in `opponentUnseen` below can be measured
+    /// against its own prior behaviour (docs/SIM_FINDINGS.md §12) rather than
+    /// merely asserted -- never selected by the shipping app.
+    init(naiveFrom view: PlayerView) {
+        self.revealedHand = view.opponentRevealed
+        self.knownCounts = view.opponentKnownCounts
+        self.hiddenCount = view.opponentHiddenCount
         self.unseen = view.unseen
+    }
+
+    /// What the OPPONENT has not seen, estimated from public information only
+    /// -- never from anything only this player has observed.
+    ///
+    /// `view.unseen` is this player's own uncertainty. Reusing it for the
+    /// opponent silently assumes both players have watched the same amount of
+    /// the deck go by, which is true turn one and false almost everywhere
+    /// after: every round a player splits, they see their WHOLE draw, not
+    /// just whatever became public. A splitter's uncertainty drops by the
+    /// full draw size; a chooser's drops by less. Conflating the two is
+    /// exactly the gap `docs/SIM_FINDINGS.md` §3 names -- "both agents price
+    /// an unknown card identically" -- because there was previously no way for
+    /// an agent to tell the two apart at all.
+    ///
+    /// `view.splitLog` carries every past split's draw size, buried count, and
+    /// which pile was taken, without ever carrying a card identity, so the
+    /// COUNT of what the opponent has personally drawn through is computable
+    /// exactly. Which specific cards they saw when THEY split is not
+    /// recoverable from public information -- that is the whole point of the
+    /// mechanic -- so the pool's composition is estimated by assuming their
+    /// extra sightings looked like an average draw from this player's own
+    /// unseen pool, apportioned by largest remainder so the estimate's total
+    /// matches the count exactly rather than drifting from independent
+    /// per-type rounding.
+    static func opponentUnseen(view: PlayerView) -> MiningCounts {
+        let opponent = view.player.opponent
+        var opponentSeen = 0
+        for record in view.splitLog {
+            if record.splitter == opponent {
+                // They drew it, so they saw all of it -- including whatever
+                // they went on to bury.
+                opponentSeen += record.drawCount
+            } else {
+                // This player split; the opponent chose. Face-up cards are
+                // seen by anyone watching, face-down ones only once claimed --
+                // and, if hidden cards are not persistent, eventually anyway.
+                opponentSeen += (record.drawCount - record.faceDownCount) + record.faceDownInTaken
+                if !view.config.persistentHiddenCards {
+                    opponentSeen += record.faceDownCount - record.faceDownInTaken
+                }
+            }
+        }
+        // When both players split every round, the opponent's current-round
+        // draw is dealt (and privately observed by them) before either split
+        // is submitted -- `splitLog` has no entry for it yet, since it only
+        // grows once a split resolves, but the round's draw size is public,
+        // so this is not a peek at anything secret.
+        if view.config.splitters(round: view.round).contains(opponent) {
+            opponentSeen += view.config.drawCount(round: view.round)
+        }
+
+        let myUnseen = view.unseen
+        let myUnseenTotal = myUnseen.total
+        let opponentUnseenTotal = max(0, view.config.deckSize - opponentSeen)
+        // The opponent has not necessarily seen MORE than this player -- mid-
+        // game, before either has split as often as the other, it can go
+        // either way. Scaling `myUnseen` by the ratio handles both directions
+        // the same way; only the degenerate all-seen case needs a guard.
+        guard myUnseenTotal > 0 else { return myUnseen }
+
+        // Largest-remainder apportionment: floor each type's proportional
+        // share, then hand the shortfall -- always fewer than the eight
+        // types, since each floor loses less than one whole share -- to
+        // whichever types lost the most to flooring. Ties break on
+        // `MiningType`'s fixed declaration order rather than sort stability,
+        // so the result is reproducible rather than incidentally so.
+        var estimate = MiningCounts()
+        var remainders: [(index: Int, type: MiningType, remainder: Int)] = []
+        var allocated = 0
+        for (index, type) in MiningType.allCases.enumerated() {
+            let scaled = myUnseen[type] * opponentUnseenTotal
+            estimate[type] = scaled / myUnseenTotal
+            allocated += estimate[type]
+            remainders.append((index, type, scaled % myUnseenTotal))
+        }
+        let shortfall = opponentUnseenTotal - allocated
+        let ranked = remainders.sorted {
+            $0.remainder != $1.remainder ? $0.remainder > $1.remainder : $0.index < $1.index
+        }
+        for entry in ranked.prefix(shortfall) {
+            estimate[entry.type] += 1
+        }
+        return estimate
     }
 
     /// Their best guess at the opponent's collection, spreading unidentified
