@@ -247,12 +247,21 @@ means adding the ATT prompt, changing that answer to yes, and re-submitting.
 
 ### SKAdNetworkItems
 
-Only Google's own identifier (`cstr6suwn9.skadnetwork`) is listed. Google
-publishes a longer list covering every network that can bid; adding those
-improves attribution and therefore revenue, but it is an optimisation rather
-than a requirement, and roughly a hundred identifiers transcribed by hand is a
-good way to introduce a typo nobody will ever notice. Paste the current list
-from Google's documentation if the app ever earns enough for it to matter.
+All 50 identifiers from Google's current AdMob iOS mediation list are in
+`Info.plist` (developers.google.com/admob/ios/privacy/strategies). A wrong
+identifier here fails silently -- that network's installs simply stop
+attributing, with nothing to notice -- so the list was fetched directly and
+cross-checked against an independent extraction of the same page rather than
+transcribed by hand, and spliced into the plist programmatically rather than
+typed. If Google revises the list, regenerate it the same way:
+
+```bash
+curl -sSL https://developers.google.com/admob/ios/privacy/strategies \
+  | grep -oE '[a-z0-9]{10}\.skadnetwork' | awk '!seen[$0]++'
+```
+
+Diff the result against a second fetch before touching `Info.plist`, and
+prefer scripting the substitution over hand-editing fifty `<dict>` blocks.
 
 ### What CI cannot check
 
