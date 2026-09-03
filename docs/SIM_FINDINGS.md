@@ -269,8 +269,12 @@ In priority order, as originally proposed:
 2. **Retune P5 / P2 / P6 — applied.** Three screening packages were tested
    before touching the catalog (a gentle version, an aggressive version, and a
    hybrid); the hybrid won and is what shipped. Numbers and effect are in §8.
-3. **`L4 Riffle Box`** — the one payout outlier flagged under both agents.
-   **Not applied.** Flagged for a future pass if you want it.
+3. **`L4 Riffle Box`** — the one payout outlier flagged under both agents *at
+   the time this was written* (the 36-card catalog, pre-splitter-fix agent).
+   **Superseded rather than applied.** §10 already shows the flag had moved
+   to `D6 Muck Out` by the time the AI fix and the twelve new cards landed;
+   §11 retunes D6, and a fresh 48-card sweep puts L4 unremarkably mid-table
+   (50.6%, +1.06 SD) with no case for touching it.
 4. **Keep `persistentHiddenCards` on.** No change — this was always the
    recommendation, not a proposal to cut it. See §3.
 5. **Deck size is a weak lever** (§4). Left at 72, no change.
@@ -521,6 +525,68 @@ improving rather than chase them.
 `inference` and `greedy` are now a dead heat head-to-head (49.8%), so the
 opponent-modelling machinery continues to earn nothing measurable. That is a
 separate problem from the one this section fixed.
+
+---
+
+## 11. Applied: D6 Muck Out retune, and L4's flag retired
+
+A fresh full-catalog sweep (100k games, `inference`, seed 42, shipping code at
+the time — the same conditions as § 10) to check whether anything has drifted
+since, now that the app is live rather than mid-development:
+
+```
+card,name,family,win_rate_held,deviation_sd,flag
+D6,"Muck Out",Dig,0.5782,+1.55,OUTLIER
+```
+
+Every other card sat comfortably under the ±1.5 SD flag, L4 Riffle Box
+included (50.6%, +1.06 SD — squarely mid-table, not close to a flag). § 7
+proposed retuning L4; § 10 already shows the flag had moved to D6 by the time
+the AI fix and the twelve new cards landed. L4 was never actually the live
+problem after that point — nobody had gone back to update § 7 to say so. It
+doesn't need a change; the stale proposal needed correcting, which it now is.
+
+### Why D6 specifically
+
+D6 and L8 Fine Gold are the only two set-family cards paying 6 per set, the
+highest base rate in the deck. L8's offsetting cost is `-1 per Gold Nugget` —
+a type worth building toward on its own, so the penalty genuinely competes
+with the rest of a hand. D6's is `-1 per Fool's Gold`, which a competent
+player is already avoiding for free; the "cost" rarely bites. Same rate, a
+penalty that isn't really one.
+
+### The fix
+
+```
+6 per Ore+Shovel set  ->  5 per Ore+Shovel set     (penalty unchanged)
+```
+
+Screened at 40k games before touching anything (49.9%, essentially exact on
+the first candidate — no second round needed), then confirmed with a full
+48-card sweep at 100k:
+
+| | before | after |
+|---|---|---|
+| D6 win rate when held | 57.8% | **49.4%** |
+| D6 deviation from family mean | +1.55 SD (flagged) | −0.10 SD |
+| Deck-wide spread | 43.0%–57.8%, SD 3.85pp | 43.3%–57.4%, SD 3.69pp |
+
+D6 now sits alongside D3 Deep Shaft, D8 Union Crew and L4 Riffle Box — the
+other "5 per set plus a real cost" cards — at 49–52%, rather than standing
+apart from all of them. No other card's rate or SD moved outside normal
+run-to-run noise, with one boundary case worth naming rather than
+quietly ignoring: **P1 Pyrite Hoarder's flag deviation moved from 1.49 to
+1.50** between the two runs and now prints `OUTLIER` at the threshold. P1 was
+not touched, is in a different family from D6, and its win rate moved 0.25pp
+(47.40% → 47.65%) — well inside the ~0.16pp standard error at 100k games for
+a card sitting near 50%. `balance` measures every card against one shared
+pool of simulated games rather than isolated batches, so a change to D6
+perturbs the games it appears in, which cascades into other cards' numbers by
+a fraction of a point. That is what happened here. Not a real outlier, and
+not chased.
+
+Raw CSVs: `docs/simdata/balance_48cards_before_D6_retune_100k.csv` and
+`..._after_D6_retune_100k.csv`.
 
 ---
 

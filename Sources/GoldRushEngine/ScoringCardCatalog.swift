@@ -227,9 +227,14 @@ public enum ScoringCardCatalog {
         ),
         ScoringCard(
             ScoringCardID(.dig, 6), "Muck Out",
-            "6 per Ore+Shovel set; -1 per Fool's Gold",
+            "5 per Ore+Shovel set; -1 per Fool's Gold",
+            // Tuned from 6 per set (see docs/SIM_FINDINGS.md §11). D6 and L8
+            // Fine Gold were the only two set cards paying the top rate, but
+            // L8's penalty (-1 per Gold Nugget) costs a type worth building
+            // toward, while D6's (-1 per Fool's Gold) costs nothing a
+            // competent player wasn't already avoiding -- won 57.8% at 6.
             [
-                .perSet(.oreShovel, points: 6),
+                .perSet(.oreShovel, points: 5),
                 .perType(.foolsGold, points: -1),
             ]
         ),
