@@ -163,6 +163,11 @@ face-down card is revealed to both players on claim, it is only secret during th
 choice, and the permanent asymmetry — the reason to place a card face down at all
 — disappears. The default (`true`) is correct.
 
+**Update:** §12 builds the agent this section says does not exist yet, and
+re-runs this experiment against it. The gap was real, but smaller than
+expected, and only in one of the two round structures — worth reading before
+concluding the mechanic still does not matter.
+
 ---
 
 ## 4. Residual-deck uncertainty
@@ -269,8 +274,12 @@ In priority order, as originally proposed:
 2. **Retune P5 / P2 / P6 — applied.** Three screening packages were tested
    before touching the catalog (a gentle version, an aggressive version, and a
    hybrid); the hybrid won and is what shipped. Numbers and effect are in §8.
-3. **`L4 Riffle Box`** — the one payout outlier flagged under both agents.
-   **Not applied.** Flagged for a future pass if you want it.
+3. **`L4 Riffle Box`** — the one payout outlier flagged under both agents *at
+   the time this was written* (the 36-card catalog, pre-splitter-fix agent).
+   **Superseded rather than applied.** §10 already shows the flag had moved
+   to `D6 Muck Out` by the time the AI fix and the twelve new cards landed;
+   §11 retunes D6, and a fresh 48-card sweep puts L4 unremarkably mid-table
+   (50.6%, +1.06 SD) with no case for touching it.
 4. **Keep `persistentHiddenCards` on.** No change — this was always the
    recommendation, not a proposal to cut it. See §3.
 5. **Deck size is a weak lever** (§4). Left at 72, no change.
@@ -521,6 +530,153 @@ improving rather than chase them.
 `inference` and `greedy` are now a dead heat head-to-head (49.8%), so the
 opponent-modelling machinery continues to earn nothing measurable. That is a
 separate problem from the one this section fixed.
+
+---
+
+## 11. Applied: D6 Muck Out retune, and L4's flag retired
+
+A fresh full-catalog sweep (100k games, `inference`, seed 42, shipping code at
+the time — the same conditions as § 10) to check whether anything has drifted
+since, now that the app is live rather than mid-development:
+
+```
+card,name,family,win_rate_held,deviation_sd,flag
+D6,"Muck Out",Dig,0.5782,+1.55,OUTLIER
+```
+
+Every other card sat comfortably under the ±1.5 SD flag, L4 Riffle Box
+included (50.6%, +1.06 SD — squarely mid-table, not close to a flag). § 7
+proposed retuning L4; § 10 already shows the flag had moved to D6 by the time
+the AI fix and the twelve new cards landed. L4 was never actually the live
+problem after that point — nobody had gone back to update § 7 to say so. It
+doesn't need a change; the stale proposal needed correcting, which it now is.
+
+### Why D6 specifically
+
+D6 and L8 Fine Gold are the only two set-family cards paying 6 per set, the
+highest base rate in the deck. L8's offsetting cost is `-1 per Gold Nugget` —
+a type worth building toward on its own, so the penalty genuinely competes
+with the rest of a hand. D6's is `-1 per Fool's Gold`, which a competent
+player is already avoiding for free; the "cost" rarely bites. Same rate, a
+penalty that isn't really one.
+
+### The fix
+
+```
+6 per Ore+Shovel set  ->  5 per Ore+Shovel set     (penalty unchanged)
+```
+
+Screened at 40k games before touching anything (49.9%, essentially exact on
+the first candidate — no second round needed), then confirmed with a full
+48-card sweep at 100k:
+
+| | before | after |
+|---|---|---|
+| D6 win rate when held | 57.8% | **49.4%** |
+| D6 deviation from family mean | +1.55 SD (flagged) | −0.10 SD |
+| Deck-wide spread | 43.0%–57.8%, SD 3.85pp | 43.3%–57.4%, SD 3.69pp |
+
+D6 now sits alongside D3 Deep Shaft, D8 Union Crew and L4 Riffle Box — the
+other "5 per set plus a real cost" cards — at 49–52%, rather than standing
+apart from all of them. No other card's rate or SD moved outside normal
+run-to-run noise, with one boundary case worth naming rather than
+quietly ignoring: **P1 Pyrite Hoarder's flag deviation moved from 1.49 to
+1.50** between the two runs and now prints `OUTLIER` at the threshold. P1 was
+not touched, is in a different family from D6, and its win rate moved 0.25pp
+(47.40% → 47.65%) — well inside the ~0.16pp standard error at 100k games for
+a card sitting near 50%. `balance` measures every card against one shared
+pool of simulated games rather than isolated batches, so a change to D6
+perturbs the games it appears in, which cascades into other cards' numbers by
+a fraction of a point. That is what happened here. Not a real outlier, and
+not chased.
+
+Raw CSVs: `docs/simdata/balance_48cards_before_D6_retune_100k.csv` and
+`..._after_D6_retune_100k.csv`.
+
+---
+
+## 12. Applied: an agent that models what its opponent cannot know
+
+§3 and §7's "still open" note both point at the same gap: nothing in the
+simulator ever modelled what the OPPONENT has and has not seen, as distinct
+from what this player has. `OpponentModel.unseen` was simply
+`view.unseen` — this player's own uncertainty, relabelled. Correct turn one,
+wrong almost everywhere after: every round a player splits, they see their
+whole draw, not just what became public, so the two players' uncertainty
+about the deck diverges immediately and never resyncs.
+
+### What was actually missing
+
+Telling the two apart needs information the engine did not retain: how much
+of the deck each player has personally drawn through over the whole match,
+not just the round in front of them. `GameState` now keeps `splitLog` — for
+every split, the draw size, how many cards were buried, who split, and which
+pile was taken. Never a card identity: draw sizes and pile choices are not
+secrets, both players watch them happen live, the same way they already watch
+who takes a pile. `PlayerView.splitLog` is therefore the one field on that
+type that is identical for both players — it is exactly what they both saw.
+
+From that, `OpponentModel.unseen` computes the opponent's unseen COUNT
+exactly (verified by property test, not merely argued — `OpponentModelTests`
+drives full random games in both round structures and confirms the model's
+number matches the opponent's own reported truth at every split decision, 60
+scenarios, zero exceptions). The pool's per-type COMPOSITION cannot be exact
+the same way — which specific cards the opponent saw while splitting is not
+public, that is the whole point of the mechanic — so it is estimated by
+apportioning this player's own unseen pool to match, by largest remainder so
+the estimate's total never drifts from the count it was built from.
+
+### Why simultaneous splitting matters more here
+
+When splitting alternates, the opponent is never mid-draw at the moment this
+player is asked to split — nothing in the fix applies yet, the count was
+already right. When both players split every round, the opponent's
+current-round draw is dealt, and privately seen by them, before either split
+is submitted — before `splitLog` has an entry for it. That draw's SIZE is
+still public (everyone knows the round's draw count), so it is added in
+directly rather than reconstructed from history. This is the term with no
+sequential-mode analogue, and it is where most of the measured effect below
+comes from.
+
+### Measured against its own prior behaviour
+
+`inference-naive-model` is the pre-fix `OpponentModel` kept as a named agent
+purely for this comparison (`AgentFactory`; never selected by the app) — the
+same ablation pattern `BalancedAgent`/`NaiveAgent` already established.
+`GoldRushSim seat`, both seats averaged, 15k games:
+
+| Round structure | New vs. old win rate | 95% CI |
+|---|---|---|
+| Sequential (splitting alternates) | 50.6% | ±0.80pp |
+| Simultaneous (`simultaneousSplit`, the app default) | 51.5% | ±0.80pp |
+
+Sequential is inside the noise, as the mechanism above predicts. Simultaneous
+is not — both seat orderings landed at 51.5-51.6%, consistently outside the
+interval. Small, but real, in the mode the app actually defaults to.
+
+This also reopens §3 on better footing than "failed experiment," though not
+by much: re-running `hidden` (`inference` vs `greedy`, 50k games) shows
+persistence still barely moving the needle (49.42% vs 49.49% at one hidden
+card). That comparison was never going to move: `GreedyAgent` does not reason
+about a specific hidden card's likely identity at all, so a sharper guess
+about which card the opponent is hiding has nothing to exploit on the other
+side of the table. The fix is real and is now measured on itself rather than
+against an opponent structurally unable to show it.
+
+### Still open
+
+The same ceiling §3 named originally: `GreedyAgent`, not `InferenceAgent`, is
+what `hidden` and `reveal` measure against, and it still does not read a
+hidden card's likely identity at all. Measuring the mechanic's full value
+would need `hidden`/`reveal` re-pointed at `inference` vs `inference`, or a
+`GreedyAgent` upgraded to use `OpponentModel` too — either is real work
+separate from this fix.
+
+Test coverage: `Tests/GoldRushEngineTests/OpponentModelTests.swift` — a
+hand-computed two-round worked example, the general exactness property across
+both round structures and both `persistentHiddenCards` settings (60
+scenarios, full random games to completion), and that the composition
+estimate always sums back to the exact count.
 
 ---
 

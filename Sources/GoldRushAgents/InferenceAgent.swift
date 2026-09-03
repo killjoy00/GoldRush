@@ -24,10 +24,19 @@ public struct InferenceAgent: GameAgent {
     }
 
     public let fidelity: Fidelity
-    public var name: String { "inference-\(fidelity)" }
+    /// Ablation only: see `OpponentModel.init(naiveFrom:)`.
+    let useNaiveOpponentModel: Bool
+    public var name: String {
+        useNaiveOpponentModel ? "inference-naive-model" : "inference-\(fidelity)"
+    }
 
-    public init(fidelity: Fidelity = .full) {
+    public init(fidelity: Fidelity = .full, useNaiveOpponentModel: Bool = false) {
         self.fidelity = fidelity
+        self.useNaiveOpponentModel = useNaiveOpponentModel
+    }
+
+    func opponentModel(_ view: PlayerView) -> OpponentModel {
+        useNaiveOpponentModel ? OpponentModel(naiveFrom: view) : OpponentModel(view: view)
     }
 
     public func selectReveal(
@@ -86,7 +95,7 @@ public struct InferenceAgent: GameAgent {
         let ids = view.currentDraw.map(\.id)
         let current = view.collectionCounts
         let hand = view.hand
-        let model = OpponentModel(view: view)
+        let model = opponentModel(view)
         let k = view.config.faceDownCount(round: view.round)
 
         func counts(_ pile: [CardID]) -> MiningCounts {

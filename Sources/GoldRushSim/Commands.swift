@@ -213,7 +213,11 @@ enum Sim {
         // Cross matchups, both orderings, so agent strength can be separated
         // from seat advantage.
         for (a, b) in [("greedy", "random"), ("inference", "greedy"), ("inference", "random"),
-                       ("inference", "naive"), ("greedy", "naive"), ("naive", "random")] {
+                       ("inference", "naive"), ("greedy", "naive"), ("naive", "random"),
+                       // The opponent-model fix (docs/SIM_FINDINGS.md §12),
+                       // measured against its own prior behaviour rather than
+                       // merely asserted.
+                       ("inference", "inference-naive-model")] {
             for (p1n, p2n) in [(a, b), (b, a)] {
                 let records = run(
                     games: games, config: config, baseSeed: seed, threads: threads,

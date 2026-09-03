@@ -103,7 +103,10 @@ public enum MatchRunner {
 
 /// Builds agents by name, so the CLI can wire them without a switch in six places.
 public enum AgentFactory {
-    public static let names = ["naive", "random", "greedy", "balanced", "maximin", "inference", "inference-basic", "inference-placement"]
+    public static let names = [
+        "naive", "random", "greedy", "balanced", "maximin",
+        "inference", "inference-basic", "inference-placement", "inference-naive-model",
+    ]
 
     public static func make(_ name: String) -> (any GameAgent)? {
         switch name {
@@ -115,6 +118,9 @@ public enum AgentFactory {
         case "inference", "inference-full": InferenceAgent(fidelity: .full)
         case "inference-basic": InferenceAgent(fidelity: .basic)
         case "inference-placement": InferenceAgent(fidelity: .placement)
+        // Ablation: the pre-splitLog opponent model. See
+        // OpponentModel.init(naiveFrom:) and docs/SIM_FINDINGS.md §12.
+        case "inference-naive-model": InferenceAgent(useNaiveOpponentModel: true)
         default: nil
         }
     }

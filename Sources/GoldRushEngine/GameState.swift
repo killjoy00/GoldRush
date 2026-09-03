@@ -31,6 +31,38 @@ public struct RoundOutcome: Sendable, Codable, Equatable, Hashable {
     }
 }
 
+/// One split's public outcome, kept for the rest of the match after
+/// `RoundOutcome` is torn down.
+///
+/// Deliberately card-free: draw size, how many were buried, and which pile
+/// was taken are not secrets -- both players watch them happen live, the
+/// same way they watch who takes a pile. What IS secret, and stays that way,
+/// is which cards they were. This exists so an agent can work out how much
+/// of the deck its opponent has personally drawn through over the whole
+/// game, not just this round -- without ever learning what any of it was.
+public struct SplitRecord: Sendable, Codable, Equatable, Hashable {
+    public let round: Int
+    public let splitter: PlayerID
+    public let drawCount: Int
+    public let faceDownCount: Int
+    /// Of `faceDownCount`, how many were in the pile the chooser took --
+    /// and therefore now knows, same as any other card they claimed.
+    public let faceDownInTaken: Int
+    public let taken: PileID
+
+    public init(
+        round: Int, splitter: PlayerID, drawCount: Int,
+        faceDownCount: Int, faceDownInTaken: Int, taken: PileID
+    ) {
+        self.round = round
+        self.splitter = splitter
+        self.drawCount = drawCount
+        self.faceDownCount = faceDownCount
+        self.faceDownInTaken = faceDownInTaken
+        self.taken = taken
+    }
+}
+
 /// A split awaiting the chooser's decision.
 public struct PendingSplit: Sendable, Codable, Equatable, Hashable {
     public let pileA: [CardID]
@@ -114,6 +146,9 @@ public struct GameState: Sendable, Codable, Equatable {
     private var takenPile: PlayerPair<PileID?>
     /// The round that just finished, for the recap screen.
     public private(set) var lastRound: RoundOutcome?
+    /// Every split's public outcome, for the whole match so far. Grows by one
+    /// entry per splitter per round; never torn down the way `lastRound` is.
+    public private(set) var splitLog: [SplitRecord]
 
     /// Reveal selections submitted so far this phase.
     private var revealSubmitted: PlayerPair<Bool>
@@ -258,6 +293,7 @@ public struct GameState: Sendable, Codable, Equatable {
             chooseSubmitted: PlayerPair(repeating: false),
             takenPile: PlayerPair(repeating: nil),
             lastRound: nil,
+            splitLog: [],
             revealSubmitted: PlayerPair(repeating: false),
             draftPacks: draftPacks,
             draftSubmitted: PlayerPair(repeating: false),
@@ -435,6 +471,21 @@ public struct GameState: Sendable, Codable, Equatable {
                 next.lastRound = RoundOutcome(
                     round: round, splits: next.pendingSplits, taken: next.takenPile
                 )
+                // splitLog only ever grows -- unlike lastRound, which the
+                // recap consumes and this round's teardown then discards.
+                for splitter in config.splitters(round: round) {
+                    guard let split = next.pendingSplits[splitter],
+                          let taken = next.takenPile[splitter.opponent] else { continue }
+                    let faceDownInTaken = split.pile(taken).count { split.faceDown.contains($0) }
+                    next.splitLog.append(SplitRecord(
+                        round: round,
+                        splitter: splitter,
+                        drawCount: split.pileA.count + split.pileB.count,
+                        faceDownCount: split.faceDown.count,
+                        faceDownInTaken: faceDownInTaken,
+                        taken: taken
+                    ))
+                }
                 next.chooseSubmitted = PlayerPair(repeating: false)
                 next.takenPile = PlayerPair(repeating: nil)
                 next.pendingSplits = PlayerPair(repeating: nil)
