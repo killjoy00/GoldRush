@@ -263,10 +263,51 @@ curl -sSL https://developers.google.com/admob/ios/privacy/strategies \
 Diff the result against a second fetch before touching `Info.plist`, and
 prefer scripting the substitution over hand-editing fifty `<dict>` blocks.
 
+### app-ads.txt, and the Marketing URL it depends on
+
+AdMob will not verify an app -- and an unverified app cannot have ad units
+created against it -- until it can crawl an `app-ads.txt` naming the account's
+own publisher ID. Three things have to line up, and two of them are invisible
+from inside this repo:
+
+| Thing | Where it lives | Value |
+|---|---|---|
+| `app-ads.txt` | root of the developer domain | `killjoy00/killjoy00.github.io` repo, served at `killjoy00.github.io/app-ads.txt` |
+| Marketing URL | App Store Connect, **per version** | `https://killjoy00.github.io` |
+| App ID / ad unit ID | `Info.plist`, `GoldRushApp.swift` | must share the account's `pub-` prefix |
+
+The crawler takes only the **host** from the Marketing URL, so the file has to
+sit at the domain root -- `killjoy00.github.io/app-ads.txt`, never
+`.../GoldRush/app-ads.txt`, even though the support and privacy pages do live
+under that path. That is why the file is in a separate repo from this one.
+
+Two traps worth knowing, both of which cost a day here:
+
+- **Marketing URL is versioned metadata, and it is optional.** It was simply
+  never filled in, so Apple's listing exposed no developer website at all and
+  AdMob had nothing to crawl -- while reporting only that app-ads.txt "didn't
+  match", which points at the wrong file entirely. A released version's copy is
+  frozen, so setting it means editing the *next* version and shipping it. Check
+  what is actually public rather than what App Store Connect shows as saved:
+
+  ```bash
+  curl -sS "https://itunes.apple.com/lookup?bundleId=com.killjoy00.goldrush" \
+    | python3 -c "import json,sys; print(json.load(sys.stdin)['results'][0].get('sellerUrl','(absent)'))"
+  ```
+
+- **Every ID under one AdMob account shares one publisher ID.** The App ID and
+  ad unit ID shipped from launch until 1.1.1 carried `pub-3388571830343061`,
+  a different account from the `pub-1217971050094766` in `app-ads.txt`. A
+  well-formed App ID from an unrecognised account does not trap on launch and
+  does not error -- ad requests just never fill. If the banner is blank,
+  compare the `pub-` digits in `Info.plist` against the account's own
+  app-ads.txt line before looking anywhere else.
+
 ### What CI cannot check
 
 CI compiles the SDK and archives the app, which catches a broken API or a
 mis-wired project file. It **cannot** tell you whether a banner actually
-appears -- that needs a real device. Look at the home screen on the first
-build carrying ads before submitting anything to review.
+appears -- that needs a real device, and for the reason above it cannot tell
+you whether the IDs belong to the right AdMob account either. Look at the home
+screen on the first build carrying ads before submitting anything to review.
 

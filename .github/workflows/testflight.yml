@@ -178,7 +178,7 @@ jobs:
             -skipMacroValidation \
             GOLDRUSH_BUNDLE_ID="$BUNDLE_ID" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
-            MARKETING_VERSION=1.0.1 \
+            MARKETING_VERSION=1.02 \
             CURRENT_PROJECT_VERSION=${{ github.run_number }}
           # MARKETING_VERSION must be bumped by hand whenever App Store Connect
           # closes the previous one's pre-release train, which it does the moment
@@ -186,6 +186,22 @@ jobs:
           # "Invalid Pre-Release Train ... closed for new build submissions"
           # because this stayed at 1.0 after 1.0 went live. CURRENT_PROJECT_VERSION
           # (the build number) still auto-increments and needs no such care.
+          #
+          # The scheme here is deliberately two-part, no dotted triples: 1.01,
+          # 1.02, 1.03 for ordinary releases, 1.1 / 1.2 for larger ones. Apple
+          # compares component-wise as INTEGERS, which has two consequences worth
+          # knowing before picking the next number:
+          #
+          #   - Leading zeros vanish. "1.01" is major 1, minor 1 -- so 1.0.2 is a
+          #     DOWNgrade against it and an automatic rejection.
+          #   - 1.02 and 1.2 are therefore the SAME version to Apple, as are 1.01
+          #     and 1.1. The two rails of the scheme collide: once 1.02 ships,
+          #     1.2 can never follow it. Go to 1.03+ or to 2.0.
+          #
+          # Check what is actually published before choosing, rather than
+          # assuming what the last build declared:
+          #   curl -sS "https://itunes.apple.com/lookup?bundleId=com.killjoy00.goldrush" \
+          #     | python3 -c "import json,sys; print(json.load(sys.stdin)['results'][0]['version'])"
 
       - name: Write export options
         env:
