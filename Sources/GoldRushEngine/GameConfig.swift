@@ -121,15 +121,19 @@ public struct GameConfig: Sendable, Codable, Equatable, Hashable {
     public var progressiveRevealAfterRound: Int { roundCount / 2 }
 
     public static let handSize = 6
-    public static let familyCap = 2
-    public static let draftPoolSize = 12
 
     /// The drafted setup deals two packs and passes them back and forth: you
     /// look at a pack, take one card, and hand the rest to your opponent.
     ///
-    /// The size follows from the hand: two packs of six is twelve cards, each
-    /// pack is drafted down to nothing over six passes, and each player ends
-    /// with six. It also produces the information structure the game wants for
-    /// free -- see `GameState.draftPacks`.
-    public static let draftPackSize = handSize
+    /// Packs are one larger than the hand, so the draft runs seven passes and
+    /// each player finishes holding seven -- then discards one, face up, to
+    /// reach the six they score with. The extra card is what makes the last
+    /// passes a decision rather than an inventory: a pack drafted down to its
+    /// final card offers no choice at all, and under the old six-card packs
+    /// that was true of the sixth pick for both players every game.
+    public static let draftPackSize = handSize + 1
+    public static let draftPoolSize = draftPackSize * 2
+
+    /// How many drafted cards each player throws away before scoring begins.
+    public static let draftDiscardCount = draftPackSize - handSize
 }

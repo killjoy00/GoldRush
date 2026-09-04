@@ -60,11 +60,16 @@ struct PlaythroughHarness {
 
             switch state.phase {
             case .draft:
-                let legal = state.draftPacks[actor].filter { candidate in
-                    state.hands[actor].count { $0.family == candidate.family } < GameConfig.familyCap
-                }
+                // Anything in the pack is takeable; there is no family cap.
+                let legal = state.draftPacks[actor]
                 let pick = legal[rng.next(upperBound: legal.count)]
                 let action = Action.draftPick(pick)
+                actions.append(action)
+                state = state.apply(action)
+
+            case .draftDiscard:
+                let hand = state.hands[actor]
+                let action = Action.draftDiscard(hand[rng.next(upperBound: hand.count)])
                 actions.append(action)
                 state = state.apply(action)
 

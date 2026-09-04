@@ -1,6 +1,9 @@
 public enum Phase: Sendable, Codable, Equatable, Hashable {
     /// Snake draft of scoring cards. Only reachable with `scoringDraft`.
     case draft
+    /// Trimming the drafted seven down to the six you score with. Only
+    /// reachable with `scoringDraft`.
+    case draftDiscard
     /// Both players privately pick which of their cards to make public.
     case revealSelection
     /// The extra progressive-reveal pick, after round 4.
@@ -88,6 +91,9 @@ public enum Action: Sendable, Codable, Equatable, Hashable {
 
     /// Required by `scoringDraft`; unreachable when the toggle is off.
     case draftPick(ScoringCardID)
+    /// Throwing away one of the seven drafted cards. Required by
+    /// `scoringDraft`; unreachable when the toggle is off.
+    case draftDiscard(ScoringCardID)
     /// Required by `progressiveReveal`; unreachable when the toggle is off.
     case revealAdditional(ScoringCardID)
 }
@@ -97,7 +103,6 @@ public enum ActionError: Error, Sendable, Equatable {
     case notInHand(ScoringCardID)
     case alreadyRevealed(ScoringCardID)
     case wrongRevealCount(expected: Int, actual: Int)
-    case familyCapExceeded(ScoringFamily)
     case cardNotInPool(ScoringCardID)
     case pileEmpty(PileID)
     case splitDoesNotMatchDraw
@@ -167,6 +172,16 @@ public struct GameState: Sendable, Codable, Equatable {
     private var draftSubmitted: PlayerPair<Bool>
     /// The one card each player's opponent never sees.
     public private(set) var draftFirstPick: PlayerPair<ScoringCardID?>
+    /// What each player threw away to get from seven cards down to six.
+    ///
+    /// Public, and deliberately so. The alternative -- discarding face down --
+    /// looks like it adds a secret but does not: your opponent watched you
+    /// draft six of your seven, so a hidden discard is one they can usually
+    /// name by elimination, and the cases where they cannot are exactly the
+    /// cases where `revealed` would give it away instead. Face up, the
+    /// information structure stays the one the draft already produced: your
+    /// opening pick is the single card they never see.
+    public private(set) var draftDiscarded: PlayerPair<ScoringCardID?>
 
     // MARK: - Lookup
 
@@ -189,10 +204,12 @@ public struct GameState: Sendable, Codable, Equatable {
     /// other's choice -- `PlayerView` withholds it until both have submitted.
     public var actingPlayer: PlayerID? {
         switch phase {
-        case .draft:
+        case .draft, .draftDiscard:
             // Both players pick from their own pack before the packs swap, so
             // this resolves p1 then p2 the same way reveal selection does. The
             // order leaks nothing: neither player can see the other's pack.
+            // The discard is simultaneous for the same reason -- each is
+            // choosing from their own seven, blind to the other's choice.
             if !draftSubmitted.p1 { return .p1 }
             if !draftSubmitted.p2 { return .p2 }
             return nil
@@ -234,45 +251,30 @@ public struct GameState: Sendable, Codable, Equatable {
         var draftPacks = PlayerPair<[ScoringCardID]>(repeating: [])
 
         if config.scoringDraft {
-            // Two cards from each of the six families.
+            // Fourteen cards off the top of the shuffled deck, cut into two
+            // packs of seven -- one opened by each player.
             //
-            // A pool drawn blindly from the 36 can deadlock: if it happened to
-            // hold only two families, no player could assemble six cards under
-            // the two-per-family cap, and the draft would stall with no legal
-            // pick. Stratifying makes the draft provably completable -- holding
-            // two of a family means both of that family's pool cards are already
-            // yours, so any card still in the pool is one you may legally take.
-            var pool: [ScoringCardID] = []
-            for family in ScoringFamily.allCases {
-                let members = scoring.filter { $0.family == family }
-                pool.append(contentsOf: members.prefix(GameConfig.familyCap))
-            }
-            rng.shuffle(&pool)
-            // Cut the twelve into two packs, one opened by each player. Because
-            // the pool holds exactly two of every family, no player can end up
-            // over the family cap however the packs fall -- including on the
-            // final forced pick, where there is only one card left to take.
+            // An earlier version stratified this pool to hold exactly two of
+            // every family, because a two-per-family cap on hands could
+            // otherwise deadlock the draft: a pack whose last card belonged to
+            // a family you were already full on left you with no legal pick.
+            // With the cap gone there is no such thing as an illegal pick, so
+            // the pool no longer has to be engineered to keep one available,
+            // and drawing it blind restores the variance stratifying removed --
+            // a pack can now arrive four-deep in one family, which is a
+            // decision rather than a dead end.
+            let pool = Array(scoring.prefix(GameConfig.draftPoolSize))
             draftPacks = PlayerPair(
                 p1: Array(pool.prefix(GameConfig.draftPackSize)),
                 p2: Array(pool.suffix(GameConfig.draftPackSize))
             )
         } else {
-            // Deal 6 each. A card that would give a player a third of one family
-            // is set aside and replaced, per the redeal rule.
-            var cursor = 0
-            for player in [PlayerID.p1, .p2] {
-                var familyCounts = [Int](repeating: 0, count: ScoringFamily.allCases.count)
-                var hand: [ScoringCardID] = []
-                while hand.count < GameConfig.handSize, cursor < scoring.count {
-                    let candidate = scoring[cursor]
-                    cursor += 1
-                    let slot = Int(candidate.family.rawValue)
-                    if familyCounts[slot] < GameConfig.familyCap {
-                        familyCounts[slot] += 1
-                        hand.append(candidate)
-                    }
-                }
-                hands[player] = hand
+            // Deal 6 each, straight off the shuffled deck.
+            for (index, player) in [PlayerID.p1, .p2].enumerated() {
+                let start = index * GameConfig.handSize
+                hands[player] = Array(
+                    scoring[start..<(start + GameConfig.handSize)]
+                )
             }
         }
 
@@ -297,7 +299,8 @@ public struct GameState: Sendable, Codable, Equatable {
             revealSubmitted: PlayerPair(repeating: false),
             draftPacks: draftPacks,
             draftSubmitted: PlayerPair(repeating: false),
-            draftFirstPick: PlayerPair(repeating: nil)
+            draftFirstPick: PlayerPair(repeating: nil),
+            draftDiscarded: PlayerPair(repeating: nil)
         )
     }
 
@@ -315,8 +318,12 @@ public struct GameState: Sendable, Codable, Equatable {
         case .draftPick(let id):
             guard phase == .draft else { throw .wrongPhase(expected: .draft, actual: phase) }
             guard draftPacks[actor].contains(id) else { throw .cardNotInPool(id) }
-            let held = hands[actor].count { $0.family == id.family }
-            guard held < GameConfig.familyCap else { throw .familyCapExceeded(id.family) }
+
+        case .draftDiscard(let id):
+            guard phase == .draftDiscard else {
+                throw .wrongPhase(expected: .draftDiscard, actual: phase)
+            }
+            guard hands[actor].contains(id) else { throw .notInHand(id) }
 
         case .selectRevealedScoringCards(let ids):
             guard phase == .revealSelection else {
@@ -398,19 +405,38 @@ public struct GameState: Sendable, Codable, Equatable {
                 // your opponent, and theirs comes to you.
                 next.draftPacks = PlayerPair(p1: next.draftPacks.p2, p2: next.draftPacks.p1)
 
-                if next.hands.p1.count >= GameConfig.handSize
-                    && next.hands.p2.count >= GameConfig.handSize {
-                    // No reveal phase after a draft. Your opponent watched you
-                    // take everything except your opening pick, so publishing
-                    // those five cards tells them nothing they had not already
-                    // worked out -- and pretending otherwise would hide the
-                    // information from the UI, not from the player.
-                    for player in [PlayerID.p1, .p2] {
-                        let first = next.draftFirstPick[player]
-                        next.revealed[player] = next.hands[player].filter { $0 != first }
-                    }
-                    next.beginRound()
+                if next.hands.p1.count >= GameConfig.draftPackSize
+                    && next.hands.p2.count >= GameConfig.draftPackSize {
+                    // Both packs are exhausted and both players hold seven.
+                    // One card each still has to go.
+                    next.phase = .draftDiscard
                 }
+            }
+
+        case .draftDiscard(let id):
+            next.hands[actor].removeAll { $0 == id }
+            next.draftDiscarded[actor] = id
+            next.draftSubmitted[actor] = true
+
+            if next.draftSubmitted.p1 && next.draftSubmitted.p2 {
+                next.draftSubmitted = PlayerPair(repeating: false)
+                // No reveal phase after a draft. Your opponent watched you
+                // take everything except your opening pick, so publishing
+                // those five cards tells them nothing they had not already
+                // worked out -- and pretending otherwise would hide the
+                // information from the UI, not from the player.
+                //
+                // The discard does not change that count, only which card the
+                // gap falls on. Throw away your opening pick and the six you
+                // keep are all cards they watched you take, so all six become
+                // public; throw away any other and your opening pick is still
+                // the one they never saw, leaving five. Filtering the hand by
+                // the first pick expresses both cases without a branch.
+                for player in [PlayerID.p1, .p2] {
+                    let first = next.draftFirstPick[player]
+                    next.revealed[player] = next.hands[player].filter { $0 != first }
+                }
+                next.beginRound()
             }
 
         case .selectRevealedScoringCards(let ids):

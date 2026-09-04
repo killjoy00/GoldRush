@@ -108,7 +108,7 @@ struct OpponentModelTests {
                 state = state.apply(.split(pileA: split.pileA, pileB: split.pileB, faceDown: split.faceDown))
             case .choose:
                 state = state.apply(.choose(pile: rng.next(upperBound: 2) == 0 ? .a : .b))
-            case .draft, .revealSelection, .additionalReveal, .finished:
+            case .draft, .draftDiscard, .revealSelection, .additionalReveal, .finished:
                 break
             }
         }
@@ -146,7 +146,7 @@ struct OpponentModelTests {
                 state = state.apply(.split(pileA: split.pileA, pileB: split.pileB, faceDown: split.faceDown))
             case .choose:
                 state = state.apply(.choose(pile: rng.next(upperBound: 2) == 0 ? .a : .b))
-            case .draft, .revealSelection, .additionalReveal, .finished:
+            case .draft, .draftDiscard, .revealSelection, .additionalReveal, .finished:
                 break
             }
         }

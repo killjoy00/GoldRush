@@ -4,6 +4,8 @@ import GoldRushEngine
 /// What the screen should currently be showing.
 public enum Screen: Sendable, Equatable {
     case draft
+    /// Throwing one of the drafted seven away.
+    case draftDiscard
     case revealSelection
     case additionalReveal
     /// Pass-and-play only: hide the board while the device changes hands.
@@ -150,6 +152,7 @@ public final class GameViewModel {
     static func screen(for state: GameState, viewing: PlayerID) -> Screen {
         switch state.phase {
         case .draft: .draft
+        case .draftDiscard: .draftDiscard
         case .revealSelection: .revealSelection
         case .additionalReveal: .additionalReveal
         case .split: .split
@@ -204,12 +207,12 @@ public final class GameViewModel {
         await submit(.revealAdditional(id))
     }
 
-    public var draftLegalPicks: [ScoringCardID] {
-        let hand = view.hand
-        return view.draftPool.filter { candidate in
-            hand.count { $0.family == candidate.family } < GameConfig.familyCap
-        }
+    public func draftDiscard(_ id: ScoringCardID) async {
+        await submit(.draftDiscard(id))
     }
+
+    /// Everything in the pack. There is no family cap, so nothing is barred.
+    public var draftLegalPicks: [ScoringCardID] { view.draftPool }
 
     // MARK: - Hand-off
 
