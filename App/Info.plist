@@ -41,7 +41,7 @@
 	     launch if this key is missing or malformed, rather than failing
 	     quietly at the first ad request. -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3388571830343061~3849777872</string>
+	<string>ca-app-pub-1217971050094766~8488279894</string>
 	<!-- The full SKAdNetwork identifier list Google publishes for AdMob
 	     iOS mediation (developers.google.com/admob/ios/privacy/strategies),
 	     fetched directly and diffed against an independent extraction of the

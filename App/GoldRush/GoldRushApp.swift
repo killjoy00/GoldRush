@@ -15,7 +15,7 @@ import GoldRushUI
 struct GoldRushApp: App {
     /// From AdMob. The app ID also has to appear in Info.plist as
     /// GADApplicationIdentifier, or the SDK traps on launch.
-    static let bannerAdUnitID = "ca-app-pub-3388571830343061/4874979734"
+    static let bannerAdUnitID = "ca-app-pub-1217971050094766/6345151109"
 
     init() {
         MobileAds.shared.start()
