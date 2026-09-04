@@ -28,7 +28,74 @@ public protocol GameAgent: Sendable {
     func split(_ view: PlayerView, rng: inout SeededRNG) -> SplitDecision
     func choose(_ view: PlayerView, rng: inout SeededRNG) -> PileID
     func draftPick(_ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG) -> ScoringCardID
+    func draftDiscard(_ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG) -> ScoringCardID
     func revealAdditional(_ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG) -> ScoringCardID
+}
+
+extension GameAgent {
+    /// Which of the drafted seven to throw away.
+    ///
+    /// Defaulted rather than required, because the answer that suits almost
+    /// every agent is the same one: keep the best six. What goes is the card
+    /// the rest of the hand misses least, which is not the same as the
+    /// weakest card -- a rider that duplicates another rider's job is worth
+    /// less beside it than alone, and this drops that one.
+    ///
+    /// It deliberately does NOT use `Valuation.selfValue`, which every other
+    /// decision here uses. That function scores comparison riders as zero,
+    /// because their value genuinely depends on a board the agent cannot see.
+    /// Everywhere else that costs a little accuracy; here it was fatal.
+    /// Scoring a comparison card at zero makes it the cheapest card in every
+    /// hand it ever appears in, so it is discarded every single time -- and a
+    /// 100k-game sweep confirmed exactly that, with P5 Highgrader and P8
+    /// Grubstake Partner held in zero games despite P8 being one of the
+    /// strongest cards in the deck when dealt. A card that can never be
+    /// played is worse than a mistuned one.
+    ///
+    /// So comparison riders are resolved here against a symmetric opponent
+    /// rather than skipped: the hand is scored twice, once against a
+    /// reference collection one card per type leaner than this player's and
+    /// once one card richer, and the two are averaged. That prices a
+    /// "strictly more" card at about half its face value and a "close to
+    /// level" card at about half of its, which is the right prior in a game
+    /// where both players draft from the same pool and neither is favoured.
+    public func draftDiscard(
+        _ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG
+    ) -> ScoringCardID {
+        guard let first = legal.first else { return view.hand[0] }
+
+        var reference = MiningCounts()
+        for entry in MiningDeck.standardComposition {
+            reference[entry.type] = entry.count * 30 / MiningDeck.standardSize
+        }
+        // One step either side of level, so every comparison rider resolves
+        // true in one branch and false in the other.
+        var leaner = reference
+        var richer = reference
+        for type in MiningType.allCases {
+            leaner[type] = max(0, reference[type] - 1)
+            richer[type] = reference[type] + 1
+        }
+        let behind = Scoring.bestAllocation(counts: leaner, hand: [], opponent: nil).board
+        let ahead = Scoring.bestAllocation(counts: richer, hand: [], opponent: nil).board
+
+        func keptValue(_ kept: [ScoringCardID]) -> Int {
+            let winning = Scoring.bestAllocation(counts: reference, hand: kept, opponent: behind)
+            let losing = Scoring.bestAllocation(counts: reference, hand: kept, opponent: ahead)
+            return winning.total + losing.total
+        }
+
+        var best = first
+        var bestKept = Int.min
+        for candidate in legal {
+            let value = keptValue(legal.filter { $0 != candidate })
+            if value > bestKept {
+                bestKept = value
+                best = candidate
+            }
+        }
+        return best
+    }
 }
 
 // MARK: - Split enumeration

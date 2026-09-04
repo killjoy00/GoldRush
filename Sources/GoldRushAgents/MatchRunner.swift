@@ -46,14 +46,19 @@ public enum MatchRunner {
 
             switch state.phase {
             case .draft:
-                let legal = view.draftPool.filter { candidate in
-                    view.hand.count { $0.family == candidate.family } < GameConfig.familyCap
-                }
+                // Every card in the pack is takeable: with no family cap there
+                // is no such thing as an illegal pick, so an empty pack is the
+                // only way this can fail and that means the phase was wrong.
+                let legal = view.draftPool
                 guard !legal.isEmpty else {
-                    preconditionFailure("draft reached a state with no legal pick")
+                    preconditionFailure("draft reached a state with an empty pack")
                 }
                 let pick = acting.draftPick(view, legal: legal, rng: &rng)
                 state = state.apply(.draftPick(pick))
+
+            case .draftDiscard:
+                let discard = acting.draftDiscard(view, legal: view.hand, rng: &rng)
+                state = state.apply(.draftDiscard(discard))
 
             case .revealSelection:
                 let picks = acting.selectReveal(view, count: config.initialRevealCount, rng: &rng)

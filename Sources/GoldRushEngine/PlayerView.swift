@@ -84,6 +84,15 @@ public struct PlayerView: Sendable, Equatable {
     /// permanent secret.
     public let draftPool: [ScoringCardID]
 
+    /// What each player threw away at the end of the draft, once they have.
+    ///
+    /// Both entries are populated for both players, because a face-up discard
+    /// is public by construction -- see `GameState.draftDiscarded`. Withheld
+    /// until both have chosen, for the same reason reveal selection is: the
+    /// discards are simultaneous, and resolving p1 first in the action
+    /// sequence must not tell p2 anything.
+    public let draftDiscarded: PlayerPair<ScoringCardID?>
+
     /// One split from the round that just ended, as this player may see it.
     public struct ResolvedSplit: Sendable, Equatable {
         /// Who dealt these two piles.
@@ -161,6 +170,9 @@ public struct PlayerView: Sendable, Equatable {
         self.myRevealed = state.revealed[player]
         self.draftPool = state.draftPacks[player]
         self.splitLog = state.splitLog
+        self.draftDiscarded = state.phase == .draftDiscard
+            ? PlayerPair(repeating: nil)
+            : state.draftDiscarded
         // Reveals are simultaneous: the opponent's picks stay private until both
         // players have committed, so resolving p1 before p2 in the action
         // sequence leaks nothing.

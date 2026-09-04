@@ -680,6 +680,114 @@ estimate always sums back to the exact count.
 
 ---
 
+---
+
+## 13. Applied: packs of seven, a face-up discard, and no family cap
+
+The draft was six-card packs: take one, pass the rest, six passes, done. Two
+things were wrong with that. The sixth pick is not a pick -- the pack is down
+to one card and you take it -- and the same is true of the fifth for the
+player on the other side of the swap, so the tail of every draft was
+inventory rather than decision. And the two-per-family cap that made the
+draft *provably* completable was doing so by making the pool exactly two of
+each of the six families, which pins the pool at twelve cards and the packs
+at six.
+
+Packs of seven need fourteen cards, and fourteen cannot be built two-per-family
+out of six families. The cap and the pack size were in direct conflict: keep
+the cap and the pool can never grow; grow the pool and a pack's last card can
+belong to a family you are already full on, which is a draft that cannot
+legally continue. Raising the cap to three restores the proof (a pool holding
+at most `cap` of a family means being full on one implies none are left
+loose), but changes what a hand can be.
+
+Removing the cap outright resolves it differently and more cleanly: with no
+cap there is no such thing as an illegal pick, so nothing has to be
+engineered to keep one available. The pool is now fourteen cards straight off
+the shuffled forty-eight, which also restores the variance the stratification
+was removing -- a pack can arrive four deep in one family, and that is a
+decision about whether to commit rather than a dead end.
+
+### The shape now
+
+Seven passes, each player ending with seven, then both discard one **face up**
+and score with six.
+
+Face up is the part worth defending, because a hidden discard looks strictly
+better and is not. Your opponent watched you take six of your seven; a
+face-down discard is therefore one they can usually name by elimination, and
+in the cases where they cannot, `revealed` gives it away instead -- publishing
+five cards when you discarded a card they saw, six when you discarded your
+opening pick. Made public, the information structure stays exactly the one
+the draft already had: your opening pick is the single card they never see,
+and discarding *that* is a real decision that trades your only secret for a
+better hand. `PropertyTests.draftHidesOnlyTheOpeningPick` asserts both
+branches, because a projection that got this backwards would leak a card
+rather than merely mislabel one.
+
+### What it cost, measured
+
+Three 100k-game sweeps, `inference`, seed 42:
+
+```
+mode                        never-held   spread   SD       flagged
+dealt, two-per-family cap        0       13.6pp   3.67pp   P1 +1.51
+dealt, no cap                    0       12.7pp   3.46pp   S6 -1.51
+drafted, sevens + discard        0       16.7pp   3.59pp   S6 -1.50  D7 -1.73
+                                                           V4 +1.65  P1 +1.71
+```
+
+The first row is what shipped; the second is the same dealt game with the cap
+gone, which is the default mode and so the one that matters most. It did not
+get worse -- the spread tightened slightly and the flag moved from one
+marginal card to another. Removing the cap from dealing turns out to cost
+nothing measurable, which is the opposite of what was expected going in.
+
+Drafted play is wider, at 16.7pp against 12.7pp, and that is not a fault to
+fix. Agents choose their cards, so the strong ones concentrate in hands that
+win and the weak ones are taken only when nothing better is left; a draft
+that did *not* separate the cards would mean the picks were not doing
+anything. The four flags there are all under 1.75 SD and none is retuned:
+the catalog is tuned against dealt play, which is the default, and moving a
+card to suit the opt-in mode would pay for it in the mode most games use.
+§10's warning about tuning against a moving target applies with more force
+now, not less.
+
+### The bug the measurement caught
+
+The first drafted sweep came back with **two cards held in zero of 100,000
+games** -- P5 Highgrader and P8 Grubstake Partner. Not rare: never.
+
+The cause was the discard heuristic, not the cards. It kept whichever six
+scored best under `Valuation.selfValue`, which deliberately scores comparison
+riders as zero because their value depends on a board the agent cannot see.
+Everywhere else in the agent that costs a little accuracy. At the discard it
+was fatal: a card scored at zero is the cheapest card in every hand it ever
+appears in, so it is thrown away every single time it is drafted. P8 is one
+of the strongest cards in the deck when dealt (56.2%) and it was unplayable.
+
+The default now resolves comparison riders instead of skipping them, scoring
+the kept hand twice -- once against a reference collection a card per type
+leaner and once a card richer -- and averaging. That prices a "strictly more"
+rider at roughly half its face value and a "close to level" rider at roughly
+half of its, which is the right prior for a symmetric game. Never-held went
+from 2 to 0 and the spread moved 15.0pp -> 16.7pp, because two real cards
+re-entered the pool rather than because anything got worse.
+
+Worth stating plainly: this was invisible to the test suite, which asserts
+that the draft terminates with legal hands, and it does. Only counting how
+often each card actually reached a scoring sheet found it.
+
+### Still open
+
+`draftPick` has the same blindness `draftDiscard` just lost -- it also ranks
+candidates by `selfValue`, so it under-rates comparison cards during the
+draft itself. It is not fatal there, because every card in the pool gets
+taken by someone whatever the order, but the picks are worse than they need
+to be. Fixing it means the same two-sided scoring, and re-measuring the
+drafted sweep afterwards.
+
+
 ## Reproducing
 
 ```bash
@@ -687,6 +795,7 @@ swift build -c release
 ./.build/release/GoldRushSim seat    --games 100000
 ./.build/release/GoldRushSim balance --games 100000 --agent greedy
 ./.build/release/GoldRushSim balance --games 100000 --agent inference
+./.build/release/GoldRushSim balance --games 100000 --agent inference --scoring-draft
 ./.build/release/GoldRushSim hidden  --games 50000
 ./.build/release/GoldRushSim reveal  --games 50000
 ./.build/release/GoldRushSim deck    --games 50000 --deck-size 60,72,84

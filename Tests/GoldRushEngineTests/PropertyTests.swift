@@ -317,21 +317,19 @@ struct PropertyTests {
 
     // MARK: - Setup rules
 
-    @Test("No player is dealt more than two cards of one family", arguments: seeds)
-    func familyCapRespected(seed: UInt64) {
+    @Test("Both players are dealt six distinct cards", arguments: seeds)
+    func dealtHandsAreWellFormed(seed: UInt64) {
         let state = GameState.newGame(seed: seed)
         for player in PlayerID.allCases {
             #expect(state.hands[player].count == GameConfig.handSize)
-            for family in ScoringFamily.allCases {
-                let held = state.hands[player].count { $0.family == family }
-                #expect(held <= GameConfig.familyCap)
-            }
+            // No card is dealt to the same player twice.
+            #expect(Set(state.hands[player]).count == GameConfig.handSize)
         }
         // The two hands are disjoint.
         #expect(Set(state.hands.p1).isDisjoint(with: Set(state.hands.p2)))
     }
 
-    @Test("The pack draft gives each player six cards under the family cap",
+    @Test("The pack draft ends with six cards each and one discard each",
           arguments: seeds.prefix(20))
     func draftProducesLegalHands(seed: UInt64) {
         let config = GameConfig(scoringDraft: true)
@@ -340,18 +338,103 @@ struct PropertyTests {
 
         for player in PlayerID.allCases {
             #expect(state.hands[player].count == GameConfig.handSize)
-            for family in ScoringFamily.allCases {
-                #expect(state.hands[player].count { $0.family == family } <= GameConfig.familyCap)
+            #expect(Set(state.hands[player]).count == GameConfig.handSize)
+
+            // Seven were drafted and exactly one thrown away, so the discard
+            // is real and is not still in the hand that kept it.
+            let discarded = state.draftDiscarded[player]
+            #expect(discarded != nil)
+            if let discarded {
+                #expect(!state.hands[player].contains(discarded))
             }
         }
         // Both packs are drafted to nothing; nothing is left over.
         #expect(state.draftPacks.p1.isEmpty)
         #expect(state.draftPacks.p2.isEmpty)
+        // Fourteen distinct cards left the pool: twelve held, two discarded.
+        let dealt = Set(state.hands.p1 + state.hands.p2)
+            .union([state.draftDiscarded.p1, state.draftDiscarded.p2].compactMap { $0 })
+        #expect(dealt.count == GameConfig.draftPoolSize)
+    }
+
+    /// A face-up discard is only honest if it is genuinely simultaneous. The
+    /// reducer resolves p1 before p2, so if the projection published p1's
+    /// discard while p2 was still choosing, p2 would be picking with
+    /// information p1 never had.
+    @Test("Discards stay private until both are committed, then both are public",
+          arguments: seeds.prefix(15))
+    func discardsAreSimultaneousThenPublic(seed: UInt64) throws {
+        var state = GameState.newGame(config: GameConfig(scoringDraft: true), seed: seed)
+        var rng = SeededRNG(seed: seed &+ 77)
+
+        while state.phase == .draft, let actor = state.actingPlayer {
+            let pack = state.draftPacks[actor]
+            state = state.apply(.draftPick(pack[rng.next(upperBound: pack.count)]))
+        }
+        #expect(state.phase == .draftDiscard)
+        for player in PlayerID.allCases {
+            #expect(state.hands[player].count == GameConfig.draftPackSize)
+        }
+
+        // Nothing published while both are still deciding.
+        for player in PlayerID.allCases {
+            let view = state.view(for: player)
+            #expect(view.draftDiscarded.p1 == nil)
+            #expect(view.draftDiscarded.p2 == nil)
+        }
+
+        let firstActor = try #require(state.actingPlayer)
+        let firstDiscard = state.hands[firstActor][0]
+        state = state.apply(.draftDiscard(firstDiscard))
+
+        // Still nothing: the second player must choose blind to the first.
+        #expect(state.phase == .draftDiscard)
+        for player in PlayerID.allCases {
+            let view = state.view(for: player)
+            #expect(view.draftDiscarded.p1 == nil)
+            #expect(view.draftDiscarded.p2 == nil)
+        }
+
+        let secondActor = try #require(state.actingPlayer)
+        let secondDiscard = state.hands[secondActor][0]
+        state = state.apply(.draftDiscard(secondDiscard))
+
+        // Both committed: both discards are public to both players.
+        #expect(state.phase != .draftDiscard)
+        for player in PlayerID.allCases {
+            let view = state.view(for: player)
+            #expect(view.draftDiscarded[firstActor] == firstDiscard)
+            #expect(view.draftDiscarded[secondActor] == secondDiscard)
+        }
+    }
+
+    @Test("A drafted hand may hold any number of one family", arguments: seeds.prefix(40))
+    func draftHasNoFamilyCap(seed: UInt64) {
+        // Not an assertion that concentration happens on any given seed --
+        // only that nothing in the engine forbids it. The old two-per-family
+        // cap was removed so that packs of seven could not deadlock, and a
+        // silently reinstated cap would be invisible without this.
+        let config = GameConfig(scoringDraft: true)
+        let state = PlaythroughHarness.play(config: config, seed: seed).finalState
+        for player in PlayerID.allCases {
+            for family in ScoringFamily.allCases {
+                let held = state.hands[player].count { $0.family == family }
+                #expect(held <= GameConfig.handSize)
+            }
+        }
     }
 
     /// The whole reason the pack draft replaced the shared pool: it hands each
-    /// player exactly one permanent unknown without a reveal phase existing.
-    @Test("A drafted game leaves each player one secret card and no reveal phase",
+    /// player a permanent unknown without a reveal phase existing.
+    ///
+    /// The discard adds one wrinkle worth pinning down rather than glossing.
+    /// Your opening pick is the only card your opponent does not watch you
+    /// take -- so if you throw that one away, the six you keep are all cards
+    /// they saw, and you have traded your entire secret for the discard. The
+    /// engine publishes six in exactly that case and five otherwise, and both
+    /// halves are asserted here because a projection that got this backwards
+    /// would leak a card rather than merely mislabel one.
+    @Test("A drafted game hides the opening pick unless it is the card discarded",
           arguments: seeds.prefix(20))
     func draftHidesOnlyTheOpeningPick(seed: UInt64) {
         let config = GameConfig(scoringDraft: true)
@@ -360,13 +443,23 @@ struct PropertyTests {
 
         for player in PlayerID.allCases {
             let first = try! #require(state.draftFirstPick[player])
-            // Five of six public, and the one held back is the opening pick.
-            #expect(state.revealed[player].count == GameConfig.handSize - 1)
-            #expect(!state.revealed[player].contains(first))
-            #expect(Set(state.revealed[player]) == Set(state.hands[player]).subtracting([first]))
-            // The opponent's view agrees: they see five, not six.
             let theirView = state.view(for: player.opponent)
-            #expect(theirView.opponentRevealed.count == GameConfig.handSize - 1)
+            let keptTheOpeningPick = state.hands[player].contains(first)
+
+            // Public is always "the hand minus the opening pick", which is six
+            // when the opening pick is what went in the bin and five when it
+            // did not.
+            #expect(
+                Set(state.revealed[player]) == Set(state.hands[player]).subtracting([first])
+            )
+            #expect(
+                state.revealed[player].count
+                    == (keptTheOpeningPick ? GameConfig.handSize - 1 : GameConfig.handSize)
+            )
+            // A card the opponent never saw is never published.
+            #expect(state.revealed[player].contains(first) == false)
+            // The opponent's own view agrees with the state.
+            #expect(Set(theirView.opponentRevealed) == Set(state.revealed[player]))
             #expect(!theirView.opponentRevealed.contains(first))
         }
         // A drafted game never enters reveal selection at all.

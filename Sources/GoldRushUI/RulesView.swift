@@ -301,7 +301,7 @@ public struct RulesView: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Theme.gold.opacity(0.9))
                 bullet("**Dealt** — six at random each, never more than two from one family.")
-                bullet("**Drafted** — you get a pack of six, keep one, and pass the rest to your opponent. Back and forth until you both hold six. No luck of the deal — but note your opponent watches you take five of your six, so only your **very first pick** stays secret.")
+                bullet("**Drafted** — you get a pack of seven, keep one, and pass the rest to your opponent. Back and forth until you both hold seven, then each throw one away **face up** and score with the six you keep. No luck of the deal — but note your opponent watches you take six of your seven, so only your **very first pick** stays secret. Discard that one and you keep nothing back.")
                 Text("Pick either one on the home screen before you start.")
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.parchment.opacity(0.55))

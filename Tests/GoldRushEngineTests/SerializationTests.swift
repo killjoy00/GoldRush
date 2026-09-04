@@ -66,7 +66,7 @@ struct SerializationTests {
                     pileA: split.pileA, pileB: split.pileB, faceDown: split.faceDown))
             case .choose:
                 state = state.apply(.choose(pile: rng.next(upperBound: 2) == 0 ? .a : .b))
-            case .draft, .additionalReveal, .finished:
+            case .draft, .draftDiscard, .additionalReveal, .finished:
                 break
             }
         }

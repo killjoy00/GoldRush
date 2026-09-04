@@ -74,6 +74,8 @@ public struct RootView: View {
                     ChooseView(model: model)
                 case .draft:
                     draft
+                case .draftDiscard:
+                    draftDiscard
                 default:
                     Spacer()
                 }
@@ -152,6 +154,7 @@ public struct RootView: View {
         case .revealSelection: "They're choosing which scoring cards to reveal."
         case .additionalReveal: "They're revealing another scoring card."
         case .draft: "They're drafting a scoring card."
+        case .draftDiscard: "They're deciding which card to throw away."
         default: "It's their turn."
         }
     }
@@ -189,7 +192,7 @@ public struct RootView: View {
             // gets in a drafted game, and it is gone after this tap.
             Text(model.view.hand.isEmpty
                  ? "This pick stays secret. Everything you take after it, your opponent will see."
-                 : "Take one, pass the rest. You hold \(model.view.hand.count) of \(GameConfig.handSize).")
+                 : "Take one, pass the rest. You hold \(model.view.hand.count) of \(GameConfig.draftPackSize).")
                 .font(.system(size: 11))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.parchment.opacity(0.65))
@@ -199,6 +202,37 @@ public struct RootView: View {
                     ForEach(model.draftLegalPicks, id: \.index) { id in
                         Button {
                             Task { await model.draftPick(id) }
+                        } label: {
+                            ScoringCardView(id: id)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+        }
+    }
+
+    @ViewBuilder
+    var draftDiscard: some View {
+        VStack(spacing: 10) {
+            Text("Throw one away")
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(Theme.goldBright)
+            // Say that it is public, because it changes the choice. Dropping
+            // your opening pick is the one discard that costs you your only
+            // secret -- your opponent has seen every other card here already.
+            Text("You drafted \(GameConfig.draftPackSize). Keep \(GameConfig.handSize). "
+                 + "Your opponent will see what you discard.")
+                .font(.system(size: 11))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Theme.parchment.opacity(0.65))
+                .padding(.horizontal, 28)
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(model.view.hand, id: \.index) { id in
+                        Button {
+                            Task { await model.draftDiscard(id) }
                         } label: {
                             ScoringCardView(id: id)
                         }
@@ -438,7 +472,7 @@ public struct NewGameView: View {
             }
             .pickerStyle(.segmented)
             Text(useDraft
-                 ? "Open a pack, take one card, pass the rest. No luck of the deal."
+                 ? "Open a pack of seven, take one, pass the rest. Throw one away at the end."
                  : "Six dealt at random to each player.")
                 .font(.system(size: compact ? 10 : 11))
                 .multilineTextAlignment(.center)
@@ -562,11 +596,12 @@ public struct NewGameView: View {
             case .choose:
                 return .choose(pile: agent.choose(view, rng: &rng))
             case .draft:
-                let legal = view.draftPool.filter { candidate in
-                    view.hand.count { $0.family == candidate.family } < GameConfig.familyCap
-                }
-                guard !legal.isEmpty else { return nil }
-                return .draftPick(agent.draftPick(view, legal: legal, rng: &rng))
+                // No family cap, so the whole pack is takeable.
+                guard !view.draftPool.isEmpty else { return nil }
+                return .draftPick(agent.draftPick(view, legal: view.draftPool, rng: &rng))
+            case .draftDiscard:
+                guard !view.hand.isEmpty else { return nil }
+                return .draftDiscard(agent.draftDiscard(view, legal: view.hand, rng: &rng))
             case .finished:
                 return nil
             }
