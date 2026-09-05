@@ -72,7 +72,8 @@ extension GameAgent {
         }
     }
 
-    /// Pre-game hand value, including opponent-relative and nonlinear effects.
+    /// Pre-game hand value, including opponent-relative, nonlinear and
+    /// build-around effects.
     ///
     /// Comparison riders need an opponent board. During the draft neither side
     /// has one yet, so each 30-card reference profile is scored against two
@@ -80,7 +81,24 @@ extension GameAgent {
     /// type ahead. Adding both outcomes prices "strictly more" and "stay close"
     /// effects around their neutral pre-game probability instead of deleting
     /// them from the draft.
+    ///
+    /// A second term gives the hand one card of strategic agency: after scoring
+    /// the expected 30-card board, ask which single mining type would help this
+    /// hand most if the player deliberately chased one extra copy. This matters
+    /// for build-around thresholds and convex cards. It is intentionally only
+    /// one card, so it captures the direction a scoring hand will steer play
+    /// without pretending the player can rewrite the whole deck distribution.
     public func draftPriorValue(hand: [ScoringCardID]) -> Int {
+        func value(
+            counts: MiningCounts,
+            hand: [ScoringCardID],
+            opponentBehind: ScoreBoard,
+            opponentAhead: ScoreBoard
+        ) -> Int {
+            Scoring.bestAllocation(counts: counts, hand: hand, opponent: opponentBehind).total
+                + Scoring.bestAllocation(counts: counts, hand: hand, opponent: opponentAhead).total
+        }
+
         var total = 0
         for reference in draftReferenceProfiles() {
             var leaner = reference
@@ -91,8 +109,24 @@ extension GameAgent {
             }
             let behind = Scoring.bestAllocation(counts: leaner, hand: [], opponent: nil).board
             let ahead = Scoring.bestAllocation(counts: richer, hand: [], opponent: nil).board
-            total += Scoring.bestAllocation(counts: reference, hand: hand, opponent: behind).total
-            total += Scoring.bestAllocation(counts: reference, hand: hand, opponent: ahead).total
+
+            let baseline = value(
+                counts: reference, hand: hand,
+                opponentBehind: behind, opponentAhead: ahead
+            )
+            var focused = baseline
+            for type in MiningType.allCases {
+                var oneMore = reference
+                oneMore[type] += 1
+                focused = max(
+                    focused,
+                    value(
+                        counts: oneMore, hand: hand,
+                        opponentBehind: behind, opponentAhead: ahead
+                    )
+                )
+            }
+            total += baseline + focused
         }
         return total
     }
