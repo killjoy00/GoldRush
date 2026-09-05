@@ -141,9 +141,33 @@ jobs:
             -skipMacroValidation \
             GOLDRUSH_BUNDLE_ID="$BUNDLE_ID" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
-            ENABLE_BITCODE=NO \
-            MARKETING_VERSION=1.02 \
+            MARKETING_VERSION=1.03 \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
+          # MARKETING_VERSION must be bumped by hand for every release, because
+          # App Store Connect closes a version's pre-release train the moment
+          # that version is approved and released. Three uploads have now died
+          # on this: run #18 with 1.0, and runs #23 and #24 with 1.02.
+          #
+          # Apple compares these component-wise as INTEGERS, and leading zeros
+          # vanish. That has bitten twice and is worth stating plainly:
+          #
+          #     what we write     what Apple stores
+          #     1.01              1.1
+          #     1.02              1.2      <- released 2026-09-04, train CLOSED
+          #     1.03              1.3      <- this build
+          #
+          # So the two rails of the scheme (1.01/1.02/1.03 for ordinary
+          # releases, 1.1/1.2 for larger ones) occupy the SAME numbers. 1.2 can
+          # never follow 1.02, and 1.0.2 would be a downgrade against 1.01.
+          # After 1.03 ships, the next one is 1.04 or 2.0 -- never 1.3.
+          #
+          # Confirm what is actually published before choosing the next one,
+          # rather than trusting what the last build declared:
+          #   curl -sS "https://itunes.apple.com/lookup?bundleId=com.killjoy00.goldrush" \
+          #     | python3 -c "import json,sys; print(json.load(sys.stdin)['results'][0]['version'])"
+          #
+          # CURRENT_PROJECT_VERSION (the build number) needs no such care: it
+          # auto-increments from the run number, offset above.
 
       - name: Write export options
         env:
