@@ -67,6 +67,29 @@ public struct TableauView: View {
                         .font(.system(size: 10))
                         .foregroundStyle(Theme.parchment.opacity(0.5))
                 }
+
+                if !view.draftDiscards.p1.isEmpty || !view.draftDiscards.p2.isEmpty {
+                    Divider().overlay(Theme.gold.opacity(0.3))
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text("FACE-UP DRAFT BURNS")
+                            .font(.system(size: 10, weight: .bold))
+                            .tracking(0.6)
+                            .foregroundStyle(Theme.gold.opacity(0.8))
+                        ForEach(PlayerID.allCases, id: \.rawValue) { player in
+                            let burns = view.draftDiscards[player]
+                            if !burns.isEmpty {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(player == view.player ? "YOU BURNED" : "\(player.displayName.uppercased()) BURNED")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(Theme.parchment.opacity(0.5))
+                                    ForEach(burns, id: \.index) { id in
+                                        ScoringCardView(id: id, dimmed: true)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
             .padding(16)
         }
