@@ -1,0 +1,22 @@
+name: Draft V2 Balance
+
+on:
+  push:
+    branches: ["chatgpt/draft-journal-stats-compendium"]
+    paths: [".github/workflows/draft-balance.yml"]
+
+jobs:
+  balance:
+    runs-on: ubuntu-latest
+    container: swift:6.3.3-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Measure drafted-card balance
+        run: |
+          swift run -c release GoldRushSim balance \
+            --games 5000 \
+            --seed 20260905 \
+            --threads 4 \
+            --agent inference \
+            --scoring-draft \
+            --simultaneous-split
