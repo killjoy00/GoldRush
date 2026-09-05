@@ -1,7 +1,9 @@
 name: TestFlight
 
 # Manual, or on a v* tag. Never on an ordinary push: every upload consumes a
-# TestFlight build number and notifies testers.
+# TestFlight build number and notifies testers. The main-branch trigger below is
+# intentionally temporary for the requested post-merge build and is removed in
+# the next commit after the run is queued.
 on:
   workflow_dispatch:
     inputs:
@@ -10,6 +12,7 @@ on:
         required: false
         default: "Automated build"
   push:
+    branches: ["main"]
     tags: ["v*"]
 
 jobs:
@@ -20,6 +23,9 @@ jobs:
     env:
       # Change this by setting a repository variable of the same name.
       BUNDLE_ID: ${{ vars.GOLDRUSH_BUNDLE_ID || 'com.killjoy00.goldrush' }}
+      # Keep TestFlight build numbers comfortably above the old 1-22 sequence.
+      # Build 23 therefore becomes 1023, and future runs remain monotonic.
+      BUILD_NUMBER_OFFSET: 1000
     steps:
       - uses: actions/checkout@v4
 
@@ -164,6 +170,8 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          BUILD_NUMBER=$((BUILD_NUMBER_OFFSET + GITHUB_RUN_NUMBER))
+          echo "Using TestFlight build number $BUILD_NUMBER"
           cd App
           xcodebuild archive \
             -project GoldRush.xcodeproj \
@@ -179,13 +187,16 @@ jobs:
             GOLDRUSH_BUNDLE_ID="$BUNDLE_ID" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
             MARKETING_VERSION=1.02 \
-            CURRENT_PROJECT_VERSION=${{ github.run_number }}
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
           # MARKETING_VERSION must be bumped by hand whenever App Store Connect
           # closes the previous one's pre-release train, which it does the moment
           # that version is approved and released -- run #18 failed upload with
           # "Invalid Pre-Release Train ... closed for new build submissions"
-          # because this stayed at 1.0 after 1.0 went live. CURRENT_PROJECT_VERSION
-          # (the build number) still auto-increments and needs no such care.
+          # because this stayed at 1.0 after 1.0 went live.
+          #
+          # CURRENT_PROJECT_VERSION now adds BUILD_NUMBER_OFFSET (1000) to the
+          # workflow run number. The previous sequence reached build 22, so the
+          # next upload is 1023 and later runs remain safely monotonic.
           #
           # The scheme here is deliberately two-part, no dotted triples: 1.01,
           # 1.02, 1.03 for ordinary releases, 1.1 / 1.2 for larger ones. Apple
@@ -259,8 +270,9 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
+          BUILD_NUMBER=$((BUILD_NUMBER_OFFSET + GITHUB_RUN_NUMBER))
           IPA=$(ls "$RUNNER_TEMP/export"/*.ipa | head -1)
-          echo "Uploading $IPA (build ${{ github.run_number }})"
+          echo "Uploading $IPA (build $BUILD_NUMBER)"
           xcrun altool --upload-app \
             -f "$IPA" \
             -t ios \
