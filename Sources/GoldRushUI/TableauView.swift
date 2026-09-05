@@ -83,7 +83,7 @@ public struct TableauView: View {
                                         .font(.system(size: 9, weight: .bold))
                                         .foregroundStyle(Theme.parchment.opacity(0.5))
                                     ForEach(burns, id: \.index) { id in
-                                        ScoringCardView(id: id, dimmed: true)
+                                        ScoringCardView(id: id)
                                     }
                                 }
                             }
