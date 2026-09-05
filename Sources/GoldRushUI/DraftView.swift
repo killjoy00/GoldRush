@@ -20,6 +20,9 @@ public struct DraftView: View {
     var pairedDecision: Bool {
         pack.count == GameConfig.draftOpeningPackSize || pack.count == 2
     }
+    var hasPublicBurns: Bool {
+        !model.view.draftDiscards.p1.isEmpty || !model.view.draftDiscards.p2.isEmpty
+    }
 
     public var body: some View {
         VStack(spacing: 10) {
@@ -33,6 +36,8 @@ public struct DraftView: View {
                     .foregroundStyle(Theme.parchment.opacity(0.65))
                     .padding(.horizontal, 28)
             }
+
+            if hasPublicBurns { publicBurns }
 
             if pairedDecision {
                 HStack(spacing: 14) {
@@ -88,6 +93,40 @@ public struct DraftView: View {
             keep = nil
             discard = nil
         }
+    }
+
+    @ViewBuilder
+    var publicBurns: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("FACE-UP BURNS")
+                .font(.system(size: 9, weight: .bold))
+                .tracking(0.7)
+                .foregroundStyle(Theme.gold.opacity(0.8))
+            ForEach(PlayerID.allCases, id: \.rawValue) { player in
+                let burns = model.view.draftDiscards[player]
+                if !burns.isEmpty {
+                    HStack(spacing: 5) {
+                        Text(player == model.view.player ? "You:" : "\(player.displayName):")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Theme.parchment.opacity(0.6))
+                        ForEach(burns, id: \.index) { id in
+                            Text("\(id.code) · \(ScoringCardCatalog[id].name)")
+                                .font(.system(size: 10, weight: .semibold))
+                                .lineLimit(1)
+                                .foregroundStyle(Theme.parchment.opacity(0.82))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(Theme.dirtDeep.opacity(0.65), in: Capsule())
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.dirtLight.opacity(0.28), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 16)
     }
 
     var canConfirm: Bool {
