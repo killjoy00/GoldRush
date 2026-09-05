@@ -142,6 +142,44 @@ not ask you the export-compliance question on every upload.
 
 ---
 
+## The listing copy
+
+The store description used to be the one shipped thing that lived nowhere: the
+binary, the version and the pipeline are all in git, but the text a user reads
+before installing was typed into a web form and reviewed by nobody. It is now
+in `docs/app-store/`, one file per field:
+
+| File | App Store Connect field | Limit |
+|---|---|---|
+| `description.txt` | Description | 4000 |
+| `whats-new.txt` | What's New in This Version | 4000 |
+| `promotional-text.txt` | Promotional Text | 170 |
+| `keywords.txt` | Keywords | 100 |
+
+**A field with no file is left alone.** Only `description.txt` and
+`whats-new.txt` exist today, so a run cannot blank the keywords by omission --
+adding a field means creating its file, not editing the tool.
+
+Push them with **Actions → App Store metadata → Run workflow**, giving the
+marketing version to target. `apply` defaults to false, so running it prints a
+line-by-line diff of what would change and writes nothing. Tick `apply` once
+the diff reads right.
+
+Two things it refuses to do, both deliberately:
+
+- **Write to a version that is not editable.** A released listing is frozen by
+  Apple, and a half-applied edit to one is not something a retry fixes. Edit
+  the next version instead.
+- **Create the version.** If App Store Connect has no such version the run
+  fails and says so. Creating it is the one step that stays manual, because
+  choosing a version number is a decision (see the version-numbering comment in
+  `testflight.yml` before picking one -- Apple reads `1.03` as `1.3`).
+
+Promotional Text is the only field on that list you can change without shipping
+a build, which makes it the cheapest place to say something new.
+
+---
+
 ## If something fails
 
 | Symptom | Cause and fix |

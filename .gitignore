@@ -3,3 +3,4 @@
 *.xcuserdatastate
 xcuserdata/
 DerivedData/
+__pycache__/

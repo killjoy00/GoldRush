@@ -1,0 +1,65 @@
+name: App Store metadata
+
+# Manual only. Pushes docs/app-store/*.txt into App Store Connect.
+#
+# Never on push: the listing is what users read, and a metadata write should be
+# something someone chose to do, not a side effect of merging.
+#
+# `apply` defaults to false, so the obvious thing to do -- run it and see --
+# prints a diff and writes nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Marketing version to update (must already exist in App Store Connect)"
+        required: true
+        default: "1.03"
+      apply:
+        description: "Write the changes. Leave false for a dry run."
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  metadata:
+    name: Update listing copy
+    # Linux is enough: this is HTTPS and openssl, no Xcode involved. It is also
+    # a great deal faster to start than a macOS runner.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BUNDLE_ID: ${{ vars.GOLDRUSH_BUNDLE_ID || 'com.killjoy00.goldrush' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required secrets are present
+        run: |
+          missing=""
+          [ -z "${{ secrets.ASC_KEY_ID }}" ] && missing="$missing ASC_KEY_ID"
+          [ -z "${{ secrets.ASC_ISSUER_ID }}" ] && missing="$missing ASC_ISSUER_ID"
+          [ -z "${{ secrets.ASC_KEY_P8 }}" ] && missing="$missing ASC_KEY_P8"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            echo "See docs/DEPLOYMENT.md for how to create each one."
+            exit 1
+          fi
+          echo "All three secrets present."
+
+      - name: Install the App Store Connect API key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: Tools/install_asc_key.sh
+
+      - name: Show what would change
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: python3 Tools/asc_metadata.py --version "${{ inputs.version }}"
+
+      - name: Apply
+        if: ${{ inputs.apply }}
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: python3 Tools/asc_metadata.py --version "${{ inputs.version }}" --apply
