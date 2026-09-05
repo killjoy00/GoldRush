@@ -1,8 +1,8 @@
 public enum Phase: Sendable, Codable, Equatable, Hashable {
-    /// Snake draft of scoring cards. Only reachable with `scoringDraft`.
+    /// Pack draft of scoring cards. Only reachable with `scoringDraft`.
     case draft
-    /// Trimming the drafted seven down to the six you score with. Only
-    /// reachable with `scoringDraft`.
+    /// Legacy seven-card drafts trim the drafted seven down to six here.
+    /// New eight-card drafts discard from the pack at the opening and close.
     case draftDiscard
     /// Both players privately pick which of their cards to make public.
     case revealSelection
@@ -13,13 +13,10 @@ public enum Phase: Sendable, Codable, Equatable, Hashable {
     case finished
 }
 
-/// What happened in the round that just ended.
+/// What happened in one resolved round.
 ///
-/// Kept on the state because it would otherwise be destroyed the instant the
-/// round advanced, and "what did they take?" is the single question the game
-/// gives you no way to answer. It is not new information -- both players were
-/// entitled to all of it as it happened -- so `PlayerView` projects it under
-/// exactly the same visibility rules as the live piles.
+/// Stored in the state so the recap and Claim Journal can project exactly the
+/// information a player was entitled to see without reconstructing it later.
 public struct RoundOutcome: Sendable, Codable, Equatable, Hashable {
     public let round: Int
     /// The split each player made, keyed by the player who made it.
@@ -89,10 +86,15 @@ public enum Action: Sendable, Codable, Equatable, Hashable {
     case split(pileA: [CardID], pileB: [CardID], faceDown: [CardID])
     case choose(pile: PileID)
 
-    /// Required by `scoringDraft`; unreachable when the toggle is off.
+    /// Opening an eight-card draft pack: one card is kept, one is discarded
+    /// face up after both players have committed, and the remaining six pass.
+    case draftOpen(keep: ScoringCardID, discard: ScoringCardID)
+    /// Middle draft passes: keep one and pass the remainder.
     case draftPick(ScoringCardID)
-    /// Throwing away one of the seven drafted cards. Required by
-    /// `scoringDraft`; unreachable when the toggle is off.
+    /// Closing a two-card pack: keep one and discard the other face up after
+    /// both players have committed.
+    case draftClose(keep: ScoringCardID, discard: ScoringCardID)
+    /// Legacy seven-card saved matches only.
     case draftDiscard(ScoringCardID)
     /// Required by `progressiveReveal`; unreachable when the toggle is off.
     case revealAdditional(ScoringCardID)
@@ -104,6 +106,8 @@ public enum ActionError: Error, Sendable, Equatable {
     case alreadyRevealed(ScoringCardID)
     case wrongRevealCount(expected: Int, actual: Int)
     case cardNotInPool(ScoringCardID)
+    case wrongDraftPackSize(expected: Int, actual: Int)
+    case draftCardsMustDiffer
     case pileEmpty(PileID)
     case splitDoesNotMatchDraw
     case faceDownCountWrong(expected: Int, actual: Int)
@@ -129,17 +133,15 @@ public struct GameState: Sendable, Codable, Equatable {
     public private(set) var drawn: Int
 
     public private(set) var collections: PlayerPair<[CardID]>
-    /// All six scoring cards each player holds. Three are public; all six score.
+    /// All six scoring cards each player holds. Three are public in dealt games;
+    /// drafted games expose every pick except the opening keep.
     public private(set) var hands: PlayerPair<[ScoringCardID]>
     public private(set) var revealed: PlayerPair<[ScoringCardID]>
-    /// Every card each player has legitimately observed.
+    /// Every mining card each player has legitimately observed.
     public private(set) var observations: PlayerPair<CardSet>
 
     /// Cards drawn for the current round, per player. Only a player who is
     /// splitting this round has a draw; the other entry is empty.
-    ///
-    /// Per-player even when splitting alternates, so one code path covers both
-    /// round structures instead of two that have to agree with each other.
     public private(set) var currentDraw: PlayerPair<[CardID]>
     /// The split each player has made and their opponent has yet to choose from.
     public private(set) var pendingSplits: PlayerPair<PendingSplit?>
@@ -151,37 +153,35 @@ public struct GameState: Sendable, Codable, Equatable {
     private var takenPile: PlayerPair<PileID?>
     /// The round that just finished, for the recap screen.
     public private(set) var lastRound: RoundOutcome?
-    /// Every split's public outcome, for the whole match so far. Grows by one
-    /// entry per splitter per round; never torn down the way `lastRound` is.
+    /// Detailed resolved rounds for the Claim Journal. Optional so match data
+    /// written by versions before the Journal existed still decodes.
+    public private(set) var roundHistory: [RoundOutcome]?
+    /// Every split's public outcome, for the whole match so far.
     public private(set) var splitLog: [SplitRecord]
 
     /// Reveal selections submitted so far this phase.
     private var revealSubmitted: PlayerPair<Bool>
     /// The pack currently in front of each player during a draft.
-    ///
-    /// Two packs are dealt and passed back and forth: you see a pack, take one
-    /// card, and hand the remainder to your opponent. That produces exactly the
-    /// information structure this game wants, for free. You see every card in
-    /// the pack you open, so you learn all three of your opponent's picks from
-    /// it; but the pack THEY opened reaches you with their first pick already
-    /// gone, and you never learn what it was. Each player therefore finishes
-    /// the draft knowing five of the opponent's six cards, with one permanent
-    /// unknown -- which is why a drafted game needs no reveal phase.
     public private(set) var draftPacks: PlayerPair<[ScoringCardID]>
-    /// Picked this pass. Both players pick before the packs swap.
+    /// Committed this draft decision. Both players act before packs pass.
     private var draftSubmitted: PlayerPair<Bool>
-    /// The one card each player's opponent never sees.
+    /// The opening keep from the pack each player first saw. In the eight-card
+    /// rules this can never be discarded and is the one permanent secret.
     public private(set) var draftFirstPick: PlayerPair<ScoringCardID?>
-    /// What each player threw away to get from seven cards down to six.
-    ///
-    /// Public, and deliberately so. The alternative -- discarding face down --
-    /// looks like it adds a secret but does not: your opponent watched you
-    /// draft six of your seven, so a hidden discard is one they can usually
-    /// name by elimination, and the cases where they cannot are exactly the
-    /// cases where `revealed` would give it away instead. Face up, the
-    /// information structure stays the one the draft already produced: your
-    /// opening pick is the single card they never see.
+    /// The latest pair of committed face-up discards. Retained under the old
+    /// name so seven-card saved matches continue to decode.
     public private(set) var draftDiscarded: PlayerPair<ScoringCardID?>
+    /// All public draft discards: opening and closing. Optional for backwards
+    /// decoding of matches saved before the eight-card draft existed.
+    public private(set) var draftDiscards: PlayerPair<[ScoringCardID]>?
+    /// A discard chosen by one seat but not yet publishable because the other
+    /// seat has not committed. Keeping it out of `PlayerView` preserves the
+    /// simultaneous decision even though actions resolve in seat order.
+    private var draftPendingDiscard: PlayerPair<ScoringCardID?>?
+    /// Compatibility escape hatch. If an older client/test begins an eight-card
+    /// pack with the old one-card action, finish that draft using the legacy
+    /// seven-kept-then-discard flow rather than stranding the game.
+    private var draftLegacyMode: Bool?
 
     // MARK: - Lookup
 
@@ -199,17 +199,11 @@ public struct GameState: Sendable, Codable, Equatable {
         return counts
     }
 
-    /// Who must act next. Reveal selection resolves p1 before p2, which keeps the
-    /// action sequence deterministic without letting either player see the
-    /// other's choice -- `PlayerView` withholds it until both have submitted.
+    /// Who must act next. Paired setup decisions resolve p1 before p2 for a
+    /// deterministic action sequence, while their private choices stay sealed.
     public var actingPlayer: PlayerID? {
         switch phase {
         case .draft, .draftDiscard:
-            // Both players pick from their own pack before the packs swap, so
-            // this resolves p1 then p2 the same way reveal selection does. The
-            // order leaks nothing: neither player can see the other's pack.
-            // The discard is simultaneous for the same reason -- each is
-            // choosing from their own seven, blind to the other's choice.
             if !draftSubmitted.p1 { return .p1 }
             if !draftSubmitted.p2 { return .p2 }
             return nil
@@ -218,9 +212,6 @@ public struct GameState: Sendable, Codable, Equatable {
             if !revealSubmitted.p2 { return .p2 }
             return nil
         case .split:
-            // Resolved p1 before p2 so the action sequence is deterministic.
-            // That leaks nothing: PlayerView withholds a split until both are
-            // committed, exactly as it does for reveal selection.
             return config.splitters(round: round).first { !splitSubmitted[$0] }
         case .choose:
             return config.choosers(round: round).first { !chooseSubmitted[$0] }
@@ -251,30 +242,19 @@ public struct GameState: Sendable, Codable, Equatable {
         var draftPacks = PlayerPair<[ScoringCardID]>(repeating: [])
 
         if config.scoringDraft {
-            // Fourteen cards off the top of the shuffled deck, cut into two
-            // packs of seven -- one opened by each player.
-            //
-            // An earlier version stratified this pool to hold exactly two of
-            // every family, because a two-per-family cap on hands could
-            // otherwise deadlock the draft: a pack whose last card belonged to
-            // a family you were already full on left you with no legal pick.
-            // With the cap gone there is no such thing as an illegal pick, so
-            // the pool no longer has to be engineered to keep one available,
-            // and drawing it blind restores the variance stratifying removed --
-            // a pack can now arrive four-deep in one family, which is a
-            // decision rather than a dead end.
-            let pool = Array(scoring.prefix(GameConfig.draftPoolSize))
+            // Sixteen cards off the shuffled scoring deck, cut into two packs
+            // of eight -- one opened by each player. No family cap: every card
+            // in a pack is always a legal keep or discard.
+            let pool = Array(scoring.prefix(GameConfig.draftOpeningPoolSize))
             draftPacks = PlayerPair(
-                p1: Array(pool.prefix(GameConfig.draftPackSize)),
-                p2: Array(pool.suffix(GameConfig.draftPackSize))
+                p1: Array(pool.prefix(GameConfig.draftOpeningPackSize)),
+                p2: Array(pool.suffix(GameConfig.draftOpeningPackSize))
             )
         } else {
             // Deal 6 each, straight off the shuffled deck.
             for (index, player) in [PlayerID.p1, .p2].enumerated() {
                 let start = index * GameConfig.handSize
-                hands[player] = Array(
-                    scoring[start..<(start + GameConfig.handSize)]
-                )
+                hands[player] = Array(scoring[start..<(start + GameConfig.handSize)])
             }
         }
 
@@ -295,12 +275,16 @@ public struct GameState: Sendable, Codable, Equatable {
             chooseSubmitted: PlayerPair(repeating: false),
             takenPile: PlayerPair(repeating: nil),
             lastRound: nil,
+            roundHistory: [],
             splitLog: [],
             revealSubmitted: PlayerPair(repeating: false),
             draftPacks: draftPacks,
             draftSubmitted: PlayerPair(repeating: false),
             draftFirstPick: PlayerPair(repeating: nil),
-            draftDiscarded: PlayerPair(repeating: nil)
+            draftDiscarded: PlayerPair(repeating: nil),
+            draftDiscards: PlayerPair(repeating: []),
+            draftPendingDiscard: PlayerPair(repeating: nil),
+            draftLegacyMode: false
         )
     }
 
@@ -315,9 +299,27 @@ public struct GameState: Sendable, Codable, Equatable {
         guard let actor = actingPlayer else { throw .wrongPhase(expected: phase, actual: phase) }
 
         switch action {
+        case .draftOpen(let keep, let discard):
+            guard phase == .draft else { throw .wrongPhase(expected: .draft, actual: phase) }
+            let pack = draftPacks[actor]
+            guard pack.count == GameConfig.draftOpeningPackSize else {
+                throw .wrongDraftPackSize(expected: GameConfig.draftOpeningPackSize, actual: pack.count)
+            }
+            guard keep != discard else { throw .draftCardsMustDiffer }
+            guard pack.contains(keep) else { throw .cardNotInPool(keep) }
+            guard pack.contains(discard) else { throw .cardNotInPool(discard) }
+
         case .draftPick(let id):
             guard phase == .draft else { throw .wrongPhase(expected: .draft, actual: phase) }
             guard draftPacks[actor].contains(id) else { throw .cardNotInPool(id) }
+
+        case .draftClose(let keep, let discard):
+            guard phase == .draft else { throw .wrongPhase(expected: .draft, actual: phase) }
+            let pack = draftPacks[actor]
+            guard pack.count == 2 else { throw .wrongDraftPackSize(expected: 2, actual: pack.count) }
+            guard keep != discard else { throw .draftCardsMustDiffer }
+            guard pack.contains(keep) else { throw .cardNotInPool(keep) }
+            guard pack.contains(discard) else { throw .cardNotInPool(discard) }
 
         case .draftDiscard(let id):
             guard phase == .draftDiscard else {
@@ -348,8 +350,6 @@ public struct GameState: Sendable, Codable, Equatable {
             guard phase == .split else { throw .wrongPhase(expected: .split, actual: phase) }
             guard !pileA.isEmpty else { throw .pileEmpty(.a) }
             guard !pileB.isEmpty else { throw .pileEmpty(.b) }
-            // Every card THIS player drew must appear exactly once across the
-            // two piles -- their own draw, not the other splitter's.
             let mine = currentDraw[actor]
             let combined = pileA + pileB
             guard combined.count == mine.count,
@@ -366,7 +366,6 @@ public struct GameState: Sendable, Codable, Equatable {
 
         case .choose:
             guard phase == .choose else { throw .wrongPhase(expected: .choose, actual: phase) }
-            // You choose from the split your opponent made.
             guard pendingSplits[actor.opponent] != nil else {
                 throw .wrongPhase(expected: .choose, actual: phase)
             }
@@ -375,9 +374,7 @@ public struct GameState: Sendable, Codable, Equatable {
 
     // MARK: - Reducer
 
-    /// Pure. An illegal action leaves the state untouched rather than trapping,
-    /// so a misbehaving client cannot crash a game in progress. Tests use
-    /// `applyChecked` so a typo in a test cannot silently pass by no-op.
+    /// Pure. An illegal action leaves the state untouched rather than trapping.
     public func apply(_ action: Action) -> GameState {
         guard isLegal(action) else { return self }
         return reduce(action)
@@ -392,8 +389,40 @@ public struct GameState: Sendable, Codable, Equatable {
         var next = self
         guard let actor = actingPlayer else { return self }
 
+        /// Makes a pair of pending modern draft discards public at once.
+        func publishDraftDiscards(_ state: inout GameState) {
+            guard let pending = state.draftPendingDiscard,
+                  let p1 = pending.p1, let p2 = pending.p2 else { return }
+            state.draftDiscarded = PlayerPair(p1: p1, p2: p2)
+            if state.draftDiscards == nil { state.draftDiscards = PlayerPair(repeating: []) }
+            state.draftDiscards?.p1.append(p1)
+            state.draftDiscards?.p2.append(p2)
+            state.draftPendingDiscard = PlayerPair(repeating: nil)
+        }
+
         switch action {
+        case .draftOpen(let keep, let discard):
+            next.draftLegacyMode = false
+            next.draftFirstPick[actor] = keep
+            next.hands[actor].append(keep)
+            next.draftPacks[actor].removeAll { $0 == keep || $0 == discard }
+            if next.draftPendingDiscard == nil { next.draftPendingDiscard = PlayerPair(repeating: nil) }
+            next.draftPendingDiscard?[actor] = discard
+            next.draftSubmitted[actor] = true
+
+            if next.draftSubmitted.p1 && next.draftSubmitted.p2 {
+                publishDraftDiscards(&next)
+                next.draftSubmitted = PlayerPair(repeating: false)
+                // Each opened pack now has six; hand it to the opponent.
+                next.draftPacks = PlayerPair(p1: next.draftPacks.p2, p2: next.draftPacks.p1)
+            }
+
         case .draftPick(let id):
+            // An old caller that starts a modern eight-card pack with the old
+            // one-card action is completing a legacy-compatible draft.
+            if next.hands[actor].isEmpty && next.draftPacks[actor].count == GameConfig.draftOpeningPackSize {
+                next.draftLegacyMode = true
+            }
             if next.hands[actor].isEmpty { next.draftFirstPick[actor] = id }
             next.hands[actor].append(id)
             next.draftPacks[actor].removeAll { $0 == id }
@@ -401,37 +430,50 @@ public struct GameState: Sendable, Codable, Equatable {
 
             if next.draftSubmitted.p1 && next.draftSubmitted.p2 {
                 next.draftSubmitted = PlayerPair(repeating: false)
-                // Pass the packs. What is left of the pack you opened goes to
-                // your opponent, and theirs comes to you.
                 next.draftPacks = PlayerPair(p1: next.draftPacks.p2, p2: next.draftPacks.p1)
 
-                if next.hands.p1.count >= GameConfig.draftPackSize
-                    && next.hands.p2.count >= GameConfig.draftPackSize {
-                    // Both packs are exhausted and both players hold seven.
-                    // One card each still has to go.
+                if next.draftLegacyMode == true,
+                   next.hands.p1.count >= GameConfig.draftPackSize,
+                   next.hands.p2.count >= GameConfig.draftPackSize {
+                    // Two cards from the modern 16-card pool are intentionally
+                    // unused in this compatibility path; old callers expect to
+                    // hold seven and then discard one.
+                    next.draftPacks = PlayerPair(repeating: [])
                     next.phase = .draftDiscard
                 }
             }
 
+        case .draftClose(let keep, let discard):
+            next.hands[actor].append(keep)
+            next.draftPacks[actor].removeAll { $0 == keep || $0 == discard }
+            if next.draftPendingDiscard == nil { next.draftPendingDiscard = PlayerPair(repeating: nil) }
+            next.draftPendingDiscard?[actor] = discard
+            next.draftSubmitted[actor] = true
+
+            if next.draftSubmitted.p1 && next.draftSubmitted.p2 {
+                publishDraftDiscards(&next)
+                next.draftSubmitted = PlayerPair(repeating: false)
+                next.draftPacks = PlayerPair(repeating: [])
+                // No reveal-selection phase after a draft. Every kept card
+                // except the opening keep passed through the opponent's hands.
+                for player in [PlayerID.p1, .p2] {
+                    let first = next.draftFirstPick[player]
+                    next.revealed[player] = next.hands[player].filter { $0 != first }
+                }
+                next.beginRound()
+            }
+
         case .draftDiscard(let id):
+            // Legacy saved drafts only.
             next.hands[actor].removeAll { $0 == id }
             next.draftDiscarded[actor] = id
             next.draftSubmitted[actor] = true
 
             if next.draftSubmitted.p1 && next.draftSubmitted.p2 {
                 next.draftSubmitted = PlayerPair(repeating: false)
-                // No reveal phase after a draft. Your opponent watched you
-                // take everything except your opening pick, so publishing
-                // those five cards tells them nothing they had not already
-                // worked out -- and pretending otherwise would hide the
-                // information from the UI, not from the player.
-                //
-                // The discard does not change that count, only which card the
-                // gap falls on. Throw away your opening pick and the six you
-                // keep are all cards they watched you take, so all six become
-                // public; throw away any other and your opening pick is still
-                // the one they never saw, leaving five. Filtering the hand by
-                // the first pick expresses both cases without a branch.
+                if next.draftDiscards == nil { next.draftDiscards = PlayerPair(repeating: []) }
+                if let p1 = next.draftDiscarded.p1 { next.draftDiscards?.p1.append(p1) }
+                if let p2 = next.draftDiscarded.p2 { next.draftDiscards?.p2.append(p2) }
                 for player in [PlayerID.p1, .p2] {
                     let first = next.draftFirstPick[player]
                     next.revealed[player] = next.hands[player].filter { $0 != first }
@@ -487,18 +529,21 @@ public struct GameState: Sendable, Codable, Equatable {
             if !config.persistentHiddenCards {
                 for id in split.pileA + split.pileB { next.observations[chooser].insert(id) }
             }
-            // The splitter drew every card, so it already knows them all.
 
             next.chooseSubmitted[chooser] = true
             next.takenPile[chooser] = pile
             if config.choosers(round: round).allSatisfy({ next.chooseSubmitted[$0] }) {
-                // Snapshot before tearing the round down; this is the only
-                // moment both splits and both choices exist together.
-                next.lastRound = RoundOutcome(
+                // Snapshot before tearing the round down. Keep the exact same
+                // snapshot in the short recap and the permanent Claim Journal.
+                let outcome = RoundOutcome(
                     round: round, splits: next.pendingSplits, taken: next.takenPile
                 )
-                // splitLog only ever grows -- unlike lastRound, which the
-                // recap consumes and this round's teardown then discards.
+                next.lastRound = outcome
+                if next.roundHistory == nil { next.roundHistory = [] }
+                next.roundHistory?.append(outcome)
+
+                // splitLog only ever grows, but deliberately contains no card
+                // identities because agents need only the public metadata.
                 for splitter in config.splitters(round: round) {
                     guard let split = next.pendingSplits[splitter],
                           let taken = next.takenPile[splitter.opponent] else { continue }
@@ -542,8 +587,7 @@ public struct GameState: Sendable, Codable, Equatable {
             currentDraw[splitter] = drawnIDs
 
             // A splitter draws privately, so it observes its whole draw --
-            // including cards that will end up in the pile it loses. This
-            // asymmetry is why splitting costs nothing informationally.
+            // including cards that will end up in the pile it loses.
             for id in drawnIDs { observations[splitter].insert(id) }
         }
 
