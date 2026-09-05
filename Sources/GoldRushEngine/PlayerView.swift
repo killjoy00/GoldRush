@@ -84,14 +84,14 @@ public struct PlayerView: Sendable, Equatable {
     /// permanent secret.
     public let draftPool: [ScoringCardID]
 
-    /// What each player threw away at the end of the draft, once they have.
-    ///
-    /// Both entries are populated for both players, because a face-up discard
-    /// is public by construction -- see `GameState.draftDiscarded`. Withheld
-    /// until both have chosen, for the same reason reveal selection is: the
-    /// discards are simultaneous, and resolving p1 first in the action
-    /// sequence must not tell p2 anything.
+    /// The most recently committed pair of public burns. Legacy seven-card
+    /// matches also use this field for their single end-of-draft discard.
     public let draftDiscarded: PlayerPair<ScoringCardID?>
+
+    /// Every burn that has become public, in chronological order for each seat.
+    /// Pending simultaneous burns are intentionally absent until both players
+    /// commit, so this is safe for the UI and agents to inspect.
+    public let draftDiscards: PlayerPair<[ScoringCardID]>
 
     /// One split from the round that just ended, as this player may see it.
     public struct ResolvedSplit: Sendable, Equatable {
@@ -135,6 +135,7 @@ public struct PlayerView: Sendable, Equatable {
             && lhs.currentDraw == rhs.currentDraw
             && lhs.piles?.a == rhs.piles?.a && lhs.piles?.b == rhs.piles?.b
             && lhs.myPiles?.a == rhs.myPiles?.a && lhs.myPiles?.b == rhs.myPiles?.b
+            && lhs.draftPool == rhs.draftPool && lhs.draftDiscards == rhs.draftDiscards
     }
 
     public init(state: GameState, player: PlayerID) {
@@ -173,6 +174,7 @@ public struct PlayerView: Sendable, Equatable {
         self.draftDiscarded = state.phase == .draftDiscard
             ? PlayerPair(repeating: nil)
             : state.draftDiscarded
+        self.draftDiscards = state.draftDiscards ?? PlayerPair(repeating: [])
         // Reveals are simultaneous: the opponent's picks stay private until both
         // players have committed, so resolving p1 before p2 in the action
         // sequence leaks nothing.
