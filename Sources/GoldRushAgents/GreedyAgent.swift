@@ -108,13 +108,14 @@ public struct GreedyAgent: GameAgent {
         _ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG
     ) -> ScoringCardID {
         // Value each candidate against a typical mid-game collection rather than
-        // an empty one, since a card's worth is decided by what it eventually
-        // pairs with, not by what is on the table during setup.
+        // an empty one. `draftPriorValue` also supplies a symmetric opponent
+        // prior, so comparison riders compete on their expected draft value
+        // instead of being incorrectly scored as zero.
         let reference = typicalCollection()
         var best = legal[0]
         var bestValue = Int.min
         for candidate in legal {
-            let value = Valuation.selfValue(counts: reference, hand: view.hand + [candidate])
+            let value = draftPriorValue(counts: reference, hand: view.hand + [candidate])
             if value > bestValue {
                 bestValue = value
                 best = candidate
