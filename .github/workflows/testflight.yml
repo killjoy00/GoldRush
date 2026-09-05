@@ -1,8 +1,7 @@
 name: TestFlight
 
 # Manual, or on a v* tag. Never on an ordinary push: every upload consumes a
-# TestFlight build number and notifies testers. The main-branch trigger below is
-# temporary for this requested retry and is removed as soon as the run is queued.
+# TestFlight build number and notifies testers.
 on:
   workflow_dispatch:
     inputs:
@@ -11,7 +10,6 @@ on:
         required: false
         default: "Automated build"
   push:
-    branches: ["main"]
     tags: ["v*"]
 
 jobs:
