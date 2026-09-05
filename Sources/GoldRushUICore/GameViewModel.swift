@@ -1,10 +1,11 @@
+import Foundation
 import Observation
 import GoldRushEngine
 
 /// What the screen should currently be showing.
 public enum Screen: Sendable, Equatable {
     case draft
-    /// Throwing one of the drafted seven away.
+    /// Legacy seven-card saved matches only.
     case draftDiscard
     case revealSelection
     case additionalReveal
@@ -18,11 +19,6 @@ public enum Screen: Sendable, Equatable {
 }
 
 /// Drives the whole game for the UI.
-///
-/// Deliberately holds `GameState` privately and exposes only `PlayerView`.
-/// A SwiftUI view cannot reach the global truth even if it wants to, which is
-/// the same guarantee the agents get -- and the reason the on-screen unseen
-/// tracker is honest rather than merely intended to be.
 @Observable
 @MainActor
 public final class GameViewModel {
@@ -33,13 +29,11 @@ public final class GameViewModel {
     public private(set) var splitBuilder: SplitBuilder?
     /// Reveal picks being assembled on the reveal screen.
     public private(set) var revealSelection: [ScoringCardID] = []
+    /// A failed transport submission leaves the authoritative state untouched
+    /// and puts the error here for the UI to surface instead of swallowing it.
+    public private(set) var submissionError: String?
 
     /// The round the recap is currently showing, if it is showing one.
-    ///
-    /// Held in the view model rather than the engine: the recap is a local
-    /// pause for reading, not a turn. Making it a phase would put an
-    /// acknowledgement round-trip between every round of a remote game, which
-    /// is exactly the waiting simultaneous splitting exists to remove.
     private var recapForRound: Int?
 
     private let transport: any MatchTransport
@@ -48,12 +42,6 @@ public final class GameViewModel {
 
     /// The seats this device is allowed to look at. Two for pass-and-play, one
     /// for AI and remote play.
-    ///
-    /// Every assignment to `viewingPlayer` is filtered through this. On a shared
-    /// device the curtain is what protects the hidden information; on a remote
-    /// match there is no curtain, and the only thing stopping this device from
-    /// rendering the opponent's board during their turn is that it is never
-    /// allowed to select their seat.
     private let localSeats: [PlayerID]
 
     public init(state: GameState, transport: any MatchTransport) {
@@ -76,10 +64,6 @@ public final class GameViewModel {
             self?.adopt(updated)
         }
 
-        // Give the transport a chance to act before anything has been
-        // submitted. Only AgentTransport does anything with this, and only
-        // when the game opens on the agent's seat -- a drafted setup can
-        // start that way, and without this hook nothing would ever prompt it.
         Task { @MainActor [weak self] in
             guard let self else { return }
             await self.transport.start()
@@ -100,54 +84,47 @@ public final class GameViewModel {
         return localSeats.contains(actor)
     }
 
-    /// Accepts state that arrived from elsewhere -- the opponent's device.
+    /// Accepts state that arrived from a transport or the opponent's device.
     public func adopt(_ updated: GameState) {
         guard updated != state else { return }
         let before = state.lastRound?.round
         state = updated
+        submissionError = nil
         noteRoundEnded(previously: before)
         viewingPlayer = Self.seat(preferring: updated.actingPlayer, within: localSeats)
         refresh()
     }
 
     /// Queues the recap when a round has resolved since the last look.
-    ///
-    /// Skipped on the final round: the scoring screen supersedes it, and
-    /// making someone dismiss a recap to reach their result is friction at the
-    /// exact moment they want the answer.
     private func noteRoundEnded(previously: Int?) {
         guard !state.isFinished, let last = state.lastRound, last.round != previously else { return }
         recapForRound = last.round
     }
 
-    /// The only window onto the game the UI is given.
-    public var view: PlayerView {
-        state.view(for: viewingPlayer)
-    }
-
-    public var opponentView: PlayerView {
-        state.view(for: viewingPlayer.opponent)
-    }
+    /// The only normal window onto the game the UI is given.
+    public var view: PlayerView { state.view(for: viewingPlayer) }
+    public var opponentView: PlayerView { state.view(for: viewingPlayer.opponent) }
 
     public var round: Int { state.round }
     public var isFinished: Bool { state.isFinished }
 
-    /// Whether a finished round is waiting to be read.
     var hasUnreadRecap: Bool {
         guard let last = state.lastRound else { return false }
         return recapForRound == last.round
     }
 
-    /// Dismisses the recap and moves on to the next round.
     public func acknowledgeRecap() {
         recapForRound = nil
         refresh()
     }
 
-    /// The splits from the round just finished, as this player may see them.
     public var recapSplits: [PlayerView.ResolvedSplit] { view.lastRound }
-
     public var recapRound: Int { state.lastRound?.round ?? state.round }
+
+    /// Permanent, privacy-safe history for the Claim Journal.
+    public var journalRounds: [ClaimJournalRound] {
+        state.claimJournal(for: viewingPlayer)
+    }
 
     static func screen(for state: GameState, viewing: PlayerID) -> Screen {
         switch state.phase {
@@ -179,13 +156,11 @@ public final class GameViewModel {
     public func confirmReveal() async {
         guard revealSelectionComplete else { return }
         await submit(.selectRevealedScoringCards(revealSelection))
-        revealSelection = []
+        if submissionError == nil { revealSelection = [] }
     }
 
     // MARK: - Split
 
-    /// Splits are not undoable, so this is the single gate. It re-checks the
-    /// engine's own legality rather than trusting the builder's UI state.
     public func confirmSplit() async {
         guard let action = splitBuilder?.action, state.isLegal(action) else { return }
         await submit(action)
@@ -199,41 +174,66 @@ public final class GameViewModel {
 
     // MARK: - Draft
 
+    public func draftOpen(keep: ScoringCardID, discard: ScoringCardID) async {
+        await submit(.draftOpen(keep: keep, discard: discard))
+    }
+
     public func draftPick(_ id: ScoringCardID) async {
         await submit(.draftPick(id))
+    }
+
+    public func draftClose(keep: ScoringCardID, discard: ScoringCardID) async {
+        await submit(.draftClose(keep: keep, discard: discard))
     }
 
     public func revealAdditional(_ id: ScoringCardID) async {
         await submit(.revealAdditional(id))
     }
 
+    /// Legacy saved matches only.
     public func draftDiscard(_ id: ScoringCardID) async {
         await submit(.draftDiscard(id))
     }
 
-    /// Everything in the pack. There is no family cap, so nothing is barred.
     public var draftLegalPicks: [ScoringCardID] { view.draftPool }
 
     // MARK: - Hand-off
 
-    /// Pass-and-play hides the board between turns. Without this the whole
-    /// hidden-information design collapses: the next player would simply see
-    /// what the last one was holding.
     public func completeHandoff() {
         awaitingHandoff = false
         refresh()
     }
 
+    public func clearSubmissionError() {
+        submissionError = nil
+    }
+
     private func submit(_ action: Action) async {
-        // Refuse to act on behalf of a seat this device does not control. The
-        // UI should already prevent it; this makes it impossible rather than
-        // merely unlikely.
         guard isLocalTurn else { return }
 
-        let before = state.lastRound?.round
-        try? await transport.submit(action)
-        state = state.apply(action)
-        noteRoundEnded(previously: before)
+        let submittedFrom = state
+        let beforeRound = state.lastRound?.round
+        submissionError = nil
+
+        do {
+            try await transport.submit(action)
+        } catch {
+            // Crucially: do not apply the action locally. A Game Center failure
+            // means the server still owns `submittedFrom`, so advancing here
+            // would create a board that only this phone believes happened.
+            submissionError = error.localizedDescription
+            return
+        }
+
+        // Every built-in transport publishes its accepted state through
+        // onStateChange. This fallback keeps the protocol honest for a custom
+        // transport that persists successfully but chooses not to publish.
+        // Never apply if the callback already advanced us: AgentTransport may
+        // have played several AI actions before `submit` returns.
+        if state == submittedFrom {
+            state = submittedFrom.apply(action)
+            noteRoundEnded(previously: beforeRound)
+        }
 
         if let next = state.actingPlayer, next != viewingPlayer,
            usesHandoff, !state.isFinished {
@@ -243,17 +243,12 @@ public final class GameViewModel {
             splitBuilder = nil
             return
         }
-        // Never follow the turn to a seat this device may not see. In a remote
-        // match the opponent's turn leaves the view on our own board.
         viewingPlayer = Self.seat(preferring: state.actingPlayer, within: localSeats)
         refresh()
     }
 
     private func refresh() {
         guard !awaitingHandoff else { return }
-        // The recap sits in front of whatever comes next. On a shared device
-        // that means it lands after the curtain, so the player about to act is
-        // the one who reads it.
         if hasUnreadRecap {
             screen = .roundRecap
             splitBuilder = nil
@@ -299,5 +294,20 @@ public final class GameViewModel {
 
     public var winner: PlayerID? {
         state.isFinished ? state.winner() : nil
+    }
+
+    /// Stable identifier used to record a completed game in Career Stats once,
+    /// even if the scoring screen is reopened or an online match is reloaded.
+    public var finishedGameIdentifier: String? {
+        guard state.isFinished else { return nil }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard let data = try? encoder.encode(state) else { return nil }
+        var hash: UInt64 = 1_469_598_103_934_665_603
+        for byte in data {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        return String(hash, radix: 16)
     }
 }
