@@ -46,17 +46,15 @@ public enum MatchRunner {
 
             switch state.phase {
             case .draft:
-                // Every card in the pack is takeable: with no family cap there
-                // is no such thing as an illegal pick, so an empty pack is the
-                // only way this can fail and that means the phase was wrong.
-                let legal = view.draftPool
-                guard !legal.isEmpty else {
-                    preconditionFailure("draft reached a state with an empty pack")
+                guard let action = acting.draftAction(view, rng: &rng) else {
+                    preconditionFailure("draft reached a state with no legal action")
                 }
-                let pick = acting.draftPick(view, legal: legal, rng: &rng)
-                state = state.apply(.draftPick(pick))
+                precondition(state.isLegal(action), "\(acting.name) proposed an illegal draft action")
+                state = state.apply(action)
 
             case .draftDiscard:
+                // Compatibility for matches saved under the old seven-card
+                // rules. Newly simulated games never enter this phase.
                 let discard = acting.draftDiscard(view, legal: view.hand, rng: &rng)
                 state = state.apply(.draftDiscard(discard))
 
@@ -74,8 +72,6 @@ public enum MatchRunner {
                 let action = Action.split(
                     pileA: decision.pileA, pileB: decision.pileB, faceDown: decision.faceDown
                 )
-                // An agent that proposes an illegal split would otherwise no-op
-                // and spin forever. Fail loudly instead: that is a strategy bug.
                 precondition(state.isLegal(action), "\(acting.name) proposed an illegal split")
                 state = state.apply(action)
 
@@ -123,8 +119,6 @@ public enum AgentFactory {
         case "inference", "inference-full": InferenceAgent(fidelity: .full)
         case "inference-basic": InferenceAgent(fidelity: .basic)
         case "inference-placement": InferenceAgent(fidelity: .placement)
-        // Ablation: the pre-splitLog opponent model. See
-        // OpponentModel.init(naiveFrom:) and docs/SIM_FINDINGS.md §12.
         case "inference-naive-model": InferenceAgent(useNaiveOpponentModel: true)
         default: nil
         }
