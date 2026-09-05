@@ -223,16 +223,13 @@ public struct InferenceAgent: GameAgent {
     public func draftPick(
         _ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG
     ) -> ScoringCardID {
-        var reference = MiningCounts()
-        for entry in MiningDeck.standardComposition {
-            reference[entry.type] = entry.count * 30 / MiningDeck.standardSize
-        }
         var best = legal[0]
         var bestValue = Int.min
         for candidate in legal {
-            // Prefer cards that compound with what is already held, which is what
-            // makes a drafted hand more than six independently good cards.
-            let value = Valuation.selfValue(counts: reference, hand: view.hand + [candidate])
+            // Prefer cards that compound with what is already held. The shared
+            // six-board prior also evaluates opponent-relative effects and
+            // nonlinear thresholds on full 30-card reference collections.
+            let value = draftPriorValue(hand: view.hand + [candidate])
             if value > bestValue {
                 bestValue = value
                 best = candidate

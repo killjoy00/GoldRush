@@ -13,13 +13,10 @@ import UIKit
 /// Routes to whichever screen the game is currently asking for.
 public struct RootView: View {
     @Bindable public var model: GameViewModel
-    /// Back to the menu. Optional because the view is perfectly usable
-    /// somewhere that has nowhere to go back to; supplied by whoever presented
-    /// the game, which is the only thing that knows what "back" means.
     public let onExit: (() -> Void)?
-    /// Start another game set up the same way.
     public let onRematch: (() -> Void)?
     @State private var showTableau = false
+    @State private var showJournal = false
     @State private var confirmLeave = false
 
     public init(model: GameViewModel,
@@ -48,6 +45,14 @@ public struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.22), value: model.screen)
+        .alert("Move not sent", isPresented: Binding(
+            get: { model.submissionError != nil },
+            set: { if !$0 { model.clearSubmissionError() } }
+        )) {
+            Button("OK", role: .cancel) { model.clearSubmissionError() }
+        } message: {
+            Text(model.submissionError ?? "Your move could not be saved. Please try again.")
+        }
     }
 
     @ViewBuilder
@@ -58,9 +63,6 @@ public struct RootView: View {
                 .padding(.top, 8)
 
             if !model.isLocalTurn && !model.isFinished {
-                // Remote play only. The board stays visible -- the opponent's
-                // move is worth watching for -- but nothing is interactive,
-                // and what is on screen is still only this player's own view.
                 waitingForOpponent
             } else {
                 switch model.screen {
@@ -73,7 +75,7 @@ public struct RootView: View {
                 case .choose:
                     ChooseView(model: model)
                 case .draft:
-                    draft
+                    DraftView(model: model)
                 case .draftDiscard:
                     draftDiscard
                 default:
@@ -81,7 +83,7 @@ public struct RootView: View {
                 }
             }
 
-            HStack(spacing: 20) {
+            HStack(spacing: 18) {
                 Button {
                     showTableau = true
                 } label: {
@@ -89,9 +91,15 @@ public struct RootView: View {
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Theme.gold)
                 }
-                // Without this a match that stalls -- an opponent who never
-                // takes their turn -- leaves the app with no route out of it
-                // but force-quitting.
+
+                Button {
+                    showJournal = true
+                } label: {
+                    Label("Journal", systemImage: "book.closed.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.gold)
+                }
+
                 if onExit != nil {
                     Button {
                         confirmLeave = true
@@ -107,6 +115,9 @@ public struct RootView: View {
         .sheet(isPresented: $showTableau) {
             TableauView(view: model.view)
         }
+        .sheet(isPresented: $showJournal) {
+            ClaimJournalView(rounds: model.journalRounds)
+        }
         .confirmationDialog("Leave this game?",
                             isPresented: $confirmLeave,
                             titleVisibility: .visible) {
@@ -119,9 +130,6 @@ public struct RootView: View {
 
     @ViewBuilder
     var waitingForOpponent: some View {
-        // GeometryReader + ScrollView so a canvas shorter than an iPhone's --
-        // iPad's compatibility mode for an iPhone-only app renders one -- can
-        // scroll this instead of clipping it top and bottom.
         GeometryReader { proxy in
             ScrollView {
                 VStack(spacing: 14) {
@@ -153,8 +161,8 @@ public struct RootView: View {
         case .choose: "They're choosing which pile to take."
         case .revealSelection: "They're choosing which scoring cards to reveal."
         case .additionalReveal: "They're revealing another scoring card."
-        case .draft: "They're drafting a scoring card."
-        case .draftDiscard: "They're deciding which card to throw away."
+        case .draft: "They're making a scoring-card draft decision."
+        case .draftDiscard: "They're finishing an older scoring-card draft."
         default: "It's their turn."
         }
     }
@@ -181,49 +189,15 @@ public struct RootView: View {
         }
     }
 
-    @ViewBuilder
-    var draft: some View {
-        VStack(spacing: 10) {
-            Text(model.view.hand.isEmpty ? "Open your pack" : "Take one card")
-                .font(.system(size: 18, weight: .bold, design: .rounded))
-                .foregroundStyle(Theme.goldBright)
-            // The opening pick is the one card the opponent never sees, and it
-            // is worth saying so out loud: it is the only secret either player
-            // gets in a drafted game, and it is gone after this tap.
-            Text(model.view.hand.isEmpty
-                 ? "This pick stays secret. Everything you take after it, your opponent will see."
-                 : "Take one, pass the rest. You hold \(model.view.hand.count) of \(GameConfig.draftPackSize).")
-                .font(.system(size: 11))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(Theme.parchment.opacity(0.65))
-                .padding(.horizontal, 28)
-            ScrollView {
-                VStack(spacing: 8) {
-                    ForEach(model.draftLegalPicks, id: \.index) { id in
-                        Button {
-                            Task { await model.draftPick(id) }
-                        } label: {
-                            ScoringCardView(id: id)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 16)
-            }
-        }
-    }
-
+    /// Compatibility UI for a match that was already in the old post-draft
+    /// discard phase when this version was installed.
     @ViewBuilder
     var draftDiscard: some View {
         VStack(spacing: 10) {
             Text("Throw one away")
                 .font(.system(size: 18, weight: .bold, design: .rounded))
                 .foregroundStyle(Theme.goldBright)
-            // Say that it is public, because it changes the choice. Dropping
-            // your opening pick is the one discard that costs you your only
-            // secret -- your opponent has seen every other card here already.
-            Text("You drafted \(GameConfig.draftPackSize). Keep \(GameConfig.handSize). "
-                 + "Your opponent will see what you discard.")
+            Text("This is an older seven-card draft. Keep six; your discard is public.")
                 .font(.system(size: 11))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.parchment.opacity(0.65))
@@ -247,26 +221,15 @@ public struct RootView: View {
 
 /// Entry screen: pick an opponent and start.
 public struct NewGameView: View {
-    /// How the running game was started, so "Play again" can start another the
-    /// same way. Nil for a Game Center match, which needs matchmaking rather
-    /// than a button.
     enum LocalStart { case passAndPlay, solo }
 
     @State private var model: GameViewModel?
     @State private var localStart: LocalStart?
     @State private var showRules = false
+    @State private var showCareer = false
+    @State private var showCompendium = false
     @State private var difficulty = InferenceAgent.Fidelity.full
-    /// Drafting is offered rather than imposed. The simulator found a 25-point
-    /// win-rate spread between the best and worst scoring card to be dealt, and
-    /// drafting removes that luck entirely -- but it also adds a phase to the
-    /// start of every game, which is a matter of taste rather than balance.
     @AppStorage("goldrush.scoringDraft") private var useDraft = false
-    /// Defaults on. Waiting through your opponent's whole turn is the single
-    /// worst thing about a remote game, and splitting together halves it --
-    /// four rounds of two splits deal the same 60 cards as eight rounds of
-    /// one. Kept as one setting across every mode rather than "online is a
-    /// different game", and it travels inside the match data, so both devices
-    /// play whatever the host chose.
     @AppStorage("goldrush.simultaneousSplit") private var splitTogether = true
     #if canImport(GameKit)
     @State private var showMatchmaker = false
@@ -281,19 +244,14 @@ public struct NewGameView: View {
             RootView(model: active,
                      onExit: { self.exitToMenu() },
                      onRematch: rematchAction)
-                // A rematch replaces the view model, and this makes SwiftUI
-                // treat that as a new screen rather than reusing the old one's
-                // state (an open tableau sheet, a half-finished dialog).
                 .id(ObjectIdentifier(active))
         } else {
             menu
         }
     }
 
-    /// Ends the running game and returns to the menu.
     func exitToMenu() {
         #if canImport(GameKit)
-        // Stop turn events refreshing a match nothing is showing any more.
         GameCenterTurnListener.shared.onTurnEvent = nil
         #endif
         model = nil
@@ -315,29 +273,11 @@ public struct NewGameView: View {
 
     @ViewBuilder
     var menu: some View {
-        // GeometryReader + ScrollView rather than a bare VStack: on a canvas
-        // shorter than an iPhone's -- iPad's compatibility mode for an
-        // iPhone-only app renders one -- the fixed VStack this used to be had
-        // nowhere to put the overflow and simply clipped it top and bottom.
-        // `minHeight: proxy.size.height` keeps today's vertically-centered
-        // look on a normal screen (the Spacers still expand to fill it) while
-        // letting a shorter one scroll instead of clip.
         GeometryReader { proxy in
-            // On a short canvas the full-size hero and title simply do not
-            // leave room for the buttons, and a ScrollView alone does not
-            // solve that: App Review looks at the screen rather than
-            // scrolling it, and reported the bottom "cut off" even once it
-            // scrolled. So the chrome shrinks to make the whole menu fit.
-            // 780pt keeps every current iPhone (844pt and up) on the full-size
-            // layout; it catches the small ones and iPad's iPhone-compatibility
-            // window, which is what App Review saw.
             let compact = proxy.size.height < 780
             ScrollView {
                 VStack(spacing: compact ? 10 : 18) {
                     Spacer(minLength: compact ? 4 : 12)
-                    // The app icon's composition, rebuilt in vectors: two cards fanned
-                    // behind a nugget. The title screen and the home screen should be
-                    // recognisably the same object.
                     ZStack {
                         RadialGradient(colors: [Theme.ember.opacity(0.75), .clear],
                                        center: .center, startRadius: 6,
@@ -368,8 +308,6 @@ public struct NewGameView: View {
                                                startPoint: .top, endPoint: .bottom)
                             )
                             .shadow(color: .black.opacity(0.55), radius: 5, y: 3)
-                        // A hairline rule either side of the tagline, the way a claim
-                        // notice would have been set.
                         HStack(spacing: 9) {
                             rule
                             Text("SPLIT THE CLAIM")
@@ -400,15 +338,12 @@ public struct NewGameView: View {
                     .opacity(GameCenterAuth.shared.isSignedIn ? 1 : 0.5)
                     #endif
 
-                    Button { showRules = true } label: {
-                        Label("How to play", systemImage: "book.closed.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Theme.parchment.opacity(0.7))
-                            .padding(.top, 2)
+                    HStack(spacing: 20) {
+                        menuUtility("How to play", "book.closed.fill") { showRules = true }
+                        menuUtility("Career", "chart.bar.fill") { showCareer = true }
+                        menuUtility("Cards", "rectangle.stack.fill") { showCompendium = true }
                     }
-                    .sheet(isPresented: $showRules) {
-                        RulesView { showRules = false }
-                    }
+                    .padding(.top, 2)
 
                     Spacer(minLength: compact ? 4 : 12)
                 }
@@ -418,11 +353,16 @@ public struct NewGameView: View {
             }
         }
         .background(Theme.background)
-        // Pinned to the home screen rather than How to play: this is the
-        // screen every session opens on, so it is the one placement that
-        // shows an ad without ever being able to land mid-decision -- nothing
-        // here is a board, a split, or a choice.
         .safeAreaInset(edge: .bottom) { AdSlot.bannerView }
+        .sheet(isPresented: $showRules) {
+            RulesView { showRules = false }
+        }
+        .sheet(isPresented: $showCareer) {
+            CareerStatsView()
+        }
+        .sheet(isPresented: $showCompendium) {
+            ScoringCardCompendiumView()
+        }
         #if canImport(GameKit)
         .sheet(isPresented: $showMatchmaker) {
             GameCenterMatchmakerView(
@@ -441,9 +381,6 @@ public struct NewGameView: View {
         }
         .task {
             GameCenterAuth.shared.authenticate { controller in
-                // Game Center's sign-in screen has to be presented from UIKit,
-                // so it is handed to the topmost view controller rather than
-                // routed through SwiftUI.
                 presentFromTop(controller)
             }
         }
@@ -456,6 +393,19 @@ public struct NewGameView: View {
             .fill(LinearGradient(colors: [.clear, Theme.gold.opacity(0.55)],
                                  startPoint: .leading, endPoint: .trailing))
             .frame(height: 1)
+    }
+
+    @ViewBuilder
+    func menuUtility(_ title: String, _ symbol: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: symbol)
+                Text(title)
+            }
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(Theme.parchment.opacity(0.7))
+        }
+        .buttonStyle(.plain)
     }
 
     /// How the six scoring cards are handed out. Applies to every mode below.
@@ -472,14 +422,12 @@ public struct NewGameView: View {
             }
             .pickerStyle(.segmented)
             Text(useDraft
-                 ? "Open a pack of seven, take one, pass the rest. Throw one away at the end."
+                 ? "Open 8: keep one, burn one, pass 6. Keep/pass to 2, then keep one and burn one."
                  : "Six dealt at random to each player.")
                 .font(.system(size: compact ? 10 : 11))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.parchment.opacity(0.55))
-                // Fixed so the layout does not jump as the caption changes
-                // length. Two lines at the compact size still fit in 26.
-                .frame(height: compact ? 26 : 28)
+                .frame(height: compact ? 30 : 30)
 
             Text("SPLITTING")
                 .font(.system(size: 10, weight: .bold))
@@ -529,13 +477,6 @@ public struct NewGameView: View {
         switch GameCenterAuth.shared.status {
         case .signedIn(let name): "Game Center — \(name)"
         case .signedOut: "Sign in to Game Center first"
-        // GameKit's own wording here is a sentence of internal jargon --
-        // "The requested operation could not be completed because local
-        // player has not been authenticated" -- and it wraps to two lines
-        // inside the button. It is also the state any device that is simply
-        // not signed in lands in, App Review's included, so it is the string
-        // most people see rather than an edge case. The underlying message
-        // stays available on GameCenterAuth.status for diagnosis.
         case .failed: "Sign in to Game Center first"
         case .unknown: "Connecting to Game Center…"
         }
@@ -550,9 +491,6 @@ public struct NewGameView: View {
             let transport = try GameCenterTransport(match: match, config: config)
             localStart = nil
             model = GameViewModel(state: transport.state, transport: transport)
-            // Keep playing while the app is open: when the opponent moves,
-            // Game Center pushes the event and the board reloads in place
-            // rather than waiting for the player to back out and return.
             GameCenterTurnListener.shared.start()
             let matchID = match.matchID
             GameCenterTurnListener.shared.onTurnEvent = { updatedID, _ in
@@ -596,9 +534,7 @@ public struct NewGameView: View {
             case .choose:
                 return .choose(pile: agent.choose(view, rng: &rng))
             case .draft:
-                // No family cap, so the whole pack is takeable.
-                guard !view.draftPool.isEmpty else { return nil }
-                return .draftPick(agent.draftPick(view, legal: view.draftPool, rng: &rng))
+                return agent.draftAction(view, rng: &rng)
             case .draftDiscard:
                 guard !view.hand.isEmpty else { return nil }
                 return .draftDiscard(agent.draftDiscard(view, legal: view.hand, rng: &rng))

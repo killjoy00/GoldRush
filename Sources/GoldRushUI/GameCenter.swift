@@ -5,10 +5,6 @@ import GoldRushEngine
 import GoldRushUICore
 
 /// Signing in to Game Center.
-///
-/// Authentication has to happen before any matchmaking UI is presented, and it
-/// can also fail benignly (the player declines, or has no network), so the
-/// result is surfaced as state rather than thrown.
 @MainActor
 @Observable
 public final class GameCenterAuth {
@@ -30,16 +26,11 @@ public final class GameCenterAuth {
     }
 
     /// Starts authentication. Safe to call more than once.
-    ///
-    /// The handler may be invoked repeatedly over the app's lifetime -- Game
-    /// Center calls it again if the player signs in or out later -- so it
-    /// updates state rather than completing once.
     public func authenticate(present: @escaping (Any) -> Void) {
         GKLocalPlayer.local.authenticateHandler = { [weak self] viewController, error in
             Task { @MainActor in
                 guard let self else { return }
                 if let viewController {
-                    // Game Center wants to show its own sign-in screen.
                     present(viewController)
                     return
                 }
@@ -59,19 +50,12 @@ public final class GameCenterAuth {
 ///
 /// The whole `GameState` is encoded into the match's `matchData` on every turn,
 /// which is what makes the two devices agree: neither replays actions, they
-/// both just load the same state. The serialization tests pin the properties
-/// that relies on -- a decoded game equals the original and continues
-/// identically -- and the state is ~3 KB against a 64 KB ceiling.
+/// both just load the same state.
 ///
-/// KNOWN LIMITATION, stated here because it is a real property of the design
-/// rather than an oversight: `matchData` is readable by BOTH clients. A player
-/// willing to inspect it could read the face-down cards they were not shown,
-/// and indeed the whole undrawn deck. Hiding that genuinely requires either a
-/// server or a commitment scheme (publish hashes of the hidden cards, reveal
-/// the salts at scoring), and Gold Rush deliberately has no server. For two
-/// friends playing on their own phones this is not a threat worth the
-/// complexity; the hidden-information rules are still enforced by the app for
-/// anyone not deliberately attacking it.
+/// KNOWN LIMITATION: `matchData` is readable by both clients. A determined
+/// player could inspect hidden cards or the undrawn deck. Truly hiding that
+/// needs a server or commitment scheme; the normal app UI still enforces every
+/// hidden-information rule through `PlayerView`.
 @MainActor
 public final class GameCenterTransport: MatchTransport {
 
@@ -99,12 +83,6 @@ public final class GameCenterTransport: MatchTransport {
     public var localPlayers: [PlayerID] { [localSeat] }
 
     /// How long a player has to take their turn before forfeiting it.
-    ///
-    /// Stated explicitly rather than using `GKTurnTimeoutDefault`, for two
-    /// reasons: that symbol is a mutable global which Swift 6 will not let a
-    /// concurrent context read, and how long a friend gets to think is a design
-    /// decision worth making deliberately rather than inheriting. A week suits
-    /// a game people pick up between other things.
     public static let turnTimeout: TimeInterval = 7 * 24 * 60 * 60
 
     /// Whether Game Center currently considers this device the active one.
@@ -137,9 +115,6 @@ public final class GameCenterTransport: MatchTransport {
                 throw Failure.matchDataUnreadable
             }
         } else {
-            // First turn of a new match: whoever acts first establishes the deal.
-            // The seed is part of the state from then on, so both devices deal
-            // identically for the rest of the game.
             self.state = GameState.newGame(config: config, seed: UInt64.random(in: 0..<UInt64.max))
         }
     }
@@ -152,17 +127,15 @@ public final class GameCenterTransport: MatchTransport {
 
         let next = state.apply(action)
         guard next != state else { return }
-        state = next
-        onStateChange?(next)
-
         let data = try Self.makeEncoder().encode(next)
 
+        // Persist FIRST. Publishing an optimistic state before Game Center
+        // accepts it can leave this phone one move ahead of the authoritative
+        // match when the network request fails.
         if next.isFinished {
-            try await endMatch(with: data)
+            try await endMatch(with: data, finalState: next)
         } else if let actor = next.actingPlayer, actor == localSeat {
-            // Still this player's move -- P2 chooses a pile and then immediately
-            // splits the next round, so the turn must be saved without being
-            // passed on.
+            // Still this player's move: save without handing off the turn.
             try await match.saveCurrentTurn(withMatch: data)
         } else {
             let others = match.participants.filter {
@@ -174,9 +147,13 @@ public final class GameCenterTransport: MatchTransport {
                 match: data
             )
         }
+
+        // Only a successful remote write becomes local truth.
+        state = next
+        onStateChange?(next)
     }
 
-    /// Reloads after the opponent has moved.
+    /// Reloads after the opponent has moved or after the app resumes.
     public func refresh() async throws {
         let reloaded = try await GKTurnBasedMatch.load(withID: match.matchID)
         match = reloaded
@@ -187,8 +164,8 @@ public final class GameCenterTransport: MatchTransport {
         }
     }
 
-    private func endMatch(with data: Data) async throws {
-        let winner = state.winner()
+    private func endMatch(with data: Data, finalState: GameState) async throws {
+        let winner = finalState.winner()
         for participant in match.participants {
             let seat: PlayerID = match.participants.firstIndex(of: participant) == 0 ? .p1 : .p2
             participant.matchOutcome = (seat == winner) ? .won : .lost

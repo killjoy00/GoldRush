@@ -33,68 +33,150 @@ public protocol GameAgent: Sendable {
 }
 
 extension GameAgent {
-    /// Which of the drafted seven to throw away.
+    /// Six equally weighted, exactly-30-card boards used to judge a scoring
+    /// hand before the mining game has begun.
     ///
-    /// Defaulted rather than required, because the answer that suits almost
-    /// every agent is the same one: keep the best six. What goes is the card
-    /// the rest of the hand misses least, which is not the same as the
-    /// weakest card -- a rider that duplicates another rider's job is worth
-    /// less beside it than alone, and this drops that one.
+    /// The old draft heuristic independently floored `deckCount * 30 / 72` for
+    /// every mining type. Those floors add to only 27 cards, not 30. That is a
+    /// meaningful bias for nonlinear cards: Quartz's expectation is 3 1/3, so
+    /// Crystal Cache was always judged at exactly 3 Quartz and its "beyond the
+    /// third" rider never fired. In an eight-card draft the bot then burned it
+    /// every time it appeared.
     ///
-    /// It deliberately does NOT use `Valuation.selfValue`, which every other
-    /// decision here uses. That function scores comparison riders as zero,
-    /// because their value genuinely depends on a board the agent cannot see.
-    /// Everywhere else that costs a little accuracy; here it was fatal.
-    /// Scoring a comparison card at zero makes it the cheapest card in every
-    /// hand it ever appears in, so it is discarded every single time -- and a
-    /// 100k-game sweep confirmed exactly that, with P5 Highgrader and P8
-    /// Grubstake Partner held in zero games despite P8 being one of the
-    /// strongest cards in the deck when dealt. A card that can never be
-    /// played is worse than a mistuned one.
+    /// These six boards encode the fractional expectation without floating point:
+    /// their per-type average is exactly the standard deck's 30-card expectation,
+    /// and every individual board contains exactly 30 cards. Repeated boards are
+    /// intentional probability weight, not a typo.
+    public func draftReferenceProfiles() -> [MiningCounts] {
+        var floor = MiningCounts()
+        for entry in MiningDeck.standardComposition {
+            floor[entry.type] = entry.count * 30 / MiningDeck.standardSize
+        }
+
+        // The floor board totals 27. Across six samples, the 18 residual slots
+        // reproduce the exact fractional remainders:
+        // Nugget 5/6; Pyrite/Ore/Gravel 1/6; Shovel/Pan/Quartz 2/6; Mule 4/6.
+        let residuals: [[MiningType]] = [
+            [.goldNugget, .packMule, .shovel],
+            [.goldNugget, .packMule, .pan],
+            [.goldNugget, .packMule, .quartz],
+            [.goldNugget, .packMule, .shovel],
+            [.goldNugget, .pan, .quartz],
+            [.foolsGold, .goldOre, .gravel],
+        ]
+
+        return residuals.map { extras in
+            var counts = floor
+            for type in extras { counts[type] += 1 }
+            return counts
+        }
+    }
+
+    /// Pre-game hand value, including opponent-relative, nonlinear and
+    /// build-around effects.
     ///
-    /// So comparison riders are resolved here against a symmetric opponent
-    /// rather than skipped: the hand is scored twice, once against a
-    /// reference collection one card per type leaner than this player's and
-    /// once one card richer, and the two are averaged. That prices a
-    /// "strictly more" card at about half its face value and a "close to
-    /// level" card at about half of its, which is the right prior in a game
-    /// where both players draft from the same pool and neither is favoured.
+    /// Comparison riders need an opponent board. During the draft neither side
+    /// has one yet, so each 30-card reference profile is scored against two
+    /// symmetric priors: an opponent one card per type behind and one card per
+    /// type ahead. Adding both outcomes prices "strictly more" and "stay close"
+    /// effects around their neutral pre-game probability instead of deleting
+    /// them from the draft.
+    ///
+    /// A second term gives the hand one card of strategic agency: after scoring
+    /// the expected 30-card board, ask which single mining type would help this
+    /// hand most if the player deliberately chased one extra copy. This matters
+    /// for build-around thresholds and convex cards. It is intentionally only
+    /// one card, so it captures the direction a scoring hand will steer play
+    /// without pretending the player can rewrite the whole deck distribution.
+    public func draftPriorValue(hand: [ScoringCardID]) -> Int {
+        func value(
+            counts: MiningCounts,
+            hand: [ScoringCardID],
+            opponentBehind: Board,
+            opponentAhead: Board
+        ) -> Int {
+            Scoring.bestAllocation(counts: counts, hand: hand, opponent: opponentBehind).total
+                + Scoring.bestAllocation(counts: counts, hand: hand, opponent: opponentAhead).total
+        }
+
+        var total = 0
+        for reference in draftReferenceProfiles() {
+            var leaner = reference
+            var richer = reference
+            for type in MiningType.allCases {
+                leaner[type] = max(0, reference[type] - 1)
+                richer[type] = reference[type] + 1
+            }
+            let behind = Scoring.bestAllocation(counts: leaner, hand: [], opponent: nil).board
+            let ahead = Scoring.bestAllocation(counts: richer, hand: [], opponent: nil).board
+
+            let baseline = value(
+                counts: reference, hand: hand,
+                opponentBehind: behind, opponentAhead: ahead
+            )
+            var focused = baseline
+            for type in MiningType.allCases {
+                var oneMore = reference
+                oneMore[type] += 1
+                focused = max(
+                    focused,
+                    value(
+                        counts: oneMore, hand: hand,
+                        opponentBehind: behind, opponentAhead: ahead
+                    )
+                )
+            }
+            total += baseline + focused
+        }
+        return total
+    }
+
+    /// Which of a legacy seven-card hand to throw away. New eight-card drafts
+    /// discard from the pack at the opening and closing decisions instead, but
+    /// this remains for saved matches that were already in `.draftDiscard`.
     public func draftDiscard(
         _ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG
     ) -> ScoringCardID {
         guard let first = legal.first else { return view.hand[0] }
 
-        var reference = MiningCounts()
-        for entry in MiningDeck.standardComposition {
-            reference[entry.type] = entry.count * 30 / MiningDeck.standardSize
-        }
-        // One step either side of level, so every comparison rider resolves
-        // true in one branch and false in the other.
-        var leaner = reference
-        var richer = reference
-        for type in MiningType.allCases {
-            leaner[type] = max(0, reference[type] - 1)
-            richer[type] = reference[type] + 1
-        }
-        let behind = Scoring.bestAllocation(counts: leaner, hand: [], opponent: nil).board
-        let ahead = Scoring.bestAllocation(counts: richer, hand: [], opponent: nil).board
-
-        func keptValue(_ kept: [ScoringCardID]) -> Int {
-            let winning = Scoring.bestAllocation(counts: reference, hand: kept, opponent: behind)
-            let losing = Scoring.bestAllocation(counts: reference, hand: kept, opponent: ahead)
-            return winning.total + losing.total
-        }
-
         var best = first
         var bestKept = Int.min
         for candidate in legal {
-            let value = keptValue(legal.filter { $0 != candidate })
+            let value = draftPriorValue(hand: legal.filter { $0 != candidate })
             if value > bestKept {
                 bestKept = value
                 best = candidate
             }
         }
         return best
+    }
+
+    /// Converts an agent's existing card-ranking strategy into the complete
+    /// eight-card draft action. Keeping this here makes the simulator, solo AI
+    /// and any future bot use exactly the same draft protocol.
+    public func draftAction(_ view: PlayerView, rng: inout SeededRNG) -> Action? {
+        let pack = view.draftPool
+        guard !pack.isEmpty else { return nil }
+
+        if pack.count == GameConfig.draftOpeningPackSize {
+            let keep = draftPick(view, legal: pack, rng: &rng)
+            let remaining = pack.filter { $0 != keep }
+            guard !remaining.isEmpty else { return nil }
+            // The second-best card for our own hand is a sensible denial burn:
+            // it is the card we least want to hand to the opponent after taking
+            // our first choice. Both decisions still use only visible draft data.
+            let discard = draftPick(view, legal: remaining, rng: &rng)
+            return .draftOpen(keep: keep, discard: discard)
+        }
+
+        if pack.count == 2 {
+            let keep = draftPick(view, legal: pack, rng: &rng)
+            guard let discard = pack.first(where: { $0 != keep }) else { return nil }
+            return .draftClose(keep: keep, discard: discard)
+        }
+
+        let keep = draftPick(view, legal: pack, rng: &rng)
+        return .draftPick(keep)
     }
 }
 

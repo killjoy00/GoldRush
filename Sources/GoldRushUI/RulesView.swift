@@ -2,13 +2,9 @@
 import SwiftUI
 import GoldRushEngine
 
-/// The instruction book, reachable from the menu before a game starts.
-///
-/// Written to be read cold: someone handed the phone who has never seen the
-/// game should be able to play a round from this alone. It leans on the real
-/// card art rather than describing it in words, and takes its family blurbs
-/// and deck counts from the engine, so a retune cannot leave the rules
-/// describing a game the app no longer plays.
+/// The instruction book, ordered for a first game: core decision first, edge
+/// cases and reference material later. Every statement here mirrors an engine
+/// rule rather than an AI preference.
 public struct RulesView: View {
     public let onDismiss: (() -> Void)?
 
@@ -18,16 +14,17 @@ public struct RulesView: View {
 
     public var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                premise
-                firstGame
-                theRound
-                theDeck
-                sets
-                scoringCards
-                whatYouCannotSee
-                lastRounds
+            VStack(alignment: .leading, spacing: 18) {
+                hero
+                goal
+                setup
+                round
+                formats
+                scoring
+                information
+                motherlode
                 winning
+                reference
             }
             .padding(.horizontal, 18)
             .padding(.top, 14)
@@ -37,389 +34,238 @@ public struct RulesView: View {
         .safeAreaInset(edge: .top) { titleBar }
     }
 
-    // MARK: - Chrome
-
     @ViewBuilder
     var titleBar: some View {
         HStack {
-            Text("How to Play")
-                .font(.system(size: 19, weight: .bold, design: .rounded))
-                .foregroundStyle(Theme.goldBright)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("HOW TO PLAY")
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Theme.goldBright)
+                Text("Gold Rush · Split the Claim")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Theme.parchment.opacity(0.5))
+            }
             Spacer()
             if let onDismiss {
-                Button(action: onDismiss) {
-                    Text("Done")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Theme.gold)
-                }
+                Button("Done", action: onDismiss)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Theme.gold)
             }
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 12)
-        .background {
-            ZStack(alignment: .bottom) {
-                Theme.dirtDeep.opacity(0.96)
-                Rectangle()
-                    .fill(Theme.gold.opacity(0.22))
-                    .frame(height: 1)
-            }
-            .ignoresSafeArea(edges: .top)
+        .padding(.vertical, 11)
+        .background(Theme.dirtDeep.opacity(0.96))
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Theme.gold.opacity(0.18)).frame(height: 1)
         }
     }
 
-    // MARK: - Sections
-
     @ViewBuilder
-    var premise: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Split the claim.\nLet them choose.")
-                .font(.system(size: 25, weight: .black, design: .rounded))
+    var hero: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Split the claim. Let them choose.")
+                .font(.system(size: 23, weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.goldBright)
+            Text("When you split, make two piles knowing your opponent gets first choice. Your job is to make both piles acceptable to you — because you keep whichever one they leave behind.")
+                .font(.system(size: 13))
+                .foregroundStyle(Theme.parchment.opacity(0.8))
                 .fixedSize(horizontal: false, vertical: true)
-            Text("""
-                 You know this one. Two children, one slice of cake: whoever \
-                 cuts it, the other picks first. Suddenly the cutter is very \
-                 careful.
-
-                 That is the whole game. You divide a handful of cards into \
-                 two piles, and your opponent takes whichever they want. Cut \
-                 it evenly and they have no good choice. Cut it greedily and \
-                 they will simply take the better half and leave you the \
-                 scraps.
-                 """)
-                .font(.system(size: 14))
-                .lineSpacing(3)
-                .foregroundStyle(Theme.parchment.opacity(0.85))
-                .fixedSize(horizontal: false, vertical: true)
-
-            calloutBox("If you only remember one thing",
-                       "Cut so that you would be happy with either pile. "
-                       + "Because you might get either one.")
         }
-        .padding(.bottom, 2)
-    }
-
-    @ViewBuilder
-    var theRound: some View {
-        section("A round, step by step") {
-            VStack(alignment: .leading, spacing: 11) {
-                step(1, "You privately draw **7 cards**. Your opponent cannot see them.")
-                step(2, "You deal them into **two piles**. Each needs at least one card, and the app keeps them within one card of each other.")
-                step(3, "You turn **one card face down**, in whichever pile you like. Your opponent will have to choose without knowing what it is.")
-                step(4, "Your opponent takes a pile. **You keep the other one.**")
-                step(5, "Whoever ends up holding a face-down card gets to look at it. The other player never does.")
-
-                divider
-                Text("Who splits when")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Theme.gold.opacity(0.9))
-                bullet("**Together** (the default) — you both split your own pile at the same time, then you each choose from the other's. **4 rounds.** Nobody waits.")
-                bullet("**Take turns** — one of you splits while the other waits, then you swap. **8 rounds.**")
-                Text("Either way you split four times and choose four times, and the same 60 cards come out. Pick it on the home screen.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.parchment.opacity(0.55))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
-
-    /// The three things a new player actually needs, before any detail.
-    @ViewBuilder
-    var firstGame: some View {
-        section("If this is your first game") {
-            VStack(alignment: .leading, spacing: 10) {
-                bullet("**You are collecting mining cards.** They are worth nothing by themselves — your scoring cards decide what counts.")
-                bullet("**Look at your scoring cards before you split.** They are the only thing that tells you which pile is actually better.")
-                bullet("**Sets beat singles.** An Ore with a Shovel is worth far more than two loose Ore. Never split a pair across both piles if you can help it.")
-                Text("Play a round against the prospector and it will make sense faster than reading will.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.parchment.opacity(0.55))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+        .padding(15)
+        .background(
+            LinearGradient(colors: [Theme.dirtLight.opacity(0.7), Theme.dirtDeep],
+                           startPoint: .topLeading, endPoint: .bottomTrailing),
+            in: RoundedRectangle(cornerRadius: 15)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 15)
+                .strokeBorder(Theme.gold.opacity(0.28), lineWidth: 1)
         }
     }
 
     @ViewBuilder
-    var theDeck: some View {
-        section("The claim") {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("72 cards. 60 of them get dealt over the eight rounds — so a dozen never come out at all.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.parchment.opacity(0.8))
-                    .fixedSize(horizontal: false, vertical: true)
-
-                VStack(spacing: 7) {
-                    ForEach(MiningType.allCases, id: \.rawValue) { type in
-                        deckRow(type)
-                    }
-                }
-                .padding(.top, 2)
-            }
+    var goal: some View {
+        ruleSection("1 · YOUR GOAL", symbol: "flag.checkered") {
+            Text("Collect mining cards that pay your six scoring cards. After all 60 cards in play have been claimed, every scoring card pays out. Highest score wins.")
+            callout("The important twist", "The same mining card can be excellent for you and nearly worthless to your opponent. Your scoring cards are what make a fair split difficult.")
         }
     }
 
     @ViewBuilder
-    func deckRow(_ type: MiningType) -> some View {
-        HStack(spacing: 11) {
-            MiningCardView(type: type, size: .chip)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(type.displayName)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Theme.parchment)
-                Text(deckNote(type))
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.parchment.opacity(0.6))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 6)
-            Text("\(MiningDeck.standardCounts[type])")
-                .font(.system(size: 17, weight: .bold, design: .rounded))
+    var setup: some View {
+        ruleSection("2 · GET SIX SCORING CARDS", symbol: "rectangle.stack.fill") {
+            Text("Choose one setup before the game:")
+            miniHeader("DEALT")
+            Text("Each player receives six scoring cards at random. Three are public and three stay secret.")
+
+            miniHeader("DRAFTED")
+            Text("Each player opens a separate pack of eight. The draft goes:")
+            draftRail
+            numbered(1, "From 8: keep 1, discard 1 face up, pass the other 6.")
+            numbered(2, "From 6, 5, 4 and 3: keep 1 and pass the rest.")
+            numbered(3, "From the final 2: keep 1 and discard 1 face up.")
+            Text("You finish with six cards. Your opening keep is the one card from that pack your opponent never gets to see.")
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Theme.gold)
         }
     }
 
-    func deckNote(_ type: MiningType) -> String {
-        switch type {
-        case .goldNugget: "The staple. Plenty of cards pay for these."
-        case .foolsGold: "Worthless, and several cards punish holding it."
-        case .goldOre: "Pairs with a Shovel."
-        case .shovel: "Pairs with Gold Ore. Counts as a Tool."
-        case .gravel: "Pairs with a Pan."
-        case .pan: "Pairs with Gravel. Counts as a Tool."
-        case .quartz: "Scarce. Some cards pay more for each one you add."
-        case .packMule: "Wild — fills a Shovel or a Pan slot. Counts as a Tool."
-        }
-    }
-
     @ViewBuilder
-    var sets: some View {
-        section("Sets") {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Two pairs match up one-for-one. A set is worth far more than its halves.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.parchment.opacity(0.8))
-                    .fixedSize(horizontal: false, vertical: true)
-
-                HStack(spacing: 16) {
-                    pairing(.goldOre, .shovel)
-                    pairing(.gravel, .pan)
+    var draftRail: some View {
+        HStack(spacing: 5) {
+            ForEach([8, 6, 5, 4, 3, 2], id: \.self) { count in
+                Text("\(count)")
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .foregroundStyle(count == 8 || count == 2 ? Theme.dirt : Theme.parchment)
+                    .frame(width: 29, height: 29)
+                    .background(count == 8 || count == 2 ? Theme.gold : Theme.dirtLight,
+                                in: Circle())
+                if count != 2 {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(Theme.gold.opacity(0.45))
                 }
-                .frame(maxWidth: .infinity)
-
-                HStack(alignment: .top, spacing: 11) {
-                    MiningCardView(type: .packMule, size: .chip)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("The Pack Mule")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(Theme.parchment)
-                        Text("""
-                             Each Mule stands in for **one** Shovel **or** one Pan — \
-                             its choice, whichever earns you more. It won't satisfy a \
-                             card that pays per Shovel or per Pan, but it always \
-                             counts as one Tool.
-
-                             The app works out the best arrangement for you at scoring.
-                             """)
-                            .font(.system(size: 12))
-                            .lineSpacing(2)
-                            .foregroundStyle(Theme.parchment.opacity(0.72))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                .padding(.top, 2)
             }
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 7)
     }
 
     @ViewBuilder
-    func pairing(_ a: MiningType, _ b: MiningType) -> some View {
-        VStack(spacing: 5) {
-            HStack(spacing: 5) {
-                MiningCardView(type: a, size: .chip)
-                Text("+")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Theme.gold)
-                MiningCardView(type: b, size: .chip)
-            }
-            Text("\(a.shortName) + \(b.shortName)")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Theme.parchment.opacity(0.7))
+    var round: some View {
+        ruleSection("3 · PLAY A ROUND", symbol: "arrow.triangle.2.circlepath") {
+            numbered(1, "Draw your cards privately: 7 in a normal round.")
+            numbered(2, "Divide every drawn card between two non-empty piles. The piles do not have to be the same size.")
+            numbered(3, "Turn 1 card face down anywhere in the two piles. You know what it is; your opponent must choose without seeing it.")
+            numbered(4, "Your opponent takes one pile. You keep the other.")
+            numbered(5, "A buried card is revealed to the player who ends up taking it. If your opponent leaves a buried card with you, they never learn what it was.")
+            callout("The splitter's test", "Would you be happy getting either pile? If not, your opponent probably has an easy choice.")
         }
     }
 
     @ViewBuilder
-    var scoringCards: some View {
-        section("Scoring cards") {
-            VStack(alignment: .leading, spacing: 11) {
-                Text("""
-                     Cards are only worth what your scoring cards say they are. \
-                     You hold **six**, and **all six** count at the end — but only \
-                     **three** are turned face up at the start. The other three stay \
-                     secret all game.
-                     """)
-                    .font(.system(size: 13))
-                    .lineSpacing(2)
-                    .foregroundStyle(Theme.parchment.opacity(0.85))
-                    .fixedSize(horizontal: false, vertical: true)
-
-                VStack(spacing: 8) {
-                    ForEach(ScoringFamily.allCases, id: \.rawValue) { family in
-                        HStack(spacing: 10) {
-                            Text(family.letter)
-                                .font(.system(size: 13, weight: .heavy, design: .rounded))
-                                .foregroundStyle(Theme.dirt)
-                                .frame(width: 24, height: 24)
-                                .background(Theme.gold, in: RoundedRectangle(cornerRadius: 6))
-                            Text(family.displayName.uppercased())
-                                .font(.system(size: 12, weight: .bold))
-                                .tracking(0.7)
-                                .foregroundStyle(Theme.parchment)
-                                .frame(width: 72, alignment: .leading)
-                            Text(family.rewardSummary)
-                                .font(.system(size: 12))
-                                .foregroundStyle(Theme.parchment.opacity(0.7))
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer(minLength: 0)
-                        }
-                    }
-                }
-
-                Text("""
-                     Showing a card tells your opponent what to deny you — but it \
-                     also forces them to cut piles that suit you. Hiding one keeps \
-                     the surprise and lets them cut carelessly. Both are real \
-                     choices; neither is obviously right.
-                     """)
-                    .font(.system(size: 12))
-                    .lineSpacing(2)
-                    .foregroundStyle(Theme.parchment.opacity(0.62))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 1)
-
-                divider
-                Text("Two ways to get them")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Theme.gold.opacity(0.9))
-                bullet("**Dealt** — six at random each, never more than two from one family.")
-                bullet("**Drafted** — you get a pack of seven, keep one, and pass the rest to your opponent. Back and forth until you both hold seven, then each throw one away **face up** and score with the six you keep. No luck of the deal — but note your opponent watches you take six of your seven, so only your **very first pick** stays secret. Discard that one and you keep nothing back.")
-                Text("Pick either one on the home screen before you start.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.parchment.opacity(0.55))
-            }
+    var formats: some View {
+        ruleSection("4 · TOGETHER OR TAKE TURNS", symbol: "person.2.fill") {
+            formatRow("Together", "Both players draw and make a split at the same time, then each chooses from the opponent's split. 4 rounds.")
+            formatRow("Take Turns", "One player splits and the other chooses, then the roles alternate. 8 rounds.")
+            Text("Both formats put the same 60 mining cards into play and give each player four splits and four choices.")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.gold)
         }
     }
 
     @ViewBuilder
-    var whatYouCannotSee: some View {
-        section("What you never learn") {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 11) {
-                    MiningCardView(type: nil, faceDown: true, size: .chip)
-                    Text("""
-                         If your opponent buries a card and you pass on that pile, \
-                         that card is gone for good — you will never be told what it \
-                         was. Not at scoring, not ever.
-                         """)
-                        .font(.system(size: 13))
-                        .lineSpacing(2)
-                        .foregroundStyle(Theme.parchment.opacity(0.85))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Text("""
-                     Twelve cards are never dealt either. So neither player ever sees \
-                     the whole picture — the tracker on the board counts what you have \
-                     not seen, and that is genuinely all anyone knows.
-                     """)
-                    .font(.system(size: 12))
-                    .lineSpacing(2)
-                    .foregroundStyle(Theme.parchment.opacity(0.65))
-                    .fixedSize(horizontal: false, vertical: true)
+    var scoring: some View {
+        ruleSection("5 · WHAT SCORES", symbol: "star.fill") {
+            Text("Your six scoring cards tell you exactly what is worth points. Some reward one mining type, some reward thresholds or majorities, and some reward sets.")
+            miniHeader("SETS")
+            HStack(spacing: 10) {
+                setTile(.goldOre, .shovel, label: "Ore + Shovel")
+                setTile(.gravel, .pan, label: "Gravel + Pan")
             }
+            Text("A Pack Mule can fill the Shovel slot of one Ore set or the Pan slot of one Gravel set. The app automatically allocates your Mules where they score the most.")
+            Text("A Pack Mule also counts as a Tool for scoring cards that reward Tools.")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.gold)
         }
     }
 
     @ViewBuilder
-    var lastRounds: some View {
-        section("The last two rounds") {
-            Text("""
-                 The final round is bigger: **9 cards** instead of 7, and \
-                 **two** turned face down instead of one. Twice the cards \
-                 hidden, twice the guessing. Games are usually won or lost \
-                 here, so keep something in reserve for it.
-                 """)
-                .font(.system(size: 13))
-                .lineSpacing(2)
-                .foregroundStyle(Theme.parchment.opacity(0.85))
-                .fixedSize(horizontal: false, vertical: true)
+    var information: some View {
+        ruleSection("6 · WHAT STAYS HIDDEN", symbol: "eye.slash.fill") {
+            bullet("Dealt setup: three of each player's scoring cards are public; three are secret.")
+            bullet("Drafted setup: your opening keep stays secret. Every later kept card passed through your opponent's hands, and both burns are face up.")
+            bullet("While choosing a pile, face-down mining cards are unknown.")
+            bullet("If you take a pile, you learn its buried cards. A buried card you decline remains unknown to you for the rest of the game — including in the Claim Journal.")
+            Text("The Unseen counter combines cards that were never dealt with opponent cards you never identified.")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.gold)
+        }
+    }
+
+    @ViewBuilder
+    var motherlode: some View {
+        ruleSection("7 · THE MOTHERLODE", symbol: "sparkles") {
+            Text("The final 18 mining cards are bigger decisions.")
+            bullet("Together: in round 4, each player draws 9 and buries 2.")
+            bullet("Take Turns: rounds 7 and 8 each use a 9-card draw with 2 buried cards.")
+            Text("The rules are otherwise unchanged: any two non-empty piles are legal, and the chooser still takes first pick.")
         }
     }
 
     @ViewBuilder
     var winning: some View {
-        section("Winning") {
-            VStack(alignment: .leading, spacing: 9) {
-                Text("After eight rounds every scoring card pays out, secret ones included. Highest total takes the claim.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.parchment.opacity(0.85))
-                    .fixedSize(horizontal: false, vertical: true)
-                divider
-                bullet("A card that pays for having **more** than your opponent pays nothing on a tie. You need strictly more.")
-                bullet("Level on points? Most Gold Nugget wins. Still level? Fewest Fool's Gold. Still level after that, Player 2 takes it.")
+        ruleSection("8 · WINNING", symbol: "crown.fill") {
+            Text("After the final claim, the app chooses the best legal Pack Mule allocation and scores all six scoring cards for each player.")
+            miniHeader("TIEBREAKS")
+            numbered(1, "Most Gold Nuggets.")
+            numbered(2, "Fewest Fool's Gold.")
+            numbered(3, "If still tied, Player 2 wins the final tiebreak.")
+        }
+    }
+
+    @ViewBuilder
+    var reference: some View {
+        ruleSection("REFERENCE · SCORING FAMILIES", symbol: "books.vertical.fill") {
+            ForEach(ScoringFamily.allCases, id: \.rawValue) { family in
+                HStack(alignment: .top, spacing: 8) {
+                    Text(family.letter)
+                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                        .foregroundStyle(Theme.dirt)
+                        .frame(width: 25, height: 25)
+                        .background(Theme.gold, in: RoundedRectangle(cornerRadius: 6))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(family.displayName)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(Theme.parchment)
+                        Text("Rewards \(family.rewardSummary).")
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.parchment.opacity(0.62))
+                    }
+                }
             }
+            Text("Use Cards on the main menu to browse the full 48-card scoring deck.")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.gold)
+                .padding(.top, 3)
         }
     }
 
-    // MARK: - Building blocks
-
     @ViewBuilder
-    func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 11) {
-            Text(title.uppercased())
-                .font(.system(size: 11, weight: .bold))
-                .tracking(1.2)
-                .foregroundStyle(Theme.gold.opacity(0.85))
-            content()
+    func ruleSection<Content: View>(
+        _ title: String,
+        symbol: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(spacing: 7) {
+                Image(systemName: symbol)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(Theme.gold)
+                Text(title)
+                    .font(.system(size: 12, weight: .heavy))
+                    .tracking(0.8)
+                    .foregroundStyle(Theme.goldBright)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                content()
+            }
+            .font(.system(size: 12))
+            .foregroundStyle(Theme.parchment.opacity(0.72))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Theme.dirtLight.opacity(0.38), in: RoundedRectangle(cornerRadius: 14))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(Theme.gold.opacity(0.12), lineWidth: 1)
-        }
-    }
-
-    /// A single sentence worth more than the paragraph around it.
-    @ViewBuilder
-    func calloutBox(_ title: String, _ body: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title.uppercased())
-                .font(.system(size: 10, weight: .bold))
-                .tracking(1)
-                .foregroundStyle(Theme.dirt.opacity(0.7))
-            Text(body)
-                .font(.system(size: 13, weight: .medium))
-                .lineSpacing(2)
-                .foregroundStyle(Theme.dirt)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.gold, in: RoundedRectangle(cornerRadius: 11))
+        .padding(13)
+        .background(Theme.dirtLight.opacity(0.34), in: RoundedRectangle(cornerRadius: 13))
     }
 
     @ViewBuilder
-    func step(_ number: Int, _ text: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+    func numbered(_ number: Int, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
             Text("\(number)")
-                .font(.system(size: 12, weight: .heavy, design: .rounded))
+                .font(.system(size: 10, weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.dirt)
                 .frame(width: 21, height: 21)
                 .background(Theme.gold, in: Circle())
-            Text(.init(text))
-                .font(.system(size: 13))
-                .lineSpacing(2)
-                .foregroundStyle(Theme.parchment.opacity(0.88))
+            Text(text)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -427,24 +273,68 @@ public struct RulesView: View {
     @ViewBuilder
     func bullet(_ text: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
-            Circle()
-                .fill(Theme.gold.opacity(0.75))
-                .frame(width: 4, height: 4)
-                .padding(.top, 6)
-            Text(.init(text))
-                .font(.system(size: 12.5))
-                .lineSpacing(2)
-                .foregroundStyle(Theme.parchment.opacity(0.8))
-                .fixedSize(horizontal: false, vertical: true)
+            Circle().fill(Theme.gold.opacity(0.75)).frame(width: 5, height: 5).padding(.top, 6)
+            Text(text).fixedSize(horizontal: false, vertical: true)
         }
     }
 
     @ViewBuilder
-    var divider: some View {
-        Rectangle()
-            .fill(Theme.gold.opacity(0.15))
-            .frame(height: 1)
-            .padding(.vertical, 1)
+    func miniHeader(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 9, weight: .heavy))
+            .tracking(0.9)
+            .foregroundStyle(Theme.gold.opacity(0.78))
+            .padding(.top, 2)
+    }
+
+    @ViewBuilder
+    func callout(_ title: String, _ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title.uppercased())
+                .font(.system(size: 9, weight: .heavy))
+                .tracking(0.7)
+                .foregroundStyle(Theme.gold)
+            Text(text)
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.parchment.opacity(0.7))
+        }
+        .padding(9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.dirtDeep.opacity(0.6), in: RoundedRectangle(cornerRadius: 9))
+    }
+
+    @ViewBuilder
+    func formatRow(_ title: String, _ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Theme.parchment)
+            Text(text)
+                .font(.system(size: 11))
+                .foregroundStyle(Theme.parchment.opacity(0.62))
+        }
+        .padding(9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.dirtDeep.opacity(0.45), in: RoundedRectangle(cornerRadius: 9))
+    }
+
+    @ViewBuilder
+    func setTile(_ a: MiningType, _ b: MiningType, label: String) -> some View {
+        VStack(spacing: 5) {
+            HStack(spacing: 3) {
+                MiningCardView(type: a, size: .chip)
+                Text("+")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Theme.gold)
+                MiningCardView(type: b, size: .chip)
+            }
+            Text(label)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(Theme.parchment.opacity(0.65))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 7)
+        .background(Theme.dirtDeep.opacity(0.4), in: RoundedRectangle(cornerRadius: 9))
     }
 }
 #endif

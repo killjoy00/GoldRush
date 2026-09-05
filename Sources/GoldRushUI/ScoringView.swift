@@ -6,12 +6,7 @@ import GoldRushUICore
 /// End-of-game breakdown, itemised per scoring card.
 public struct ScoringView: View {
     @Bindable public var model: GameViewModel
-    /// Where to go once the game is over. Without it this screen is a dead end
-    /// -- the game is finished, nothing on it is interactive, and the only way
-    /// out of the app is to force-quit it.
     public let onExit: (() -> Void)?
-    /// Start another game set up the same way. Absent for Game Center matches,
-    /// which need matchmaking rather than a button.
     public let onRematch: (() -> Void)?
 
     public init(model: GameViewModel,
@@ -48,11 +43,11 @@ public struct ScoringView: View {
         }
         .background(Theme.background)
         .safeAreaInset(edge: .bottom) { exitBar }
+        .task {
+            CareerStatsStore.record(model: model)
+        }
     }
 
-    /// Pinned to the bottom rather than placed after the breakdown: the
-    /// breakdown is two full screens of cards, and a way out that has to be
-    /// scrolled to is a way out people do not find.
     @ViewBuilder
     var exitBar: some View {
         if onExit != nil || onRematch != nil {

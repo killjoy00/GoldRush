@@ -107,14 +107,14 @@ public struct GreedyAgent: GameAgent {
     public func draftPick(
         _ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG
     ) -> ScoringCardID {
-        // Value each candidate against a typical mid-game collection rather than
-        // an empty one, since a card's worth is decided by what it eventually
-        // pairs with, not by what is on the table during setup.
-        let reference = typicalCollection()
+        // The shared draft prior evaluates a six-board ensemble of full 30-card
+        // collections and symmetric opponent boards. That keeps comparison and
+        // nonlinear cards in the ranking instead of evaluating them on an
+        // undersized single average board.
         var best = legal[0]
         var bestValue = Int.min
         for candidate in legal {
-            let value = Valuation.selfValue(counts: reference, hand: view.hand + [candidate])
+            let value = draftPriorValue(hand: view.hand + [candidate])
             if value > bestValue {
                 bestValue = value
                 best = candidate
@@ -133,15 +133,5 @@ public struct GreedyAgent: GameAgent {
             return lhs.index < rhs.index
         }
         return ranked[0]
-    }
-
-    /// Roughly what half the drawn deck looks like: the yardstick for judging a
-    /// scoring card before any cards are on the table.
-    func typicalCollection() -> MiningCounts {
-        var counts = MiningCounts()
-        for entry in MiningDeck.standardComposition {
-            counts[entry.type] = entry.count * 30 / MiningDeck.standardSize
-        }
-        return counts
     }
 }

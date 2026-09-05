@@ -9,8 +9,9 @@ public enum HiddenPolicy: Sendable, Codable, Equatable, Hashable {
 
 /// Every rules variant, settable from the CLI so the simulator can A/B them.
 public struct GameConfig: Sendable, Codable, Equatable, Hashable {
-    /// Replaces the blind deal with a pack draft: two packs of six, passed
-    /// back and forth a card at a time.
+    /// Replaces the blind deal with a two-pack draft. Each player opens eight:
+    /// keep one, discard one face up, pass six; then keep/pass down to two,
+    /// where one is kept and the other discarded face up. Six cards remain.
     public var scoringDraft: Bool
     /// Both players split their own draw every round and each chooses from the
     /// other's, instead of one player splitting while the other waits.
@@ -122,18 +123,18 @@ public struct GameConfig: Sendable, Codable, Equatable, Hashable {
 
     public static let handSize = 6
 
-    /// The drafted setup deals two packs and passes them back and forth: you
-    /// look at a pack, take one card, and hand the rest to your opponent.
-    ///
-    /// Packs are one larger than the hand, so the draft runs seven passes and
-    /// each player finishes holding seven -- then discards one, face up, to
-    /// reach the six they score with. The extra card is what makes the last
-    /// passes a decision rather than an inventory: a pack drafted down to its
-    /// final card offers no choice at all, and under the old six-card packs
-    /// that was true of the sixth pick for both players every game.
+    /// The live draft. Each player opens eight cards, removes two immediately
+    /// (one kept, one face-up discard), passes six, and eventually receives a
+    /// final two-card choice. The opening keep is the one card from that pack
+    /// the opponent never gets to see.
+    public static let draftOpeningPackSize = handSize + 2
+    public static let draftOpeningPoolSize = draftOpeningPackSize * 2
+    public static let draftDiscardsPerPlayer = 2
+
+    // MARK: Legacy draft compatibility
+    // Retained so already-saved seven-card draft states and older deterministic
+    // harnesses still decode and can finish. New games do not use these sizes.
     public static let draftPackSize = handSize + 1
     public static let draftPoolSize = draftPackSize * 2
-
-    /// How many drafted cards each player throws away before scoring begins.
     public static let draftDiscardCount = draftPackSize - handSize
 }
