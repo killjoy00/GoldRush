@@ -1,5 +1,7 @@
+import Foundation
 import Testing
 @testable import GoldRushEngine
+@testable import GoldRushAgents
 
 @Suite("Eight-card scoring draft")
 struct DraftV2Tests {
@@ -88,6 +90,61 @@ struct DraftV2Tests {
         let accounted = state.hands.p1 + state.hands.p2 + burns.p1 + burns.p2
         #expect(accounted.count == GameConfig.draftOpeningPoolSize)
         #expect(Set(accounted).count == GameConfig.draftOpeningPoolSize)
+    }
+
+    @Test("Seven-card saved draft without v2 keys can finish")
+    func legacySavedDraftResumes() throws {
+        let modern = GameState.newGame(config: GameConfig(scoringDraft: true), seed: 0x01D7)
+        let encoded = try JSONEncoder().encode(modern)
+        var root = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+
+        // Recreate the shape written by the previous app: two seven-card packs
+        // and none of the optional fields introduced with Draft V2/Claim Journal.
+        var packs = try #require(root["draftPacks"] as? [String: Any])
+        for seat in ["p1", "p2"] {
+            var pack = try #require(packs[seat] as? [Any])
+            #expect(pack.count == 8)
+            pack.removeLast()
+            packs[seat] = pack
+        }
+        root["draftPacks"] = packs
+        root.removeValue(forKey: "draftLegacyMode")
+        root.removeValue(forKey: "draftDiscards")
+        root.removeValue(forKey: "draftPendingDiscard")
+        root.removeValue(forKey: "roundHistory")
+
+        let oldData = try JSONSerialization.data(withJSONObject: root)
+        var state = try JSONDecoder().decode(GameState.self, from: oldData)
+        #expect(state.phase == .draft)
+        #expect(state.draftPacks.p1.count == 7 && state.draftPacks.p2.count == 7)
+
+        for _ in 0..<7 {
+            let p1Card = try #require(state.draftPacks.p1.first)
+            state = state.apply(.draftPick(p1Card))
+            let p2Card = try #require(state.draftPacks.p2.first)
+            state = state.apply(.draftPick(p2Card))
+        }
+
+        #expect(state.phase == .draftDiscard)
+        #expect(state.hands.p1.count == 7 && state.hands.p2.count == 7)
+        #expect(state.draftPacks.p1.isEmpty && state.draftPacks.p2.isEmpty)
+    }
+}
+
+@Suite("Draft valuation")
+struct DraftValuationTests {
+    @Test("Reference ensemble contains 30 cards and preserves deck expectation")
+    func fullSizeReferenceProfiles() {
+        let profiles = GreedyAgent().draftReferenceProfiles()
+        #expect(profiles.count == 6)
+        #expect(profiles.allSatisfy { $0.total == 30 })
+
+        for entry in MiningDeck.standardComposition {
+            let observed = profiles.reduce(0) { $0 + $1[entry.type] }
+            // Compare in integer space: average profile count equals
+            // entry.count * 30 / 72 exactly across the six-board ensemble.
+            #expect(observed * MiningDeck.standardSize == entry.count * 30 * profiles.count)
+        }
     }
 }
 
