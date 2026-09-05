@@ -180,7 +180,8 @@ public struct GameState: Sendable, Codable, Equatable {
     private var draftPendingDiscard: PlayerPair<ScoringCardID?>?
     /// Compatibility escape hatch. If an older client/test begins an eight-card
     /// pack with the old one-card action, finish that draft using the legacy
-    /// seven-kept-then-discard flow rather than stranding the game.
+    /// seven-kept-then-discard flow rather than stranding the game. A nil value
+    /// means this state was decoded from a version that predates the flag.
     private var draftLegacyMode: Bool?
 
     // MARK: - Lookup
@@ -418,8 +419,12 @@ public struct GameState: Sendable, Codable, Equatable {
             }
 
         case .draftPick(let id):
-            // An old caller that starts a modern eight-card pack with the old
-            // one-card action is completing a legacy-compatible draft.
+            // `draftLegacyMode` did not exist in seven-card match data. A nil
+            // value therefore identifies an old saved draft and must behave as
+            // legacy before the first post-upgrade pick is applied.
+            if next.draftLegacyMode == nil { next.draftLegacyMode = true }
+            // An old caller/test that starts a modern eight-card pack with the
+            // old one-card action also completes through the legacy path.
             if next.hands[actor].isEmpty && next.draftPacks[actor].count == GameConfig.draftOpeningPackSize {
                 next.draftLegacyMode = true
             }
@@ -436,8 +441,8 @@ public struct GameState: Sendable, Codable, Equatable {
                    next.hands.p1.count >= GameConfig.draftPackSize,
                    next.hands.p2.count >= GameConfig.draftPackSize {
                     // Two cards from the modern 16-card pool are intentionally
-                    // unused in this compatibility path; old callers expect to
-                    // hold seven and then discard one.
+                    // unused when a current game is driven by an old caller;
+                    // genuinely old saved games simply exhaust their 14-card pool.
                     next.draftPacks = PlayerPair(repeating: [])
                     next.phase = .draftDiscard
                 }
