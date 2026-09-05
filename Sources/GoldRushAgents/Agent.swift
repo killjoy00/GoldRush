@@ -33,25 +33,68 @@ public protocol GameAgent: Sendable {
 }
 
 extension GameAgent {
-    /// A draft valuation that does not pretend comparison cards are worth zero.
+    /// Six equally weighted, exactly-30-card boards used to judge a scoring
+    /// hand before the mining game has begun.
+    ///
+    /// The old draft heuristic independently floored `deckCount * 30 / 72` for
+    /// every mining type. Those floors add to only 27 cards, not 30. That is a
+    /// meaningful bias for nonlinear cards: Quartz's expectation is 3 1/3, so
+    /// Crystal Cache was always judged at exactly 3 Quartz and its "beyond the
+    /// third" rider never fired. In an eight-card draft the bot then burned it
+    /// every time it appeared.
+    ///
+    /// These six boards encode the fractional expectation without floating point:
+    /// their per-type average is exactly the standard deck's 30-card expectation,
+    /// and every individual board contains exactly 30 cards. Repeated boards are
+    /// intentional probability weight, not a typo.
+    public func draftReferenceProfiles() -> [MiningCounts] {
+        var floor = MiningCounts()
+        for entry in MiningDeck.standardComposition {
+            floor[entry.type] = entry.count * 30 / MiningDeck.standardSize
+        }
+
+        // The floor board totals 27. Across six samples, the 18 residual slots
+        // reproduce the exact fractional remainders:
+        // Nugget 5/6; Pyrite/Ore/Gravel 1/6; Shovel/Pan/Quartz 2/6; Mule 4/6.
+        let residuals: [[MiningType]] = [
+            [.goldNugget, .packMule, .shovel],
+            [.goldNugget, .packMule, .pan],
+            [.goldNugget, .packMule, .quartz],
+            [.goldNugget, .packMule, .shovel],
+            [.goldNugget, .pan, .quartz],
+            [.foolsGold, .goldOre, .gravel],
+        ]
+
+        return residuals.map { extras in
+            var counts = floor
+            for type in extras { counts[type] += 1 }
+            return counts
+        }
+    }
+
+    /// Pre-game hand value, including opponent-relative and nonlinear effects.
     ///
     /// Comparison riders need an opponent board. During the draft neither side
-    /// has one yet, so evaluate the hand against two symmetric priors: an
-    /// opponent one card per type behind and one card per type ahead. Adding the
-    /// two outcomes prices both "strictly more" and "stay close" effects around
-    /// their true pre-game probability instead of deleting them from the draft.
-    public func draftPriorValue(counts reference: MiningCounts, hand: [ScoringCardID]) -> Int {
-        var leaner = reference
-        var richer = reference
-        for type in MiningType.allCases {
-            leaner[type] = max(0, reference[type] - 1)
-            richer[type] = reference[type] + 1
+    /// has one yet, so each 30-card reference profile is scored against two
+    /// symmetric priors: an opponent one card per type behind and one card per
+    /// type ahead. Adding both outcomes prices "strictly more" and "stay close"
+    /// effects around their neutral pre-game probability instead of deleting
+    /// them from the draft.
+    public func draftPriorValue(hand: [ScoringCardID]) -> Int {
+        var total = 0
+        for reference in draftReferenceProfiles() {
+            var leaner = reference
+            var richer = reference
+            for type in MiningType.allCases {
+                leaner[type] = max(0, reference[type] - 1)
+                richer[type] = reference[type] + 1
+            }
+            let behind = Scoring.bestAllocation(counts: leaner, hand: [], opponent: nil).board
+            let ahead = Scoring.bestAllocation(counts: richer, hand: [], opponent: nil).board
+            total += Scoring.bestAllocation(counts: reference, hand: hand, opponent: behind).total
+            total += Scoring.bestAllocation(counts: reference, hand: hand, opponent: ahead).total
         }
-        let behind = Scoring.bestAllocation(counts: leaner, hand: [], opponent: nil).board
-        let ahead = Scoring.bestAllocation(counts: richer, hand: [], opponent: nil).board
-        let winning = Scoring.bestAllocation(counts: reference, hand: hand, opponent: behind)
-        let losing = Scoring.bestAllocation(counts: reference, hand: hand, opponent: ahead)
-        return winning.total + losing.total
+        return total
     }
 
     /// Which of a legacy seven-card hand to throw away. New eight-card drafts
@@ -62,15 +105,10 @@ extension GameAgent {
     ) -> ScoringCardID {
         guard let first = legal.first else { return view.hand[0] }
 
-        var reference = MiningCounts()
-        for entry in MiningDeck.standardComposition {
-            reference[entry.type] = entry.count * 30 / MiningDeck.standardSize
-        }
-
         var best = first
         var bestKept = Int.min
         for candidate in legal {
-            let value = draftPriorValue(counts: reference, hand: legal.filter { $0 != candidate })
+            let value = draftPriorValue(hand: legal.filter { $0 != candidate })
             if value > bestKept {
                 bestKept = value
                 best = candidate
