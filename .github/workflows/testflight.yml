@@ -1,7 +1,8 @@
 name: TestFlight
 
 # Manual, or on a v* tag. Never on an ordinary push: every upload consumes a
-# TestFlight build number and notifies testers.
+# TestFlight build number and notifies testers. The main-branch trigger below is
+# temporary for this requested retry and is removed as soon as the run is queued.
 on:
   workflow_dispatch:
     inputs:
@@ -10,6 +11,7 @@ on:
         required: false
         default: "Automated build"
   push:
+    branches: ["main"]
     tags: ["v*"]
 
 jobs:
@@ -21,7 +23,6 @@ jobs:
       # Change this by setting a repository variable of the same name.
       BUNDLE_ID: ${{ vars.GOLDRUSH_BUNDLE_ID || 'com.killjoy00.goldrush' }}
       # Keep TestFlight build numbers comfortably above the old 1-22 sequence.
-      # Build 23 therefore becomes 1023, and future runs remain monotonic.
       BUILD_NUMBER_OFFSET: 1000
     steps:
       - uses: actions/checkout@v4
@@ -32,8 +33,6 @@ jobs:
           xcodebuild -version
 
       - name: Check required secrets are present
-        # Fails with a readable message rather than a confusing signing error
-        # forty lines into an xcodebuild log.
         run: |
           missing=""
           [ -z "${{ secrets.ASC_KEY_ID }}" ] && missing="$missing ASC_KEY_ID"
@@ -56,26 +55,17 @@ jobs:
           mkdir -p ~/.appstoreconnect/private_keys
           KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
           RAW="$RUNNER_TEMP/asc_key_raw"
-
           printf '%s' "$ASC_KEY_P8" > "$RAW"
-
-          # Normalise two things a copy-paste commonly does to a PEM file:
-          # Windows line endings, and newlines flattened into the literal two
-          # characters backslash-n.
           tr -d '\r' < "$RAW" > "$RAW.n" && mv "$RAW.n" "$RAW"
           if grep -q 'BEGIN PRIVATE KEY' "$RAW" && ! grep -q '^-----END PRIVATE KEY-----' "$RAW"; then
             echo "note: expanding literal \\n sequences into real newlines"
             perl -pe 's/\\n/\n/g' "$RAW" > "$RAW.n" && mv "$RAW.n" "$RAW"
           fi
-
           if grep -q 'BEGIN PRIVATE KEY' "$RAW"; then
             echo "ASC_KEY_P8 looks like PEM text; using it as-is."
             cp "$RAW" "$KEY_PATH"
           else
             echo "ASC_KEY_P8 is not PEM text; trying to base64-decode it."
-            # macOS ships BSD base64, which spells decode as -D. GNU coreutils
-            # spells it -d/--decode. Try each rather than assuming the runner's
-            # flavour.
             tr -d '[:space:]' < "$RAW" > "$RAW.compact"
             DECODED="$RUNNER_TEMP/asc_key_decoded"
             if   base64 -D       < "$RAW.compact" > "$DECODED" 2>/dev/null && [ -s "$DECODED" ]; then
@@ -87,17 +77,10 @@ jobs:
             else
               : > "$DECODED"
             fi
-
             if grep -q 'BEGIN PRIVATE KEY' "$DECODED" 2>/dev/null; then
-              # The secret was base64 of the whole .p8 file.
               echo "decoded to a full PEM file."
               cp "$DECODED" "$KEY_PATH"
             elif [ "$(head -c1 "$DECODED" 2>/dev/null | od -An -tx1 | tr -d ' \n')" = "30" ]; then
-              # The secret was the PEM *body* with its -----BEGIN/END----- lines
-              # stripped off -- so it decodes to raw PKCS#8 DER, which always
-              # starts with the ASN.1 SEQUENCE tag 0x30. Easy to produce by
-              # copying only the middle of the file, and trivially recoverable:
-              # put the wrapper back.
               echo "decoded to raw DER (PEM header lines were missing); re-wrapping."
               {
                 echo "-----BEGIN PRIVATE KEY-----"
@@ -105,63 +88,40 @@ jobs:
                 echo ""
                 echo "-----END PRIVATE KEY-----"
               } > "$KEY_PATH"
-              # fold may or may not end with a newline; collapse any blank line.
               grep -v '^$' "$KEY_PATH" > "$KEY_PATH.n" && mv "$KEY_PATH.n" "$KEY_PATH"
             else
               : > "$KEY_PATH"
             fi
             rm -f "$DECODED"
           fi
-
           if ! grep -q 'BEGIN PRIVATE KEY' "$KEY_PATH" 2>/dev/null; then
-            # Report the shape of the secret without ever echoing its contents,
-            # so a failure here is diagnosable from the log alone.
             LEN=$(wc -c < "$RAW" | tr -d ' ')
             HAS_DASH=$(grep -qc '^-----' "$RAW" 2>/dev/null && echo yes || echo no)
             IS_B64=$(grep -Eq '^[A-Za-z0-9+/=[:space:]]+$' "$RAW" && echo yes || echo no)
             echo "::error::ASC_KEY_P8 is neither a PEM private key nor valid base64 of one."
             echo "::error::Secret is ${LEN} characters. Begins with dashes: ${HAS_DASH}. Base64 charset only: ${IS_B64}."
-            echo "::error::Expected either the full text of AuthKey_XXXXXXXX.p8 (including the"
-            echo "::error::-----BEGIN PRIVATE KEY----- and -----END PRIVATE KEY----- lines), or its base64."
-            echo "::error::A ~250 character secret with dashes=no is usually the Key ID or Issuer ID"
-            echo "::error::pasted into the wrong secret."
             rm -f "$RAW" "$RAW.compact"
             exit 1
           fi
-
           chmod 600 "$KEY_PATH"
           rm -f "$RAW" "$RAW.compact"
-
-          # Prove the key actually parses as a private key, rather than just
-          # looking like one. A malformed key would otherwise surface much later
-          # as an opaque authentication failure inside xcodebuild.
           if command -v openssl >/dev/null 2>&1; then
             if openssl pkey -in "$KEY_PATH" -noout 2>/dev/null; then
               echo "openssl parsed the key successfully."
             else
               echo "::error::The key was assembled but openssl cannot parse it as a private key."
-              echo "::error::Re-copy AuthKey_${ASC_KEY_ID}.p8 in full, including its BEGIN and END lines."
               exit 1
             fi
           fi
-
           echo "API key installed at AuthKey_${ASC_KEY_ID}.p8 ($(wc -c < "$KEY_PATH" | tr -d ' ') bytes)."
 
       - name: Preflight App Store Connect
-        # xcodebuild reports every signing problem as "Cloud signing permission
-        # error" / "No profiles were found", which covers at least four
-        # unrelated causes with different fixes. This asks Apple directly and
-        # names the actual one, before spending a full signed build to find out.
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: python3 Tools/asc_preflight.py
 
       - name: Archive
-        # Cloud signing: -allowProvisioningUpdates with an App Store Connect API
-        # key lets Xcode create the bundle ID, certificate and provisioning
-        # profile on demand. That is why this pipeline never asks anyone to
-        # export a .p12 or touch a Keychain.
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -183,33 +143,9 @@ jobs:
             -skipMacroValidation \
             GOLDRUSH_BUNDLE_ID="$BUNDLE_ID" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
+            ENABLE_BITCODE=NO \
             MARKETING_VERSION=1.02 \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
-          # MARKETING_VERSION must be bumped by hand whenever App Store Connect
-          # closes the previous one's pre-release train, which it does the moment
-          # that version is approved and released -- run #18 failed upload with
-          # "Invalid Pre-Release Train ... closed for new build submissions"
-          # because this stayed at 1.0 after 1.0 went live.
-          #
-          # CURRENT_PROJECT_VERSION now adds BUILD_NUMBER_OFFSET (1000) to the
-          # workflow run number. The previous sequence reached build 22, so the
-          # next upload is 1023 and later runs remain safely monotonic.
-          #
-          # The scheme here is deliberately two-part, no dotted triples: 1.01,
-          # 1.02, 1.03 for ordinary releases, 1.1 / 1.2 for larger ones. Apple
-          # compares component-wise as INTEGERS, which has two consequences worth
-          # knowing before picking the next number:
-          #
-          #   - Leading zeros vanish. "1.01" is major 1, minor 1 -- so 1.0.2 is a
-          #     DOWNgrade against it and an automatic rejection.
-          #   - 1.02 and 1.2 are therefore the SAME version to Apple, as are 1.01
-          #     and 1.1. The two rails of the scheme collide: once 1.02 ships,
-          #     1.2 can never follow it. Go to 1.03+ or to 2.0.
-          #
-          # Check what is actually published before choosing, rather than
-          # assuming what the last build declared:
-          #   curl -sS "https://itunes.apple.com/lookup?bundleId=com.killjoy00.goldrush" \
-          #     | python3 -c "import json,sys; print(json.load(sys.stdin)['results'][0]['version'])"
 
       - name: Write export options
         env:
@@ -245,11 +181,6 @@ jobs:
           ls -la "$RUNNER_TEMP/export"
 
       - name: Validate the bundle before uploading
-        # Apple runs a set of bundle checks server-side that nothing local
-        # reproduces -- Info.plist consistency, icon presence, entitlement
-        # sanity. Running them via --validate-app first means a rejected bundle
-        # costs a fast failure with a readable reason instead of a consumed
-        # TestFlight build number and a cryptic upload error.
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -281,10 +212,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: goldrush-build-${{ github.run_number }}
-          # The .xcarchive is kept as well as the .ipa. Archiving is the slow,
-          # credential-dependent half of this job, and when export fails after a
-          # successful archive there is no reason to discard the build that
-          # already worked.
           path: |
             ${{ runner.temp }}/export/*.ipa
             ${{ runner.temp }}/GoldRush.xcarchive
