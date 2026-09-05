@@ -33,32 +33,30 @@ public protocol GameAgent: Sendable {
 }
 
 extension GameAgent {
-    /// Which of the drafted seven to throw away.
+    /// A draft valuation that does not pretend comparison cards are worth zero.
     ///
-    /// Defaulted rather than required, because the answer that suits almost
-    /// every agent is the same one: keep the best six. What goes is the card
-    /// the rest of the hand misses least, which is not the same as the
-    /// weakest card -- a rider that duplicates another rider's job is worth
-    /// less beside it than alone, and this drops that one.
-    ///
-    /// It deliberately does NOT use `Valuation.selfValue`, which every other
-    /// decision here uses. That function scores comparison riders as zero,
-    /// because their value genuinely depends on a board the agent cannot see.
-    /// Everywhere else that costs a little accuracy; here it was fatal.
-    /// Scoring a comparison card at zero makes it the cheapest card in every
-    /// hand it ever appears in, so it is discarded every single time -- and a
-    /// 100k-game sweep confirmed exactly that, with P5 Highgrader and P8
-    /// Grubstake Partner held in zero games despite P8 being one of the
-    /// strongest cards in the deck when dealt. A card that can never be
-    /// played is worse than a mistuned one.
-    ///
-    /// So comparison riders are resolved here against a symmetric opponent
-    /// rather than skipped: the hand is scored twice, once against a
-    /// reference collection one card per type leaner than this player's and
-    /// once one card richer, and the two are averaged. That prices a
-    /// "strictly more" card at about half its face value and a "close to
-    /// level" card at about half of its, which is the right prior in a game
-    /// where both players draft from the same pool and neither is favoured.
+    /// Comparison riders need an opponent board. During the draft neither side
+    /// has one yet, so evaluate the hand against two symmetric priors: an
+    /// opponent one card per type behind and one card per type ahead. Adding the
+    /// two outcomes prices both "strictly more" and "stay close" effects around
+    /// their true pre-game probability instead of deleting them from the draft.
+    public func draftPriorValue(counts reference: MiningCounts, hand: [ScoringCardID]) -> Int {
+        var leaner = reference
+        var richer = reference
+        for type in MiningType.allCases {
+            leaner[type] = max(0, reference[type] - 1)
+            richer[type] = reference[type] + 1
+        }
+        let behind = Scoring.bestAllocation(counts: leaner, hand: [], opponent: nil).board
+        let ahead = Scoring.bestAllocation(counts: richer, hand: [], opponent: nil).board
+        let winning = Scoring.bestAllocation(counts: reference, hand: hand, opponent: behind)
+        let losing = Scoring.bestAllocation(counts: reference, hand: hand, opponent: ahead)
+        return winning.total + losing.total
+    }
+
+    /// Which of a legacy seven-card hand to throw away. New eight-card drafts
+    /// discard from the pack at the opening and closing decisions instead, but
+    /// this remains for saved matches that were already in `.draftDiscard`.
     public func draftDiscard(
         _ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG
     ) -> ScoringCardID {
@@ -68,33 +66,45 @@ extension GameAgent {
         for entry in MiningDeck.standardComposition {
             reference[entry.type] = entry.count * 30 / MiningDeck.standardSize
         }
-        // One step either side of level, so every comparison rider resolves
-        // true in one branch and false in the other.
-        var leaner = reference
-        var richer = reference
-        for type in MiningType.allCases {
-            leaner[type] = max(0, reference[type] - 1)
-            richer[type] = reference[type] + 1
-        }
-        let behind = Scoring.bestAllocation(counts: leaner, hand: [], opponent: nil).board
-        let ahead = Scoring.bestAllocation(counts: richer, hand: [], opponent: nil).board
-
-        func keptValue(_ kept: [ScoringCardID]) -> Int {
-            let winning = Scoring.bestAllocation(counts: reference, hand: kept, opponent: behind)
-            let losing = Scoring.bestAllocation(counts: reference, hand: kept, opponent: ahead)
-            return winning.total + losing.total
-        }
 
         var best = first
         var bestKept = Int.min
         for candidate in legal {
-            let value = keptValue(legal.filter { $0 != candidate })
+            let value = draftPriorValue(counts: reference, hand: legal.filter { $0 != candidate })
             if value > bestKept {
                 bestKept = value
                 best = candidate
             }
         }
         return best
+    }
+
+    /// Converts an agent's existing card-ranking strategy into the complete
+    /// eight-card draft action. Keeping this here makes the simulator, solo AI
+    /// and any future bot use exactly the same draft protocol.
+    public func draftAction(_ view: PlayerView, rng: inout SeededRNG) -> Action? {
+        let pack = view.draftPool
+        guard !pack.isEmpty else { return nil }
+
+        if pack.count == GameConfig.draftOpeningPackSize {
+            let keep = draftPick(view, legal: pack, rng: &rng)
+            let remaining = pack.filter { $0 != keep }
+            guard !remaining.isEmpty else { return nil }
+            // The second-best card for our own hand is a sensible denial burn:
+            // it is the card we least want to hand to the opponent after taking
+            // our first choice. Both decisions still use only visible draft data.
+            let discard = draftPick(view, legal: remaining, rng: &rng)
+            return .draftOpen(keep: keep, discard: discard)
+        }
+
+        if pack.count == 2 {
+            let keep = draftPick(view, legal: pack, rng: &rng)
+            guard let discard = pack.first(where: { $0 != keep }) else { return nil }
+            return .draftClose(keep: keep, discard: discard)
+        }
+
+        let keep = draftPick(view, legal: pack, rng: &rng)
+        return .draftPick(keep)
     }
 }
 
