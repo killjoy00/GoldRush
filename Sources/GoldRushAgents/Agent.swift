@@ -92,8 +92,8 @@ extension GameAgent {
         func value(
             counts: MiningCounts,
             hand: [ScoringCardID],
-            opponentBehind: ScoreBoard,
-            opponentAhead: ScoreBoard
+            opponentBehind: Board,
+            opponentAhead: Board
         ) -> Int {
             Scoring.bestAllocation(counts: counts, hand: hand, opponent: opponentBehind).total
                 + Scoring.bestAllocation(counts: counts, hand: hand, opponent: opponentAhead).total
