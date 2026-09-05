@@ -11,7 +11,7 @@ jobs:
     container: swift:6.3.3-noble
     steps:
       - uses: actions/checkout@v4
-      - name: Measure drafted-card balance
+      - name: Measure drafted-card balance after full-size prior
         run: |
           swift run -c release GoldRushSim balance \
             --games 5000 \
