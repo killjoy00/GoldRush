@@ -142,6 +142,42 @@ not ask you the export-compliance question on every upload.
 
 ---
 
+## Screenshots
+
+**Actions → App Store screenshots → Run workflow.** It builds for a simulator,
+launches the app once per screen, and uploads the PNGs. Simulators render at
+true device resolution, so the output is already the exact pixel size App Store
+Connect wants -- 1320x2868 for the 6.9-inch iPhone and 2064x2752 for the
+13-inch iPad, the only two sizes Apple currently requires.
+
+The app reaches each screen through `ScreenshotMode`: `-AppScreenshotMode`
+plus `-AppScreenshotScreen <name>` at launch. The whole thing is `#if DEBUG`,
+call sites included, so a Release build cannot enter it however it is launched
+-- which matters, because the mode skips Game Center authentication and leaves
+the ad slot empty.
+
+Both of those suppressions exist for a reason a capture teaches you once. A
+simulator has no Game Center account, so authentication fails and leaves an
+alert in the middle of the frame; the handler is never installed rather than
+the alert being dismissed after the fact. And a simulator only ever gets test
+ads, which render "You've loaded a test ad" -- text App Review rejects.
+
+Screens are named, not tapped: `home`, `rules`, `compendium`, `draft`, `split`.
+An unrecognised name falls back to `home`, so a typo costs one wrong image
+rather than a crashed run. The deal is seeded, so the same screen photographs
+identically every time.
+
+Two screens are deliberately absent. Career Stats and the Claim Journal are
+empty until someone has played, and the only ways to fill them are to play a
+whole game inside the capture or to write invented history into UserDefaults.
+The second would put fabricated numbers in a store listing.
+
+`Tools/check_screenshots.py` runs before the upload and fails on duplicates.
+Two identical PNGs mean a route silently fell back to home, or an appearance
+change did not take -- both look like success otherwise.
+
+---
+
 ## The listing copy
 
 The store description used to be the one shipped thing that lived nowhere: the
