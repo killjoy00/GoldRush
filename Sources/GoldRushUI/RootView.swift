@@ -115,7 +115,7 @@ public struct RootView: View {
         // The board is centred inside a cap rather than filling the display.
         // A 13-inch iPad is wider than any of these screens wants to be, and
         // stretching them just moves the two piles further apart.
-        .frame(maxWidth: Layout.boardWidth)
+        .frame(maxWidth: Widths.board)
         .frame(maxWidth: .infinity)
         .sheet(isPresented: $showTableau) {
             TableauView(view: model.view)
@@ -362,7 +362,7 @@ public struct NewGameView: View {
                             menuControls(compact: false)
                                 .frame(maxWidth: 380)
                         }
-                        .frame(maxWidth: Layout.menuWidth)
+                        .frame(maxWidth: Widths.menu)
                         .frame(maxWidth: .infinity)
                     } else {
                         VStack(spacing: compact ? 10 : 18) {

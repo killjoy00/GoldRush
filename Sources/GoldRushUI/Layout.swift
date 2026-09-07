@@ -1,30 +1,34 @@
 #if canImport(SwiftUI)
 import SwiftUI
 
-/// How much room the app has, and what it should do with it.
+/// How wide the app lets things get.
 ///
 /// Every screen here was originally written for a single phone-width column,
 /// which on a 13-inch iPad produces a "Keep" button a thousand points wide and
-/// a wall of empty space beneath it. The numbers below are the whole adaptive
-/// story: one cap for a column of prose or controls, one cap for the board,
-/// and one threshold for when two piles are better side by side than stacked.
-public enum Layout {
+/// a wall of empty space beneath it. These three caps are the whole adaptive
+/// story: one for a column of prose or controls, one for the board, one for
+/// the menu.
+///
+/// Not called `Layout`: SwiftUI has a protocol by that name and `FlowRow` in
+/// this module conforms to it, so a type called `Layout` here shadows the
+/// protocol and breaks that conformance.
+public enum Widths {
     /// Widest a single column of text or controls is allowed to get.
     ///
     /// A button stretched across an iPad is not easier to hit, only harder to
     /// look at, and prose past roughly this width stops being comfortable to
     /// read. Single-column content is centred inside this instead of filling.
-    public static let readableWidth: CGFloat = 620
+    public static let readable: CGFloat = 620
 
     /// Widest the in-game board gets before it is centred with margins.
     ///
-    /// Wider than `readableWidth` because the board legitimately wants two
+    /// Wider than `Widths.readable` because the board legitimately wants two
     /// columns -- the game is about comparing two piles, and on an iPad both
     /// should be visible at once rather than one scrolled past the other.
-    public static let boardWidth: CGFloat = 1040
+    public static let board: CGFloat = 1040
 
     /// Widest the two halves of the menu get as a pair.
-    public static let menuWidth: CGFloat = 940
+    public static let menu: CGFloat = 940
 }
 
 public extension View {
@@ -32,7 +36,7 @@ public extension View {
     ///
     /// Two frames rather than one: the inner limits the content, the outer
     /// takes the full width so the limited content ends up centred in it.
-    func centredColumn(maxWidth: CGFloat = Layout.readableWidth) -> some View {
+    func centredColumn(maxWidth: CGFloat = Widths.readable) -> some View {
         frame(maxWidth: maxWidth).frame(maxWidth: .infinity)
     }
 }
