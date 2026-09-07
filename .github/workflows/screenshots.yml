@@ -115,25 +115,37 @@ jobs:
           for SCREEN in $SCREENS; do
             INDEX=$((INDEX + 1))
             echo "::group::$SCREEN"
-            # Terminate before every launch. Relaunching a running app does not
-            # re-read launch arguments, so without this every capture after the
-            # first would photograph the first screen.
-            xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true
-            xcrun simctl launch "$UDID" "$BUNDLE" \
-              -AppScreenshotMode -AppScreenshotScreen "$SCREEN"
-            # The draft and split screens start a game and let the agent move,
-            # so the frame is not final the instant the process is up.
-            sleep "$SETTLE"
             SHOT="$OUT/$(printf '%02d' $INDEX)-$SCREEN-${{ matrix.slug }}.png"
-            # `simctl io screenshot` sometimes returns before the app has
-            # drawn: one run produced a solid black 2064x2752 PNG, correctly
-            # sized and unique, which every check at the time waved through.
-            # A blank frame is re-taken here rather than only being caught at
-            # the end, because the fix is another second of settling and not a
-            # failed run. The same check runs again over the whole directory
-            # afterwards, so a screen that is blank on every attempt still
-            # fails loudly.
+            # Three ways a capture goes wrong silently, all of which have
+            # actually happened on this pipeline and all of which produce a
+            # valid, correctly sized PNG:
+            #
+            #   the wrong screen  -- caught by the duplicate digest check
+            #   a blank frame     -- caught by the luminance check
+            #   the home screen   -- caught here, because the app died
+            #
+            # The third is why the launch lives inside the retry loop. A frame
+            # of springboard is neither blank nor a duplicate, so no amount of
+            # looking at pixels finds it; what identifies it is that the
+            # process we launched is no longer alive when the shutter fires.
             for ATTEMPT in 1 2 3; do
+              # Terminate before every launch. Relaunching a running app does
+              # not re-read launch arguments, so without this every capture
+              # after the first would photograph the first screen.
+              xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true
+              LAUNCH=$(xcrun simctl launch "$UDID" "$BUNDLE" \
+                -AppScreenshotMode -AppScreenshotScreen "$SCREEN")
+              echo "$LAUNCH"
+              PID=${LAUNCH##*: }
+              # The draft and split screens start a game and let the agent
+              # move, so the frame is not final the instant the process is up.
+              sleep "$SETTLE"
+
+              if ! ps -p "$PID" > /dev/null 2>&1; then
+                echo "::warning::$SCREEN: the app exited before the shutter on attempt $ATTEMPT."
+                continue
+              fi
+
               xcrun simctl io "$UDID" screenshot "$SHOT"
               if python3 Tools/check_screenshots.py "$SHOT" > /dev/null; then
                 break
@@ -141,6 +153,12 @@ jobs:
               echo "::warning::$SCREEN came back blank on attempt $ATTEMPT."
               sleep 5
             done
+            # Three attempts that all died would otherwise leave no file, and
+            # `if-no-files-found` only fires when the whole directory is empty.
+            test -f "$SHOT" || {
+              echo "::error::$SCREEN produced no usable screenshot in 3 attempts."
+              exit 1
+            }
             echo "::endgroup::"
           done
           ls -la "$OUT"
