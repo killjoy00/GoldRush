@@ -233,6 +233,7 @@ public struct NewGameView: View {
     @State private var showRules = false
     @State private var showCareer = false
     @State private var showCompendium = false
+    @State private var showRemoveAds = false
     @State private var difficulty = InferenceAgent.Fidelity.full
     @AppStorage("goldrush.scoringDraft") private var useDraft = false
     @AppStorage("goldrush.simultaneousSplit") private var splitTogether = true
@@ -384,7 +385,7 @@ public struct NewGameView: View {
             }
         }
         .background(Theme.background)
-        .safeAreaInset(edge: .bottom) { AdSlot.bannerView }
+        .safeAreaInset(edge: .bottom) { adFooter }
         .sheet(isPresented: $showRules) {
             RulesView { showRules = false }
         }
@@ -394,6 +395,15 @@ public struct NewGameView: View {
         .sheet(isPresented: $showCompendium) {
             ScoringCardCompendiumView()
         }
+        #if canImport(StoreKit)
+        .sheet(isPresented: $showRemoveAds) {
+            RemoveAdsView { showRemoveAds = false }
+        }
+        // Started here rather than in the sheet so the entitlement is known
+        // before the banner is laid out. A player who already paid should
+        // never see it flash up on launch.
+        .task { await RemoveAdsStore.shared.start() }
+        #endif
         #if canImport(GameKit)
         .sheet(isPresented: $showMatchmaker) {
             GameCenterMatchmakerView(
@@ -496,6 +506,30 @@ public struct NewGameView: View {
             }
             .padding(.top, 2)
         }
+    }
+
+    /// The banner, and the way to be rid of it.
+    ///
+    /// Both are gated on an ad actually being installed. A build with no ad
+    /// slot filled -- Linux, a preview, the screenshot runs -- has nothing to
+    /// remove, so offering to sell that would be selling nothing.
+    @ViewBuilder
+    var adFooter: some View {
+        #if canImport(StoreKit)
+        if AdSlot.banner != nil, !RemoveAdsStore.shared.isPurchased {
+            VStack(spacing: 0) {
+                Button { showRemoveAds = true } label: {
+                    Text("Remove ads")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.parchment.opacity(0.5))
+                        .padding(.vertical, 5)
+                }
+                AdSlot.bannerView
+            }
+        }
+        #else
+        AdSlot.bannerView
+        #endif
     }
 
     @ViewBuilder

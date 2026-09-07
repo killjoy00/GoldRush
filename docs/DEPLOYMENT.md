@@ -385,3 +385,63 @@ appears -- that needs a real device, and for the reason above it cannot tell
 you whether the IDs belong to the right AdMob account either. Look at the home
 screen on the first build carrying ads before submitting anything to review.
 
+
+## Removing ads with a purchase
+
+The menu carries a banner; nothing else in the app does. A one-time
+non-consumable turns it off, and the "Remove ads" button sits directly above
+the banner so the offer is next to the thing it removes. Both disappear
+together once bought, so a paying player never sees monetisation UI again.
+
+The code is in `Sources/GoldRushUI/RemoveAds.swift` and is finished. What is
+not finished is the App Store Connect side, which only you can do.
+
+### What you need to do
+
+1. **Check the Paid Applications agreement first.** App Store Connect →
+   Business. If it is not Active, products silently fail to load and the button
+   stays greyed with "This purchase isn't available right now." This is the
+   single most common cause of an in-app purchase that appears broken, and no
+   amount of code fixes it.
+
+2. **App Store Connect → Gold Rush Prospecting → Monetization → In-App
+   Purchases → +**
+
+   - Type: **Non-Consumable**. Not a subscription: the player buys it once and
+     keeps it.
+   - Reference Name: `Remove Ads` (internal only)
+   - **Product ID: `com.killjoy00.goldrush.removeads`** — this must match
+     `RemoveAdsStore.productID` character for character. A mismatch is not an
+     error; the product list just comes back empty and the button never enables.
+
+3. **Set a price.** Anything from Tier 1 upward works; the app never hardcodes
+   it. The button reads the localised price straight from StoreKit, so changing
+   the price later needs no new build.
+
+4. **Add the localisation** (display name and description) that buyers see in
+   the purchase sheet. Something like "Remove Ads" / "Take the banner off the
+   menu for good."
+
+5. **Add a review screenshot and review notes.** Apple rejects in-app purchases
+   without them. The screenshot can be a capture of the purchase sheet. For
+   notes: "Tap Remove ads at the bottom of the main menu."
+
+6. **Submit it with an app version.** A first in-app purchase cannot be
+   approved on its own — attach it to the next version you submit, or it will
+   sit in "Ready to Submit" forever.
+
+### Testing it before it is live
+
+TestFlight builds use the StoreKit **sandbox**, so the purchase is free and
+repeatable. Worth checking all three paths:
+
+- Buy it, and confirm the banner and the button both vanish.
+- Delete the app, reinstall from TestFlight, and use **Restore purchase** —
+  this is the path App Review will test, and the one that fails if the product
+  ID is wrong.
+- Turn off Wi-Fi and open the sheet. It should say the purchase is unavailable
+  and still offer Restore, rather than showing a dead button.
+
+Entitlement is read from StoreKit on every launch rather than saved locally.
+A local flag is a thing that can be wrong — stale after a refund, missing on a
+new device, editable on a jailbroken one — and StoreKit already knows.
