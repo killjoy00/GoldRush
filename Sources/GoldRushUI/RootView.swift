@@ -295,13 +295,27 @@ public struct NewGameView: View {
             useDraft = true
             startSolo(seed: ScreenshotMode.seed)
         case .split:
+            await dealScreenshotSplit()
+        case .choose:
+            // One action further than `split`: the piles confirmed and handed
+            // over, which is the decision the opponent actually faces. Both
+            // screens deal through the same helper, so the pair cannot end up
+            // showing two different games.
+            await dealScreenshotSplit()
+            await model?.confirmSplit()
+        }
+    }
+
+    /// Deals the fixed game and arranges a legal split.
+    @MainActor
+    func dealScreenshotSplit() async {
             // Splitting is the game's central act, and it is one committed
             // reveal away from a new dealt game. Picking the first three cards
             // is the same action the player would take; nothing is fabricated,
             // the deal is simply a fixed one.
             useDraft = false
             startSolo(seed: ScreenshotMode.seed)
-            guard let model else { break }
+            guard let model else { return }
             for id in model.view.hand.prefix(model.view.config.initialRevealCount) {
                 model.toggleReveal(id)
             }
@@ -323,7 +337,6 @@ public struct NewGameView: View {
                     builder.toggleFaceDown(hidden)
                 }
             }
-        }
     }
     #endif
 
