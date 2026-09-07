@@ -36,12 +36,14 @@ public struct ChooseView: View {
                     // Choosing is a comparison too, so the piles sit next to
                     // each other for the same reason they do when splitting.
                     if wide {
-                        HStack(alignment: .top, spacing: 14) {
-                            pileCard(.a, piles.a, fill: true)
-                            pileCard(.b, piles.b, fill: true)
+                        ScrollView {
+                            HStack(alignment: .top, spacing: 14) {
+                                pileCard(.a, piles.a, fill: true)
+                                pileCard(.b, piles.b, fill: true)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 4)
                         }
-                        .frame(maxHeight: .infinity)
-                        .padding(.horizontal, 16)
                     } else {
                         ScrollView {
                             VStack(spacing: 12) {

@@ -55,18 +55,21 @@ public struct SplitView: View {
                     // sitting in a band with a thousand points of nothing
                     // underneath. They are also drop targets, so a taller zone
                     // is a more forgiving one to drag a card into.
-                    Spacer(minLength: 0)
-                    HStack(alignment: .top, spacing: 14) {
-                        pileZone(builder, .a, fill: true)
-                        pileZone(builder, .b, fill: true)
+                    // A scroll view proposes unbounded height, so the two
+                    // `maxHeight: .infinity` piles resolve to the taller one's
+                    // height instead of the screen's: equal boxes that hug
+                    // their cards. A fixed cap did make them equal, but it was
+                    // a number that would clip the nine-card Motherlode round,
+                    // and empty space is a much smaller problem than hidden
+                    // cards.
+                    ScrollView {
+                        HStack(alignment: .top, spacing: 14) {
+                            pileZone(builder, .a, fill: true)
+                            pileZone(builder, .b, fill: true)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 4)
                     }
-                    // Capped, not stretched to the full height: two equal
-                    // boxes with room to drop into read as deliberate, where
-                    // a pair thirteen hundred points tall holding four cards
-                    // reads as a layout that went wrong.
-                    .frame(maxHeight: 620)
-                    .padding(.horizontal, 16)
-                    Spacer(minLength: 0)
                 } else {
                     ScrollView {
                         VStack(spacing: 10) {
