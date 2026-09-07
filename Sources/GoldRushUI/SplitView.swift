@@ -51,12 +51,16 @@ public struct SplitView: View {
                 // Both branches use the same `pileZone`, so the piles cannot
                 // drift apart as one layout gets edited.
                 if wide {
+                    // The piles take the height they are given rather than
+                    // sitting in a band with a thousand points of nothing
+                    // underneath. They are also drop targets, so a taller zone
+                    // is a more forgiving one to drag a card into.
                     HStack(alignment: .top, spacing: 14) {
-                        pileZone(builder, .a)
-                        pileZone(builder, .b)
+                        pileZone(builder, .a, fill: true)
+                        pileZone(builder, .b, fill: true)
                     }
+                    .frame(maxHeight: .infinity)
                     .padding(.horizontal, 16)
-                    Spacer(minLength: 0)
                 } else {
                     ScrollView {
                         VStack(spacing: 10) {
@@ -79,7 +83,7 @@ public struct SplitView: View {
     }
 
     @ViewBuilder
-    func pileZone(_ builder: SplitBuilder, _ pile: PileID) -> some View {
+    func pileZone(_ builder: SplitBuilder, _ pile: PileID, fill: Bool = false) -> some View {
         let cards = builder.pile(pile)
         VStack(alignment: .leading, spacing: 7) {
             HStack {
@@ -112,7 +116,9 @@ public struct SplitView: View {
             }
         }
         .padding(11)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity,
+               maxHeight: fill ? .infinity : nil,
+               alignment: .topLeading)
         .background(Theme.dirtLight.opacity(dropTarget == pile ? 1.0 : 0.7),
                     in: RoundedRectangle(cornerRadius: 13))
         .overlay(

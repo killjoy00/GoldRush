@@ -21,6 +21,10 @@ on:
         description: "Space-separated screens to capture."
         required: true
         default: "home draft split rules compendium"
+      settle_seconds:
+        description: "Seconds to wait after launch before the shutter. Raise it to test whether an artifact is the app or an unfinished frame."
+        required: true
+        default: "6"
 
 jobs:
   capture:
@@ -100,6 +104,7 @@ jobs:
       - name: Capture each screen
         env:
           SCREENS: ${{ inputs.screens }}
+          SETTLE: ${{ inputs.settle_seconds }}
         run: |
           set -euo pipefail
           UDID="${{ steps.sim.outputs.udid }}"
@@ -118,7 +123,7 @@ jobs:
               -AppScreenshotMode -AppScreenshotScreen "$SCREEN"
             # The draft and split screens start a game and let the agent move,
             # so the frame is not final the instant the process is up.
-            sleep 6
+            sleep "$SETTLE"
             SHOT="$OUT/$(printf '%02d' $INDEX)-$SCREEN-${{ matrix.slug }}.png"
             # `simctl io screenshot` sometimes returns before the app has
             # drawn: one run produced a solid black 2064x2752 PNG, correctly

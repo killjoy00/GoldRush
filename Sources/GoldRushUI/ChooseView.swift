@@ -37,9 +37,10 @@ public struct ChooseView: View {
                     // each other for the same reason they do when splitting.
                     if wide {
                         HStack(alignment: .top, spacing: 14) {
-                            pileCard(.a, piles.a)
-                            pileCard(.b, piles.b)
+                            pileCard(.a, piles.a, fill: true)
+                            pileCard(.b, piles.b, fill: true)
                         }
+                        .frame(maxHeight: .infinity)
                         .padding(.horizontal, 16)
                     } else {
                         ScrollView {
@@ -71,7 +72,7 @@ public struct ChooseView: View {
     }
 
     @ViewBuilder
-    func pileCard(_ id: PileID, _ cards: [VisibleCard]) -> some View {
+    func pileCard(_ id: PileID, _ cards: [VisibleCard], fill: Bool = false) -> some View {
         let hidden = cards.count(where: \.isHidden)
         Button {
             confirming = id
@@ -99,7 +100,9 @@ public struct ChooseView: View {
                 }
             }
             .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity,
+                   maxHeight: fill ? .infinity : nil,
+                   alignment: .topLeading)
             .background(Theme.dirtLight, in: RoundedRectangle(cornerRadius: 13))
             .overlay(
                 RoundedRectangle(cornerRadius: 13)
