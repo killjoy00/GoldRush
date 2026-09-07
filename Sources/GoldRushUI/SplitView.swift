@@ -55,12 +55,18 @@ public struct SplitView: View {
                     // sitting in a band with a thousand points of nothing
                     // underneath. They are also drop targets, so a taller zone
                     // is a more forgiving one to drag a card into.
+                    Spacer(minLength: 0)
                     HStack(alignment: .top, spacing: 14) {
                         pileZone(builder, .a, fill: true)
                         pileZone(builder, .b, fill: true)
                     }
-                    .frame(maxHeight: .infinity)
+                    // Capped, not stretched to the full height: two equal
+                    // boxes with room to drop into read as deliberate, where
+                    // a pair thirteen hundred points tall holding four cards
+                    // reads as a layout that went wrong.
+                    .frame(maxHeight: 620)
                     .padding(.horizontal, 16)
+                    Spacer(minLength: 0)
                 } else {
                     ScrollView {
                         VStack(spacing: 10) {
@@ -108,9 +114,12 @@ public struct SplitView: View {
                     .foregroundStyle(Theme.danger.opacity(0.9))
                     .frame(maxWidth: .infinity, minHeight: 74)
             } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 80), spacing: 10)], spacing: 10) {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: fill ? 124 : 80), spacing: 10)],
+                    spacing: 10
+                ) {
                     ForEach(cards, id: \.rawValue) { card in
-                        cardTile(builder, card, in: pile)
+                        cardTile(builder, card, in: pile, large: fill)
                     }
                 }
             }
@@ -136,10 +145,12 @@ public struct SplitView: View {
     }
 
     @ViewBuilder
-    func cardTile(_ builder: SplitBuilder, _ card: CardID, in pile: PileID) -> some View {
+    func cardTile(_ builder: SplitBuilder, _ card: CardID, in pile: PileID,
+                  large: Bool = false) -> some View {
         VStack(spacing: 3) {
             MiningCardView(type: builder.type(of: card), faceDown: false,
-                           selected: builder.isFaceDown(card), size: .full)
+                           selected: builder.isFaceDown(card),
+                           size: large ? .large : .full)
                 .onTapGesture { builder.move(card, to: pile.other) }
                 .draggable(String(card.rawValue))
 

@@ -356,11 +356,15 @@ public struct NewGameView: View {
             ScrollView {
                 Group {
                     if wide {
-                        HStack(alignment: .center, spacing: 44) {
+                        // Both columns take their natural width and the pair
+                        // is centred. Letting the brandmark expand pushed the
+                        // logo and the buttons to opposite edges of the screen,
+                        // which read as two unrelated things rather than one
+                        // menu. `Widths.menu` is only an upper bound.
+                        HStack(alignment: .center, spacing: 56) {
                             brandmark(compact: false)
-                                .frame(maxWidth: .infinity)
                             menuControls(compact: false)
-                                .frame(maxWidth: 380)
+                                .frame(width: 360)
                         }
                         .frame(maxWidth: Widths.menu)
                         .frame(maxWidth: .infinity)

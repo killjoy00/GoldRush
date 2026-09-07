@@ -93,9 +93,13 @@ public struct ChooseView: View {
                             .foregroundStyle(Theme.sluice)
                     }
                 }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 60), spacing: 8)], spacing: 8) {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: fill ? 84 : 60), spacing: 8)],
+                    spacing: 8
+                ) {
                     ForEach(cards, id: \.id.rawValue) { card in
-                        MiningCardView(type: card.type, faceDown: card.isHidden, size: .compact)
+                        MiningCardView(type: card.type, faceDown: card.isHidden,
+                                       size: fill ? .full : .compact)
                     }
                 }
             }

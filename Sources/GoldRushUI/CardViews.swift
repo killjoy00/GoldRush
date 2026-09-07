@@ -18,12 +18,14 @@ public struct MiningCardView: View {
         case chip     // dense tallies in the tableau
         case compact  // pile contents while choosing
         case full     // the cards being split
+        case large    // the same, with an iPad's room to show them
 
         var width: CGFloat {
             switch self {
             case .chip: 38
             case .compact: 56
             case .full: 76
+            case .large: 116
             }
         }
         var showsName: Bool { self != .chip }
@@ -32,6 +34,7 @@ public struct MiningCardView: View {
             case .chip: 5
             case .compact: 7
             case .full: 9
+            case .large: 13
             }
         }
     }
@@ -78,7 +81,7 @@ public struct MiningCardView: View {
                     .padding(.top, size.width * 0.05)
                 if size.showsName {
                     Text(type.shortName.uppercased())
-                        .font(.system(size: size == .full ? 8 : 7, weight: .bold))
+                        .font(.system(size: size == .chip ? 7 : (size == .large ? 11 : 8), weight: .bold))
                         .tracking(0.4)
                         .foregroundStyle(Theme.parchment.opacity(0.85))
                         .lineLimit(1)
