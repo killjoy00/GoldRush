@@ -112,6 +112,11 @@ public struct RootView: View {
             }
             .padding(.bottom, 6)
         }
+        // The board is centred inside a cap rather than filling the display.
+        // A 13-inch iPad is wider than any of these screens wants to be, and
+        // stretching them just moves the two piles further apart.
+        .frame(maxWidth: Widths.board)
+        .frame(maxWidth: .infinity)
         .sheet(isPresented: $showTableau) {
             TableauView(view: model.view)
         }
@@ -228,6 +233,7 @@ public struct NewGameView: View {
     @State private var showRules = false
     @State private var showCareer = false
     @State private var showCompendium = false
+    @State private var showRemoveAds = false
     @State private var difficulty = InferenceAgent.Fidelity.full
     @AppStorage("goldrush.scoringDraft") private var useDraft = false
     @AppStorage("goldrush.simultaneousSplit") private var splitTogether = true
@@ -296,6 +302,23 @@ public struct NewGameView: View {
                 model.toggleReveal(id)
             }
             await model.confirmReveal()
+            // A fresh split puts every card in pile A with nothing turned
+            // down, which is the one arrangement the validator rejects. The
+            // first capture run therefore photographed three red errors and a
+            // dead confirm button -- a picture of the app refusing to work.
+            // The split is arranged here the way a player would arrange it,
+            // through the same builder the UI drives, so the frame shows the
+            // mechanic mid-decision rather than a fabricated state.
+            if let builder = model.splitBuilder {
+                for id in builder.draw.map(\.id).suffix(3) {
+                    builder.move(id, to: .b)
+                }
+                // Face down in the pile the opponent is being offered: that is
+                // the interesting case, and the one the screen exists to show.
+                if let hidden = builder.pileB.last {
+                    builder.toggleFaceDown(hidden)
+                }
+            }
         }
     }
     #endif
@@ -325,77 +348,36 @@ public struct NewGameView: View {
     var menu: some View {
         GeometryReader { proxy in
             let compact = proxy.size.height < 780
+            // Wide enough for the brandmark and the controls to sit beside each
+            // other. Checked against the actual width rather than the size class
+            // because this is a question about geometry, and an iPad in
+            // landscape has room for two columns while the same iPad in a narrow
+            // Split View does not.
+            let wide = proxy.size.width >= 780
             ScrollView {
-                VStack(spacing: compact ? 10 : 18) {
-                    Spacer(minLength: compact ? 4 : 12)
-                    ZStack {
-                        RadialGradient(colors: [Theme.ember.opacity(0.75), .clear],
-                                       center: .center, startRadius: 6,
-                                       endRadius: compact ? 74 : 108)
-                        ForEach([-1.0, 1.0], id: \.self) { side in
-                            RoundedRectangle(cornerRadius: 9)
-                                .fill(Theme.dirtDeep)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 9)
-                                        .strokeBorder(Theme.gold.opacity(0.55), lineWidth: 1.5)
-                                }
-                                .frame(width: compact ? 39 : 56, height: compact ? 57 : 82)
-                                .rotationEffect(.degrees(21 * side))
-                                .offset(x: (compact ? 21 : 31) * side, y: 2)
+                Group {
+                    if wide {
+                        // Both columns take their natural width and the pair
+                        // is centred. Letting the brandmark expand pushed the
+                        // logo and the buttons to opposite edges of the screen,
+                        // which read as two unrelated things rather than one
+                        // menu. `Widths.menu` is only an upper bound.
+                        HStack(alignment: .center, spacing: 56) {
+                            brandmark(compact: false)
+                            menuControls(compact: false)
+                                .frame(width: 360)
                         }
-                        MiningArt(.goldNugget)
-                            .frame(width: compact ? 58 : 84, height: compact ? 58 : 84)
-                            .shadow(color: Theme.ember.opacity(0.9), radius: compact ? 10 : 14)
-                    }
-                    .frame(width: compact ? 132 : 190, height: compact ? 86 : 124)
-
-                    VStack(spacing: compact ? 3 : 5) {
-                        Text("GOLD RUSH")
-                            .font(.system(size: compact ? 30 : 42, weight: .black, design: .rounded))
-                            .tracking(compact ? 2.5 : 4)
-                            .foregroundStyle(
-                                LinearGradient(colors: [Theme.goldBright, Theme.gold, Theme.goldDeep],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                            .shadow(color: .black.opacity(0.55), radius: 5, y: 3)
-                        HStack(spacing: 9) {
-                            rule
-                            Text("SPLIT THE CLAIM")
-                                .font(.system(size: compact ? 9 : 10, weight: .bold))
-                                .tracking(2.4)
-                                .foregroundStyle(Theme.parchment.opacity(0.75))
-                                .fixedSize()
-                            rule
+                        .frame(maxWidth: Widths.menu)
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        VStack(spacing: compact ? 10 : 18) {
+                            Spacer(minLength: compact ? 4 : 12)
+                            brandmark(compact: compact)
+                            Spacer(minLength: compact ? 2 : 8)
+                            menuControls(compact: compact)
+                            Spacer(minLength: compact ? 4 : 12)
                         }
-                        .frame(maxWidth: 260)
                     }
-                    Spacer(minLength: compact ? 2 : 8)
-
-                    setupPicker(compact: compact)
-                        .padding(.bottom, compact ? 0 : 4)
-
-                    Button { startPassAndPlay() } label: {
-                        menuLabel("Pass and play", "Two players, one device", filled: true, compact: compact)
-                    }
-                    Button { startSolo() } label: {
-                        menuLabel("Play the prospector", "Single player vs the AI", filled: false, compact: compact)
-                    }
-                    #if canImport(GameKit)
-                    Button { startOnline() } label: {
-                        menuLabel("Play a friend online", onlineSubtitle, filled: false, compact: compact)
-                    }
-                    .disabled(!GameCenterAuth.shared.isSignedIn)
-                    .opacity(GameCenterAuth.shared.isSignedIn ? 1 : 0.5)
-                    #endif
-
-                    HStack(spacing: 20) {
-                        menuUtility("How to play", "book.closed.fill") { showRules = true }
-                        menuUtility("Career", "chart.bar.fill") { showCareer = true }
-                        menuUtility("Cards", "rectangle.stack.fill") { showCompendium = true }
-                    }
-                    .padding(.top, 2)
-
-                    Spacer(minLength: compact ? 4 : 12)
                 }
                 .padding(.horizontal, compact ? 18 : 24)
                 .padding(.vertical, compact ? 12 : 24)
@@ -403,7 +385,7 @@ public struct NewGameView: View {
             }
         }
         .background(Theme.background)
-        .safeAreaInset(edge: .bottom) { AdSlot.bannerView }
+        .safeAreaInset(edge: .bottom) { adFooter }
         .sheet(isPresented: $showRules) {
             RulesView { showRules = false }
         }
@@ -413,6 +395,15 @@ public struct NewGameView: View {
         .sheet(isPresented: $showCompendium) {
             ScoringCardCompendiumView()
         }
+        #if canImport(StoreKit)
+        .sheet(isPresented: $showRemoveAds) {
+            RemoveAdsView { showRemoveAds = false }
+        }
+        // Started here rather than in the sheet so the entitlement is known
+        // before the banner is laid out. A player who already paid should
+        // never see it flash up on launch.
+        .task { await RemoveAdsStore.shared.start() }
+        #endif
         #if canImport(GameKit)
         .sheet(isPresented: $showMatchmaker) {
             GameCenterMatchmakerView(
@@ -434,6 +425,110 @@ public struct NewGameView: View {
                 presentFromTop(controller)
             }
         }
+        #endif
+    }
+
+    /// The logo, the wordmark and the tagline.
+    ///
+    /// Extracted so the stacked and side-by-side menus render the same thing
+    /// rather than two copies that drift apart the first time either is edited.
+    @ViewBuilder
+    func brandmark(compact: Bool) -> some View {
+        VStack(spacing: compact ? 3 : 5) {
+            ZStack {
+                RadialGradient(colors: [Theme.ember.opacity(0.75), .clear],
+                               center: .center, startRadius: 6,
+                               endRadius: compact ? 74 : 108)
+                ForEach([-1.0, 1.0], id: \.self) { side in
+                    RoundedRectangle(cornerRadius: 9)
+                        .fill(Theme.dirtDeep)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 9)
+                                .strokeBorder(Theme.gold.opacity(0.55), lineWidth: 1.5)
+                        }
+                        .frame(width: compact ? 39 : 56, height: compact ? 57 : 82)
+                        .rotationEffect(.degrees(21 * side))
+                        .offset(x: (compact ? 21 : 31) * side, y: 2)
+                }
+                MiningArt(.goldNugget)
+                    .frame(width: compact ? 58 : 84, height: compact ? 58 : 84)
+                    .shadow(color: Theme.ember.opacity(0.9), radius: compact ? 10 : 14)
+            }
+            .frame(width: compact ? 132 : 190, height: compact ? 86 : 124)
+            .padding(.bottom, compact ? 6 : 10)
+
+            Text("GOLD RUSH")
+                .font(.system(size: compact ? 30 : 42, weight: .black, design: .rounded))
+                .tracking(compact ? 2.5 : 4)
+                .foregroundStyle(
+                    LinearGradient(colors: [Theme.goldBright, Theme.gold, Theme.goldDeep],
+                                   startPoint: .top, endPoint: .bottom)
+                )
+                .shadow(color: .black.opacity(0.55), radius: 5, y: 3)
+            HStack(spacing: 9) {
+                rule
+                Text("SPLIT THE CLAIM")
+                    .font(.system(size: compact ? 9 : 10, weight: .bold))
+                    .tracking(2.4)
+                    .foregroundStyle(Theme.parchment.opacity(0.75))
+                    .fixedSize()
+                rule
+            }
+            .frame(maxWidth: 260)
+        }
+    }
+
+    /// The setup pickers, the three ways to play, and the utility row.
+    @ViewBuilder
+    func menuControls(compact: Bool) -> some View {
+        VStack(spacing: compact ? 10 : 18) {
+            setupPicker(compact: compact)
+                .padding(.bottom, compact ? 0 : 4)
+
+            Button { startPassAndPlay() } label: {
+                menuLabel("Pass and play", "Two players, one device", filled: true, compact: compact)
+            }
+            Button { startSolo() } label: {
+                menuLabel("Play the prospector", "Single player vs the AI", filled: false, compact: compact)
+            }
+            #if canImport(GameKit)
+            Button { startOnline() } label: {
+                menuLabel("Play a friend online", onlineSubtitle, filled: false, compact: compact)
+            }
+            .disabled(!GameCenterAuth.shared.isSignedIn)
+            .opacity(onlineLooksAvailable ? 1 : 0.5)
+            #endif
+
+            HStack(spacing: 20) {
+                menuUtility("How to play", "book.closed.fill") { showRules = true }
+                menuUtility("Career", "chart.bar.fill") { showCareer = true }
+                menuUtility("Cards", "rectangle.stack.fill") { showCompendium = true }
+            }
+            .padding(.top, 2)
+        }
+    }
+
+    /// The banner, and the way to be rid of it.
+    ///
+    /// Both are gated on an ad actually being installed. A build with no ad
+    /// slot filled -- Linux, a preview, the screenshot runs -- has nothing to
+    /// remove, so offering to sell that would be selling nothing.
+    @ViewBuilder
+    var adFooter: some View {
+        #if canImport(StoreKit)
+        if AdSlot.banner != nil, !RemoveAdsStore.shared.isPurchased {
+            VStack(spacing: 0) {
+                Button { showRemoveAds = true } label: {
+                    Text("Remove ads")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.parchment.opacity(0.5))
+                        .padding(.vertical, 5)
+                }
+                AdSlot.bannerView
+            }
+        }
+        #else
+        AdSlot.bannerView
         #endif
     }
 
@@ -523,8 +618,31 @@ public struct NewGameView: View {
     }
 
     #if canImport(GameKit)
+    /// Whether the online button should *look* live.
+    ///
+    /// Deliberately separate from `.disabled`, which stays tied to the real
+    /// sign-in state: in a capture the button reads as available but still
+    /// cannot open a matchmaker nobody is there to dismiss.
+    var onlineLooksAvailable: Bool {
+        #if DEBUG
+        if ScreenshotMode.isActive { return true }
+        #endif
+        return GameCenterAuth.shared.isSignedIn
+    }
+
     var onlineSubtitle: String {
-        switch GameCenterAuth.shared.status {
+        #if DEBUG
+        // A capture simulator has no Game Center account, and the handler that
+        // would resolve the status is deliberately never installed -- so the
+        // status sits at `.unknown` forever and the button photographs greyed
+        // out under "Connecting to Game Center...", which reads as broken.
+        // The mode is described instead. That is true of the button whoever is
+        // signed in, where claiming an account would be inventing one.
+        if ScreenshotMode.isActive { return "Turn-based, on two devices" }
+        #endif
+        // Explicit `return`: the guard above makes this body multi-statement
+        // in Debug, so the switch can no longer be an implicit return.
+        return switch GameCenterAuth.shared.status {
         case .signedIn(let name): "Game Center — \(name)"
         case .signedOut: "Sign in to Game Center first"
         case .failed: "Sign in to Game Center first"

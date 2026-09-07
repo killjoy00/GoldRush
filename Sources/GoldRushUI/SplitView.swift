@@ -30,29 +30,58 @@ public struct SplitView: View {
 
     @ViewBuilder
     func content(_ builder: SplitBuilder) -> some View {
-        VStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Split the \(builder.draw.count) cards")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(Theme.goldBright)
-                Text("Your opponent picks a pile; you take the other. Turn \(builder.requiredFaceDown) card\(builder.requiredFaceDown == 1 ? "" : "s") face down — only whoever claims that pile will ever see it.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.parchment.opacity(0.7))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-
-            ScrollView {
-                VStack(spacing: 10) {
-                    pileZone(builder, .a)
-                    pileZone(builder, .b)
+        WideLayoutReader { wide in
+            VStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Split the \(builder.draw.count) cards")
+                        .font(.system(size: wide ? 26 : 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.goldBright)
+                    Text("Your opponent picks a pile; you take the other. Turn \(builder.requiredFaceDown) card\(builder.requiredFaceDown == 1 ? "" : "s") face down — only whoever claims that pile will ever see it.")
+                        .font(.system(size: wide ? 14 : 11))
+                        .foregroundStyle(Theme.parchment.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
-            }
+                .padding(.top, 12)
 
-            footer(builder)
+                // Side by side when there is room. The game is the comparison
+                // between these two piles, so making the player scroll one past
+                // the other on a screen with space for both is the wrong shape.
+                // Both branches use the same `pileZone`, so the piles cannot
+                // drift apart as one layout gets edited.
+                if wide {
+                    // The piles take the height they are given rather than
+                    // sitting in a band with a thousand points of nothing
+                    // underneath. They are also drop targets, so a taller zone
+                    // is a more forgiving one to drag a card into.
+                    // A scroll view proposes unbounded height, so the two
+                    // `maxHeight: .infinity` piles resolve to the taller one's
+                    // height instead of the screen's: equal boxes that hug
+                    // their cards. A fixed cap did make them equal, but it was
+                    // a number that would clip the nine-card Motherlode round,
+                    // and empty space is a much smaller problem than hidden
+                    // cards.
+                    ScrollView {
+                        HStack(alignment: .top, spacing: 14) {
+                            pileZone(builder, .a, fill: true)
+                            pileZone(builder, .b, fill: true)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 4)
+                    }
+                } else {
+                    ScrollView {
+                        VStack(spacing: 10) {
+                            pileZone(builder, .a)
+                            pileZone(builder, .b)
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                }
+
+                footer(builder)
+            }
         }
         .alert("Confirm this split?", isPresented: $confirming) {
             Button("Cancel", role: .cancel) {}
@@ -63,7 +92,7 @@ public struct SplitView: View {
     }
 
     @ViewBuilder
-    func pileZone(_ builder: SplitBuilder, _ pile: PileID) -> some View {
+    func pileZone(_ builder: SplitBuilder, _ pile: PileID, fill: Bool = false) -> some View {
         let cards = builder.pile(pile)
         VStack(alignment: .leading, spacing: 7) {
             HStack {
@@ -88,15 +117,20 @@ public struct SplitView: View {
                     .foregroundStyle(Theme.danger.opacity(0.9))
                     .frame(maxWidth: .infinity, minHeight: 74)
             } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 80), spacing: 10)], spacing: 10) {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: fill ? 124 : 80), spacing: 10)],
+                    spacing: 10
+                ) {
                     ForEach(cards, id: \.rawValue) { card in
-                        cardTile(builder, card, in: pile)
+                        cardTile(builder, card, in: pile, large: fill)
                     }
                 }
             }
         }
         .padding(11)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity,
+               maxHeight: fill ? .infinity : nil,
+               alignment: .topLeading)
         .background(Theme.dirtLight.opacity(dropTarget == pile ? 1.0 : 0.7),
                     in: RoundedRectangle(cornerRadius: 13))
         .overlay(
@@ -114,10 +148,12 @@ public struct SplitView: View {
     }
 
     @ViewBuilder
-    func cardTile(_ builder: SplitBuilder, _ card: CardID, in pile: PileID) -> some View {
+    func cardTile(_ builder: SplitBuilder, _ card: CardID, in pile: PileID,
+                  large: Bool = false) -> some View {
         VStack(spacing: 3) {
             MiningCardView(type: builder.type(of: card), faceDown: false,
-                           selected: builder.isFaceDown(card), size: .full)
+                           selected: builder.isFaceDown(card),
+                           size: large ? .large : .full)
                 .onTapGesture { builder.move(card, to: pile.other) }
                 .draggable(String(card.rawValue))
 
@@ -156,6 +192,7 @@ public struct SplitView: View {
             }
             .disabled(!builder.isLegal)
         }
+        .centredColumn()
         .padding(16)
     }
 }

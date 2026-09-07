@@ -25,13 +25,14 @@ public struct DraftView: View {
     }
 
     public var body: some View {
+        WideLayoutReader { wide in
         VStack(spacing: 10) {
             VStack(spacing: 4) {
                 Text(title)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: wide ? 24 : 18, weight: .bold, design: .rounded))
                     .foregroundStyle(Theme.goldBright)
                 Text(detail)
-                    .font(.system(size: 11))
+                    .font(.system(size: wide ? 14 : 11))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Theme.parchment.opacity(0.65))
                     .padding(.horizontal, 28)
@@ -47,7 +48,18 @@ public struct DraftView: View {
             }
 
             ScrollView {
-                VStack(spacing: 8) {
+                // A pack of eight down one column leaves an iPad mostly empty
+                // and pushes the last cards off-screen. Two columns fit the
+                // whole pack in view, which is the decision the screen is
+                // asking about: these cards are being compared, not read in
+                // order.
+                LazyVGrid(
+                    columns: Array(
+                        repeating: GridItem(.flexible(), spacing: 12),
+                        count: wide ? 2 : 1
+                    ),
+                    spacing: 8
+                ) {
                     ForEach(pack, id: \.index) { id in
                         if pairedDecision {
                             pairedCard(id)
@@ -85,9 +97,11 @@ public struct DraftView: View {
                         .foregroundStyle(canConfirm ? Theme.dirt : Theme.parchment.opacity(0.4))
                 }
                 .disabled(!canConfirm)
+                .centredColumn()
                 .padding(.horizontal, 16)
                 .padding(.bottom, 6)
             }
+        }
         }
         .onChange(of: pack) { _, _ in
             keep = nil
