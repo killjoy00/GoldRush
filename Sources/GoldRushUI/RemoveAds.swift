@@ -3,6 +3,11 @@ import Foundation
 import StoreKit
 import SwiftUI
 
+/// SwiftUI has a `Transaction` too -- the animation-context one -- so the bare
+/// name is ambiguous in any file that imports both. Naming the StoreKit type
+/// once here keeps the rest of the file readable without qualifying every use.
+private typealias StoreTransaction = StoreKit.Transaction
+
 /// The one-off purchase that turns the menu banner off.
 ///
 /// StoreKit is a system framework, so this lives in the package directly under
@@ -42,7 +47,7 @@ public final class RemoveAdsStore {
     public func start() async {
         if updates == nil {
             updates = Task { [weak self] in
-                for await update in Transaction.updates {
+                for await update in StoreTransaction.updates {
                     await self?.absorb(update)
                 }
             }
@@ -53,7 +58,7 @@ public final class RemoveAdsStore {
 
     public func refreshEntitlement() async {
         var owned = false
-        for await entitlement in Transaction.currentEntitlements {
+        for await entitlement in StoreTransaction.currentEntitlements {
             guard case .verified(let transaction) = entitlement else { continue }
             if transaction.productID == Self.productID,
                transaction.revocationDate == nil {
@@ -117,7 +122,7 @@ public final class RemoveAdsStore {
         }
     }
 
-    private func absorb(_ result: VerificationResult<Transaction>) async {
+    private func absorb(_ result: VerificationResult<StoreTransaction>) async {
         // An unverified transaction is one StoreKit could not authenticate.
         // It is ignored rather than trusted: the cost of being wrong is a
         // player who paid and still sees a banner, which `restore()` fixes,
