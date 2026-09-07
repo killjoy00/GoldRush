@@ -27,6 +27,14 @@ public final class GameCenterAuth {
 
     /// Starts authentication. Safe to call more than once.
     public func authenticate(present: @escaping (Any) -> Void) {
+        #if DEBUG
+        // A screenshot simulator has no Game Center account, so authentication
+        // fails and Game Center puts its own alert in the middle of the frame.
+        // The handler is never installed rather than the alert being dismissed
+        // afterwards: nothing can present what was never asked for, and there
+        // is no race between the capture and a dialog appearing.
+        if ScreenshotMode.isActive { return }
+        #endif
         GKLocalPlayer.local.authenticateHandler = { [weak self] viewController, error in
             Task { @MainActor in
                 guard let self else { return }

@@ -1,0 +1,142 @@
+name: App Store screenshots
+
+# Manual only. Builds the app for a simulator, walks it through the screens
+# worth showing, and uploads the PNGs as an artifact.
+#
+# Simulators render at true device resolution, so the output is already exactly
+# the pixel size App Store Connect wants -- nothing is scaled, padded or
+# cropped afterwards.
+on:
+  workflow_dispatch:
+    inputs:
+      iphone_device:
+        description: "iPhone simulator model (full name). Must be a 6.9-inch device: 1320x2868."
+        required: true
+        default: "iPhone 17 Pro Max"
+      ipad_device:
+        description: "iPad simulator model (full name). Must be a 13-inch device: 2064x2752."
+        required: true
+        default: "iPad Pro 13-inch (M5)"
+      screens:
+        description: "Space-separated screens to capture."
+        required: true
+        default: "home draft split rules compendium"
+
+jobs:
+  capture:
+    name: ${{ matrix.label }}
+    runs-on: macos-26
+    timeout-minutes: 45
+    strategy:
+      # Both sizes are captured even when one fails, so a bad device name for
+      # the iPad does not hide a working iPhone run.
+      fail-fast: false
+      matrix:
+        include:
+          - label: iPhone 6.9-inch
+            slug: iphone-69
+            device: ${{ inputs.iphone_device }}
+            width: 1320
+            height: 2868
+          - label: iPad 13-inch
+            slug: ipad-13
+            device: ${{ inputs.ipad_device }}
+            width: 2064
+            height: 2752
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        # The same version the release workflow archives with, so a screenshot
+        # cannot come from a different SDK than the binary users get.
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+
+      - name: Resolve the simulator
+        id: sim
+        env:
+          WANTED: ${{ matrix.device }}
+        run: |
+          set -euo pipefail
+          echo "Looking for: $WANTED"
+          UDID=$(xcrun simctl list devices available -j | python3 Tools/pick_simulator.py "$WANTED")
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          echo "Resolved to $UDID"
+
+      - name: Build for the simulator
+        run: |
+          set -euo pipefail
+          cd App
+          # Debug, because the screenshot mode is compiled out of Release by
+          # design -- a Release build physically cannot enter it.
+          xcodebuild build \
+            -project GoldRush.xcodeproj \
+            -scheme GoldRush \
+            -configuration Debug \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            -skipMacroValidation \
+            GOLDRUSH_BUNDLE_ID=com.killjoy00.goldrush \
+            CODE_SIGNING_ALLOWED=NO | tail -20
+
+      - name: Boot and dress the simulator
+        run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.udid }}"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          # The status bar is part of the capture, so it carries Apple's own
+          # marketing values rather than whatever time the runner thinks it is.
+          xcrun simctl status_bar "$UDID" override \
+            --time "9:41" \
+            --batteryState charged --batteryLevel 100 \
+            --wifiBars 3 --cellularBars 4
+          APP=$(find "$RUNNER_TEMP/dd/Build/Products" -name "GoldRush.app" -maxdepth 3 | head -1)
+          test -n "$APP" || { echo "::error::No GoldRush.app was built."; exit 1; }
+          echo "Installing $APP"
+          xcrun simctl install "$UDID" "$APP"
+
+      - name: Capture each screen
+        env:
+          SCREENS: ${{ inputs.screens }}
+        run: |
+          set -euo pipefail
+          UDID="${{ steps.sim.outputs.udid }}"
+          OUT="$RUNNER_TEMP/shots"
+          mkdir -p "$OUT"
+          BUNDLE=com.killjoy00.goldrush
+          INDEX=0
+          for SCREEN in $SCREENS; do
+            INDEX=$((INDEX + 1))
+            echo "::group::$SCREEN"
+            # Terminate before every launch. Relaunching a running app does not
+            # re-read launch arguments, so without this every capture after the
+            # first would photograph the first screen.
+            xcrun simctl terminate "$UDID" "$BUNDLE" 2>/dev/null || true
+            xcrun simctl launch "$UDID" "$BUNDLE" \
+              -AppScreenshotMode -AppScreenshotScreen "$SCREEN"
+            # The draft and split screens start a game and let the agent move,
+            # so the frame is not final the instant the process is up.
+            sleep 6
+            xcrun simctl io "$UDID" screenshot \
+              "$OUT/$(printf '%02d' $INDEX)-$SCREEN-${{ matrix.slug }}.png"
+            echo "::endgroup::"
+          done
+          ls -la "$OUT"
+
+      - name: Verify the captures
+        run: |
+          python3 Tools/check_screenshots.py "$RUNNER_TEMP/shots" \
+            --expect-width ${{ matrix.width }} \
+            --expect-height ${{ matrix.height }}
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots-${{ matrix.slug }}
+          path: ${{ runner.temp }}/shots/*.png
+          # A run that captured nothing should fail loudly rather than publish
+          # an empty artifact that looks like success in the UI.
+          if-no-files-found: error
+          retention-days: 30

@@ -18,6 +18,14 @@ struct GoldRushApp: App {
     static let bannerAdUnitID = "ca-app-pub-1217971050094766/6345151109"
 
     init() {
+        #if DEBUG
+        // Test ad units render developer-facing text ("You've loaded a test
+        // ad") that App Review rejects in a screenshot, and a simulator only
+        // ever gets test ads. Leaving AdSlot empty is not a special case: it
+        // is the state every non-app target is already in, and the screens
+        // render the ad-free layout rather than a reserved blank strip.
+        if ScreenshotMode.isActive { return }
+        #endif
         MobileAds.shared.start()
         AdSlot.banner = {
             AnyView(

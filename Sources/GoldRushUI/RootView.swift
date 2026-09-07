@@ -236,6 +236,11 @@ public struct NewGameView: View {
     @State private var onlineError: String?
     @State private var showOnlineError = false
     #endif
+    #if DEBUG
+    /// Guards the screenshot setup so leaving a game back to the menu does not
+    /// silently start another one.
+    @State private var screenshotApplied = false
+    #endif
 
     public init() {}
 
@@ -246,9 +251,54 @@ public struct NewGameView: View {
                      onRematch: rematchAction)
                 .id(ObjectIdentifier(active))
         } else {
+            #if DEBUG
+            menu.task { await applyScreenshotStateIfNeeded() }
+            #else
             menu
+            #endif
         }
     }
+
+    #if DEBUG
+    /// Puts the app on the screen a capture run asked for.
+    ///
+    /// Attached to the menu rather than driven by synthesised taps: the states
+    /// worth photographing are all reachable by setting what a tap would have
+    /// set, and that survives any amount of layout churn. Runs once -- the
+    /// menu reappears when a game is left, and re-entering the screenshot
+    /// state then would restart a game underneath whoever is looking.
+    @MainActor
+    func applyScreenshotStateIfNeeded() async {
+        guard ScreenshotMode.isActive, !screenshotApplied else { return }
+        screenshotApplied = true
+
+        switch ScreenshotMode.screen {
+        case .home:
+            break
+        case .rules:
+            showRules = true
+        case .compendium:
+            showCompendium = true
+        case .draft:
+            // A drafted game opens directly into the draft, so this needs no
+            // scripting beyond choosing the mode.
+            useDraft = true
+            startSolo(seed: ScreenshotMode.seed)
+        case .split:
+            // Splitting is the game's central act, and it is one committed
+            // reveal away from a new dealt game. Picking the first three cards
+            // is the same action the player would take; nothing is fabricated,
+            // the deal is simply a fixed one.
+            useDraft = false
+            startSolo(seed: ScreenshotMode.seed)
+            guard let model else { break }
+            for id in model.view.hand.prefix(model.view.config.initialRevealCount) {
+                model.toggleReveal(id)
+            }
+            await model.confirmReveal()
+        }
+    }
+    #endif
 
     func exitToMenu() {
         #if canImport(GameKit)
@@ -514,8 +564,10 @@ public struct NewGameView: View {
     }
     #endif
 
-    func startSolo() {
-        let seed = UInt64.random(in: 0..<UInt64.max)
+    /// The seed is a parameter so a screenshot run can deal the same hand
+    /// every time. Two captures of the same screen that differ for no reason
+    /// would make the workflow's duplicate check meaningless.
+    func startSolo(seed: UInt64 = UInt64.random(in: 0..<UInt64.max)) {
         let state = GameState.newGame(config: config, seed: seed)
         let fidelity = difficulty
         let transport = AgentTransport(state: state, humanSeat: .p1, seed: seed &+ 1) { view, phase, rng in
