@@ -41,6 +41,9 @@ public enum ScreenshotMode {
         case compendium
         /// A drafted game, which opens directly into the draft.
         case draft
+        /// The remove-ads purchase sheet, for the App Store Connect review
+        /// screenshot every in-app purchase has to ship with.
+        case removeAds = "removeads"
         /// The core act: a drawn hand being divided into two piles.
         case split
     }

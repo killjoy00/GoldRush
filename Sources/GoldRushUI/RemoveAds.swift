@@ -144,6 +144,29 @@ public struct RemoveAdsView: View {
         self.onDone = onDone
     }
 
+    /// Whether the buy button should *look* available.
+    ///
+    /// A capture simulator has no App Store account and, until the product
+    /// exists in App Store Connect, nothing to load either -- so the real
+    /// sheet there is a greyed button over a red "isn't available" line. That
+    /// is the wrong picture to hand a reviewer looking for where the purchase
+    /// lives. Only the appearance is overridden; `disabled` still tracks the
+    /// real product, so the capture cannot start a purchase. No price is
+    /// invented: without a product the button simply reads "Remove ads".
+    private var looksAvailable: Bool {
+        #if DEBUG
+        if ScreenshotMode.isActive { return true }
+        #endif
+        return store.product != nil
+    }
+
+    private var visibleFailure: String? {
+        #if DEBUG
+        if ScreenshotMode.isActive { return nil }
+        #endif
+        return store.failure
+    }
+
     public var body: some View {
         VStack(spacing: 18) {
             Image(systemName: "nosign")
@@ -161,7 +184,7 @@ public struct RemoveAdsView: View {
                 .foregroundStyle(Theme.parchment.opacity(0.75))
                 .padding(.horizontal, 24)
 
-            if let failure = store.failure {
+            if let failure = visibleFailure {
                 Text(failure)
                     .font(.system(size: 12))
                     .multilineTextAlignment(.center)
@@ -191,10 +214,10 @@ public struct RemoveAdsView: View {
                     .font(.system(size: 16, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(store.product == nil ? Theme.dirtLight : Theme.gold,
+                    .background(looksAvailable ? Theme.gold : Theme.dirtLight,
                                 in: RoundedRectangle(cornerRadius: 13))
-                    .foregroundStyle(store.product == nil
-                                     ? Theme.parchment.opacity(0.5) : Theme.dirt)
+                    .foregroundStyle(looksAvailable
+                                     ? Theme.dirt : Theme.parchment.opacity(0.5))
                 }
                 .disabled(store.product == nil || store.isWorking)
 

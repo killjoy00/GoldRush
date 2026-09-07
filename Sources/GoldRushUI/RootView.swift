@@ -285,6 +285,10 @@ public struct NewGameView: View {
             showRules = true
         case .compendium:
             showCompendium = true
+        case .removeAds:
+            #if canImport(StoreKit)
+            showRemoveAds = true
+            #endif
         case .draft:
             // A drafted game opens directly into the draft, so this needs no
             // scripting beyond choosing the mode.
