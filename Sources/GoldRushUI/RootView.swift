@@ -296,6 +296,23 @@ public struct NewGameView: View {
                 model.toggleReveal(id)
             }
             await model.confirmReveal()
+            // A fresh split puts every card in pile A with nothing turned
+            // down, which is the one arrangement the validator rejects. The
+            // first capture run therefore photographed three red errors and a
+            // dead confirm button -- a picture of the app refusing to work.
+            // The split is arranged here the way a player would arrange it,
+            // through the same builder the UI drives, so the frame shows the
+            // mechanic mid-decision rather than a fabricated state.
+            if let builder = model.splitBuilder {
+                for id in builder.draw.map(\.id).suffix(3) {
+                    builder.move(id, to: .b)
+                }
+                // Face down in the pile the opponent is being offered: that is
+                // the interesting case, and the one the screen exists to show.
+                if let hidden = builder.pileB.last {
+                    builder.toggleFaceDown(hidden)
+                }
+            }
         }
     }
     #endif
@@ -385,7 +402,7 @@ public struct NewGameView: View {
                         menuLabel("Play a friend online", onlineSubtitle, filled: false, compact: compact)
                     }
                     .disabled(!GameCenterAuth.shared.isSignedIn)
-                    .opacity(GameCenterAuth.shared.isSignedIn ? 1 : 0.5)
+                    .opacity(onlineLooksAvailable ? 1 : 0.5)
                     #endif
 
                     HStack(spacing: 20) {
@@ -523,8 +540,31 @@ public struct NewGameView: View {
     }
 
     #if canImport(GameKit)
+    /// Whether the online button should *look* live.
+    ///
+    /// Deliberately separate from `.disabled`, which stays tied to the real
+    /// sign-in state: in a capture the button reads as available but still
+    /// cannot open a matchmaker nobody is there to dismiss.
+    var onlineLooksAvailable: Bool {
+        #if DEBUG
+        if ScreenshotMode.isActive { return true }
+        #endif
+        return GameCenterAuth.shared.isSignedIn
+    }
+
     var onlineSubtitle: String {
-        switch GameCenterAuth.shared.status {
+        #if DEBUG
+        // A capture simulator has no Game Center account, and the handler that
+        // would resolve the status is deliberately never installed -- so the
+        // status sits at `.unknown` forever and the button photographs greyed
+        // out under "Connecting to Game Center...", which reads as broken.
+        // The mode is described instead. That is true of the button whoever is
+        // signed in, where claiming an account would be inventing one.
+        if ScreenshotMode.isActive { return "Turn-based, on two devices" }
+        #endif
+        // Explicit `return`: the guard above makes this body multi-statement
+        // in Debug, so the switch can no longer be an implicit return.
+        return switch GameCenterAuth.shared.status {
         case .signedIn(let name): "Game Center — \(name)"
         case .signedOut: "Sign in to Game Center first"
         case .failed: "Sign in to Game Center first"
