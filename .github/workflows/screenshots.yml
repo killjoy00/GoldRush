@@ -119,8 +119,23 @@ jobs:
             # The draft and split screens start a game and let the agent move,
             # so the frame is not final the instant the process is up.
             sleep 6
-            xcrun simctl io "$UDID" screenshot \
-              "$OUT/$(printf '%02d' $INDEX)-$SCREEN-${{ matrix.slug }}.png"
+            SHOT="$OUT/$(printf '%02d' $INDEX)-$SCREEN-${{ matrix.slug }}.png"
+            # `simctl io screenshot` sometimes returns before the app has
+            # drawn: one run produced a solid black 2064x2752 PNG, correctly
+            # sized and unique, which every check at the time waved through.
+            # A blank frame is re-taken here rather than only being caught at
+            # the end, because the fix is another second of settling and not a
+            # failed run. The same check runs again over the whole directory
+            # afterwards, so a screen that is blank on every attempt still
+            # fails loudly.
+            for ATTEMPT in 1 2 3; do
+              xcrun simctl io "$UDID" screenshot "$SHOT"
+              if python3 Tools/check_screenshots.py "$SHOT" > /dev/null; then
+                break
+              fi
+              echo "::warning::$SCREEN came back blank on attempt $ATTEMPT."
+              sleep 5
+            done
             echo "::endgroup::"
           done
           ls -la "$OUT"
