@@ -112,6 +112,11 @@ public struct RootView: View {
             }
             .padding(.bottom, 6)
         }
+        // The board is centred inside a cap rather than filling the display.
+        // A 13-inch iPad is wider than any of these screens wants to be, and
+        // stretching them just moves the two piles further apart.
+        .frame(maxWidth: Layout.boardWidth)
+        .frame(maxWidth: .infinity)
         .sheet(isPresented: $showTableau) {
             TableauView(view: model.view)
         }
@@ -342,77 +347,32 @@ public struct NewGameView: View {
     var menu: some View {
         GeometryReader { proxy in
             let compact = proxy.size.height < 780
+            // Wide enough for the brandmark and the controls to sit beside each
+            // other. Checked against the actual width rather than the size class
+            // because this is a question about geometry, and an iPad in
+            // landscape has room for two columns while the same iPad in a narrow
+            // Split View does not.
+            let wide = proxy.size.width >= 780
             ScrollView {
-                VStack(spacing: compact ? 10 : 18) {
-                    Spacer(minLength: compact ? 4 : 12)
-                    ZStack {
-                        RadialGradient(colors: [Theme.ember.opacity(0.75), .clear],
-                                       center: .center, startRadius: 6,
-                                       endRadius: compact ? 74 : 108)
-                        ForEach([-1.0, 1.0], id: \.self) { side in
-                            RoundedRectangle(cornerRadius: 9)
-                                .fill(Theme.dirtDeep)
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: 9)
-                                        .strokeBorder(Theme.gold.opacity(0.55), lineWidth: 1.5)
-                                }
-                                .frame(width: compact ? 39 : 56, height: compact ? 57 : 82)
-                                .rotationEffect(.degrees(21 * side))
-                                .offset(x: (compact ? 21 : 31) * side, y: 2)
+                Group {
+                    if wide {
+                        HStack(alignment: .center, spacing: 44) {
+                            brandmark(compact: false)
+                                .frame(maxWidth: .infinity)
+                            menuControls(compact: false)
+                                .frame(maxWidth: 380)
                         }
-                        MiningArt(.goldNugget)
-                            .frame(width: compact ? 58 : 84, height: compact ? 58 : 84)
-                            .shadow(color: Theme.ember.opacity(0.9), radius: compact ? 10 : 14)
-                    }
-                    .frame(width: compact ? 132 : 190, height: compact ? 86 : 124)
-
-                    VStack(spacing: compact ? 3 : 5) {
-                        Text("GOLD RUSH")
-                            .font(.system(size: compact ? 30 : 42, weight: .black, design: .rounded))
-                            .tracking(compact ? 2.5 : 4)
-                            .foregroundStyle(
-                                LinearGradient(colors: [Theme.goldBright, Theme.gold, Theme.goldDeep],
-                                               startPoint: .top, endPoint: .bottom)
-                            )
-                            .shadow(color: .black.opacity(0.55), radius: 5, y: 3)
-                        HStack(spacing: 9) {
-                            rule
-                            Text("SPLIT THE CLAIM")
-                                .font(.system(size: compact ? 9 : 10, weight: .bold))
-                                .tracking(2.4)
-                                .foregroundStyle(Theme.parchment.opacity(0.75))
-                                .fixedSize()
-                            rule
+                        .frame(maxWidth: Layout.menuWidth)
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        VStack(spacing: compact ? 10 : 18) {
+                            Spacer(minLength: compact ? 4 : 12)
+                            brandmark(compact: compact)
+                            Spacer(minLength: compact ? 2 : 8)
+                            menuControls(compact: compact)
+                            Spacer(minLength: compact ? 4 : 12)
                         }
-                        .frame(maxWidth: 260)
                     }
-                    Spacer(minLength: compact ? 2 : 8)
-
-                    setupPicker(compact: compact)
-                        .padding(.bottom, compact ? 0 : 4)
-
-                    Button { startPassAndPlay() } label: {
-                        menuLabel("Pass and play", "Two players, one device", filled: true, compact: compact)
-                    }
-                    Button { startSolo() } label: {
-                        menuLabel("Play the prospector", "Single player vs the AI", filled: false, compact: compact)
-                    }
-                    #if canImport(GameKit)
-                    Button { startOnline() } label: {
-                        menuLabel("Play a friend online", onlineSubtitle, filled: false, compact: compact)
-                    }
-                    .disabled(!GameCenterAuth.shared.isSignedIn)
-                    .opacity(onlineLooksAvailable ? 1 : 0.5)
-                    #endif
-
-                    HStack(spacing: 20) {
-                        menuUtility("How to play", "book.closed.fill") { showRules = true }
-                        menuUtility("Career", "chart.bar.fill") { showCareer = true }
-                        menuUtility("Cards", "rectangle.stack.fill") { showCompendium = true }
-                    }
-                    .padding(.top, 2)
-
-                    Spacer(minLength: compact ? 4 : 12)
                 }
                 .padding(.horizontal, compact ? 18 : 24)
                 .padding(.vertical, compact ? 12 : 24)
@@ -452,6 +412,86 @@ public struct NewGameView: View {
             }
         }
         #endif
+    }
+
+    /// The logo, the wordmark and the tagline.
+    ///
+    /// Extracted so the stacked and side-by-side menus render the same thing
+    /// rather than two copies that drift apart the first time either is edited.
+    @ViewBuilder
+    func brandmark(compact: Bool) -> some View {
+        VStack(spacing: compact ? 3 : 5) {
+            ZStack {
+                RadialGradient(colors: [Theme.ember.opacity(0.75), .clear],
+                               center: .center, startRadius: 6,
+                               endRadius: compact ? 74 : 108)
+                ForEach([-1.0, 1.0], id: \.self) { side in
+                    RoundedRectangle(cornerRadius: 9)
+                        .fill(Theme.dirtDeep)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 9)
+                                .strokeBorder(Theme.gold.opacity(0.55), lineWidth: 1.5)
+                        }
+                        .frame(width: compact ? 39 : 56, height: compact ? 57 : 82)
+                        .rotationEffect(.degrees(21 * side))
+                        .offset(x: (compact ? 21 : 31) * side, y: 2)
+                }
+                MiningArt(.goldNugget)
+                    .frame(width: compact ? 58 : 84, height: compact ? 58 : 84)
+                    .shadow(color: Theme.ember.opacity(0.9), radius: compact ? 10 : 14)
+            }
+            .frame(width: compact ? 132 : 190, height: compact ? 86 : 124)
+            .padding(.bottom, compact ? 6 : 10)
+
+            Text("GOLD RUSH")
+                .font(.system(size: compact ? 30 : 42, weight: .black, design: .rounded))
+                .tracking(compact ? 2.5 : 4)
+                .foregroundStyle(
+                    LinearGradient(colors: [Theme.goldBright, Theme.gold, Theme.goldDeep],
+                                   startPoint: .top, endPoint: .bottom)
+                )
+                .shadow(color: .black.opacity(0.55), radius: 5, y: 3)
+            HStack(spacing: 9) {
+                rule
+                Text("SPLIT THE CLAIM")
+                    .font(.system(size: compact ? 9 : 10, weight: .bold))
+                    .tracking(2.4)
+                    .foregroundStyle(Theme.parchment.opacity(0.75))
+                    .fixedSize()
+                rule
+            }
+            .frame(maxWidth: 260)
+        }
+    }
+
+    /// The setup pickers, the three ways to play, and the utility row.
+    @ViewBuilder
+    func menuControls(compact: Bool) -> some View {
+        VStack(spacing: compact ? 10 : 18) {
+            setupPicker(compact: compact)
+                .padding(.bottom, compact ? 0 : 4)
+
+            Button { startPassAndPlay() } label: {
+                menuLabel("Pass and play", "Two players, one device", filled: true, compact: compact)
+            }
+            Button { startSolo() } label: {
+                menuLabel("Play the prospector", "Single player vs the AI", filled: false, compact: compact)
+            }
+            #if canImport(GameKit)
+            Button { startOnline() } label: {
+                menuLabel("Play a friend online", onlineSubtitle, filled: false, compact: compact)
+            }
+            .disabled(!GameCenterAuth.shared.isSignedIn)
+            .opacity(onlineLooksAvailable ? 1 : 0.5)
+            #endif
+
+            HStack(spacing: 20) {
+                menuUtility("How to play", "book.closed.fill") { showRules = true }
+                menuUtility("Career", "chart.bar.fill") { showCareer = true }
+                menuUtility("Cards", "rectangle.stack.fill") { showCompendium = true }
+            }
+            .padding(.top, 2)
+        }
     }
 
     @ViewBuilder

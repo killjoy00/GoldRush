@@ -17,30 +17,42 @@ public struct ChooseView: View {
     }
 
     public var body: some View {
-        VStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Take a pile")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(Theme.goldBright)
-                Text("Your opponent divided these. Whichever you take, they keep the other.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.parchment.opacity(0.7))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-
-            if let piles = model.view.piles {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        pileCard(.a, piles.a)
-                        pileCard(.b, piles.b)
-                    }
-                    .padding(.horizontal, 16)
+        WideLayoutReader { wide in
+            VStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Take a pile")
+                        .font(.system(size: wide ? 26 : 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.goldBright)
+                    Text("Your opponent divided these. Whichever you take, they keep the other.")
+                        .font(.system(size: wide ? 14 : 11))
+                        .foregroundStyle(Theme.parchment.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+
+                if let piles = model.view.piles {
+                    // Choosing is a comparison too, so the piles sit next to
+                    // each other for the same reason they do when splitting.
+                    if wide {
+                        HStack(alignment: .top, spacing: 14) {
+                            pileCard(.a, piles.a)
+                            pileCard(.b, piles.b)
+                        }
+                        .padding(.horizontal, 16)
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 12) {
+                                pileCard(.a, piles.a)
+                                pileCard(.b, piles.b)
+                            }
+                            .padding(.horizontal, 16)
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
         }
         .alert("Take pile \(confirming == .a ? "A" : "B")?", isPresented: .init(
             get: { confirming != nil },

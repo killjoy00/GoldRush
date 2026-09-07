@@ -30,29 +30,45 @@ public struct SplitView: View {
 
     @ViewBuilder
     func content(_ builder: SplitBuilder) -> some View {
-        VStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Split the \(builder.draw.count) cards")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundStyle(Theme.goldBright)
-                Text("Your opponent picks a pile; you take the other. Turn \(builder.requiredFaceDown) card\(builder.requiredFaceDown == 1 ? "" : "s") face down — only whoever claims that pile will ever see it.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(Theme.parchment.opacity(0.7))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-
-            ScrollView {
-                VStack(spacing: 10) {
-                    pileZone(builder, .a)
-                    pileZone(builder, .b)
+        WideLayoutReader { wide in
+            VStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Split the \(builder.draw.count) cards")
+                        .font(.system(size: wide ? 26 : 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(Theme.goldBright)
+                    Text("Your opponent picks a pile; you take the other. Turn \(builder.requiredFaceDown) card\(builder.requiredFaceDown == 1 ? "" : "s") face down — only whoever claims that pile will ever see it.")
+                        .font(.system(size: wide ? 14 : 11))
+                        .foregroundStyle(Theme.parchment.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
-            }
+                .padding(.top, 12)
 
-            footer(builder)
+                // Side by side when there is room. The game is the comparison
+                // between these two piles, so making the player scroll one past
+                // the other on a screen with space for both is the wrong shape.
+                // Both branches use the same `pileZone`, so the piles cannot
+                // drift apart as one layout gets edited.
+                if wide {
+                    HStack(alignment: .top, spacing: 14) {
+                        pileZone(builder, .a)
+                        pileZone(builder, .b)
+                    }
+                    .padding(.horizontal, 16)
+                    Spacer(minLength: 0)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 10) {
+                            pileZone(builder, .a)
+                            pileZone(builder, .b)
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                }
+
+                footer(builder)
+            }
         }
         .alert("Confirm this split?", isPresented: $confirming) {
             Button("Cancel", role: .cancel) {}
@@ -156,6 +172,7 @@ public struct SplitView: View {
             }
             .disabled(!builder.isLegal)
         }
+        .centredColumn()
         .padding(16)
     }
 }
