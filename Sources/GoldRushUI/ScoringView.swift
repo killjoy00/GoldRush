@@ -45,7 +45,7 @@ public struct ScoringView: View {
         .safeAreaInset(edge: .bottom) { exitBar }
         .task {
             CareerStatsStore.record(model: model)
-            #if canImport(StoreKit)
+            #if canImport(StoreKit) && canImport(UIKit)
             // After recording, so the games count includes the one just
             // finished and a player's third game can be the one that asks.
             RatingsPrompt.consider(

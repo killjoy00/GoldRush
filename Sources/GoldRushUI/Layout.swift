@@ -60,4 +60,62 @@ public struct WideLayoutReader<Content: View>: View {
         content(sizeClass == .regular)
     }
 }
+
+public extension View {
+    /// Present this sheet at page size rather than iPadOS's small centred form.
+    ///
+    /// A plain `.sheet` on a 13-inch iPad is a fixed, roughly form-sized panel
+    /// floating in the middle of the display, with the blurred menu showing
+    /// around it -- so the rules sheet was cut off partway down while most of
+    /// the screen sat empty behind it. `.page` sizes the sheet to the display
+    /// instead.
+    ///
+    /// No effect in a compact size class, which is what iPhone always is here,
+    /// so this changes iPad only.
+    ///
+    /// Scoped to iOS because `presentationSizing` needs macOS 15 and this
+    /// package still declares macOS 14. `GoldRushUI` is behind
+    /// `canImport(SwiftUI)`, which is true on a Mac, so an unguarded call
+    /// would break `swift build` there -- something CI would not catch,
+    /// since it only builds this module for iOS.
+    func pageSheet() -> some View {
+        #if os(iOS)
+        return presentationSizing(.page)
+        #else
+        return self
+        #endif
+    }
+}
+
+/// A scroll view whose content is at least as tall as the scroll view itself.
+///
+/// A `ScrollView` takes all the height it is offered, but its content hugs the
+/// top of that, so a board with room to spare on a 13-inch iPad left most of
+/// the frame black with the toolbar stranded at the bottom.
+///
+/// `minHeight` is a floor, never a cap. Content taller than the viewport -- the
+/// nine-card Motherlode round, a pack on a narrow screen -- still takes its
+/// natural size and scrolls, so this cannot clip anything. Children that ask
+/// for `maxHeight: .infinity`, like the two pile zones, expand into the extra
+/// height instead of leaving it empty; everything else is positioned by
+/// `alignment`.
+@MainActor
+public struct FillingScrollView<Content: View>: View {
+    private let alignment: Alignment
+    private let content: () -> Content
+
+    public init(alignment: Alignment = .center,
+                @ViewBuilder content: @escaping () -> Content) {
+        self.alignment = alignment
+        self.content = content
+    }
+
+    public var body: some View {
+        GeometryReader { proxy in
+            ScrollView {
+                content().frame(minHeight: proxy.size.height, alignment: alignment)
+            }
+        }
+    }
+}
 #endif
