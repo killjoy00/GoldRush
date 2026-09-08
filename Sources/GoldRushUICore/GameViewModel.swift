@@ -36,7 +36,10 @@ public final class GameViewModel {
     /// The round the recap is currently showing, if it is showing one.
     private var recapForRound: Int?
 
-    private let transport: any MatchTransport
+    /// Readable so a caller can ask what kind of match this is -- the online
+    /// rematch needs the underlying Game Center match. Still only settable at
+    /// init: the transport a game is played over never changes mid-game.
+    public let transport: any MatchTransport
     private let usesHandoff: Bool
     private var awaitingHandoff = false
 

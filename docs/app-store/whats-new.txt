@@ -1,12 +1,13 @@
-The scoring-card draft is shorter and the decisions in it are bigger.
+The draft is shorter and the decisions are bigger. Packs now open at seven:
+take one and pass, then two, then two, and keep one of the last pair while the
+other burns face up. Four decisions instead of six, and your own pack comes
+back to you — so you find out exactly which two your opponent took from it.
 
-Packs now open at seven. Take one card as your secret opener and pass the rest,
-then two, then two, then keep one and burn the last. Four decisions instead of
-six — and the middle of the draft is no longer four near-identical screens.
+Also new:
+• Rematch after an online game. Same opponent, straight into the next one,
+  without going back to the menu to re-invite anyone.
+• Pick your prospector. Steady plays it straight, Cunning hides the card that
+  costs you most to guess wrong, and Ruthless works out what you will do with
+  a split before offering it. All three were always in there; now you choose.
 
-Your own pack comes back to you with exactly two cards gone, so you learn what
-your opponent took from it. They learn the same about you. Only the very first
-card either of you takes stays secret, as before.
-
-Dealt games are unchanged, and a game already in progress finishes under the
-rules it started with.
+Games already in progress finish under the rules they started with.

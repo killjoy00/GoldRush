@@ -45,6 +45,14 @@ public struct ScoringView: View {
         .safeAreaInset(edge: .bottom) { exitBar }
         .task {
             CareerStatsStore.record(model: model)
+            #if canImport(StoreKit)
+            // After recording, so the games count includes the one just
+            // finished and a player's third game can be the one that asks.
+            RatingsPrompt.consider(
+                didWin: model.winner == model.view.player,
+                stats: CareerStatsStore.load()
+            )
+            #endif
         }
     }
 

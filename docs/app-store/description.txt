@@ -18,10 +18,10 @@ on its own. Your six scoring cards decide what counts — and your opponent neve
 sees all of them, so they can guess what you're chasing but never be sure.
 
 DEAL OR DRAFT
-Take your six at random, or draft them: open a pack of eight, keep one, burn one
-face up, and pass the rest. Drafting takes the luck out of the deal — but your
-opponent watches you take almost everything, so only your very first pick stays
-secret.
+Take your six at random, or draft them: open a pack of seven, take one and pass
+the rest, then two, then two, and keep one of the last pair while the other
+burns face up. Drafting takes the luck out of the deal — but your opponent
+watches you take almost everything, so only your very first pick stays secret.
 
 THREE WAYS TO PLAY
 • Online against a friend, over Game Center — take your turn whenever you like
