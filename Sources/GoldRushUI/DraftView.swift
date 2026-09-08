@@ -213,7 +213,10 @@ public struct DraftView: View {
             default: return "Draft a scoring card"
             }
         }
-        switch pack.count {
+        // Explicit `return`: the branch above makes this body multi-statement,
+        // so the switch is no longer an implicit return. This is the third
+        // getter in this project to need it after gaining a guard.
+        return switch pack.count {
         case GameConfig.draftOpeningPackSize: "Open your pack of eight"
         case 6: "Take one, pass five"
         case 5: "Take one, pass four"
@@ -235,7 +238,7 @@ public struct DraftView: View {
                 return "Take two and pass the rest. You have \(model.view.hand.count) of \(GameConfig.handSize)."
             }
         }
-        switch pack.count {
+        return switch pack.count {
         case GameConfig.draftOpeningPackSize:
             "Keep one card as your secret opener. Burn one face up. Your opponent gets the other six."
         case 2:
