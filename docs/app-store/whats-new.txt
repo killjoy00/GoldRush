@@ -1,14 +1,12 @@
-Gold Rush Prospecting is now an iPad game as well as an iPhone one — and not
-just a stretched phone screen. It rotates, and the layout uses the room.
+The scoring-card draft is shorter and the decisions in it are bigger.
 
-The two piles now sit side by side, which is how the game actually works: you
-are comparing them, not scrolling past one to reach the other. The draft shows
-your whole pack of eight at once instead of half of it. Cards are drawn at a
-size a thirteen-inch screen deserves.
+Packs now open at seven. Take one card as your secret opener and pass the rest,
+then two, then two, then keep one and burn the last. Four decisions instead of
+six — and the middle of the draft is no longer four near-identical screens.
 
-Also new:
-• Remove Ads — a one-time purchase that takes the banner off the menu for
-  good. It stays with your Apple Account, so it follows you to a new device.
+Your own pack comes back to you with exactly two cards gone, so you learn what
+your opponent took from it. They learn the same about you. Only the very first
+card either of you takes stays secret, as before.
 
-Everything else is where you left it. Your Claim Journal, career stats and any
-game in progress carry across untouched.
+Dealt games are unchanged, and a game already in progress finishes under the
+rules it started with.
