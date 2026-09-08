@@ -118,10 +118,10 @@ public struct RootView: View {
         .frame(maxWidth: Widths.board)
         .frame(maxWidth: .infinity)
         .sheet(isPresented: $showTableau) {
-            TableauView(view: model.view)
+            TableauView(view: model.view).pageSheet()
         }
         .sheet(isPresented: $showJournal) {
-            ClaimJournalView(rounds: model.journalRounds)
+            ClaimJournalView(rounds: model.journalRounds).pageSheet()
         }
         .confirmationDialog("Leave this game?",
                             isPresented: $confirmLeave,
@@ -431,17 +431,17 @@ public struct NewGameView: View {
         .background(Theme.background)
         .safeAreaInset(edge: .bottom) { adFooter }
         .sheet(isPresented: $showRules) {
-            RulesView { showRules = false }
+            RulesView { showRules = false }.pageSheet()
         }
         .sheet(isPresented: $showCareer) {
-            CareerStatsView()
+            CareerStatsView().pageSheet()
         }
         .sheet(isPresented: $showCompendium) {
-            ScoringCardCompendiumView()
+            ScoringCardCompendiumView().pageSheet()
         }
         #if canImport(StoreKit)
         .sheet(isPresented: $showRemoveAds) {
-            RemoveAdsView { showRemoveAds = false }
+            RemoveAdsView { showRemoveAds = false }.pageSheet()
         }
         // Started here rather than in the sheet so the entitlement is known
         // before the banner is laid out. A player who already paid should

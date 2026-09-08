@@ -162,10 +162,14 @@ alert in the middle of the frame; the handler is never installed rather than
 the alert being dismissed after the fact. And a simulator only ever gets test
 ads, which render "You've loaded a test ad" -- text App Review rejects.
 
-Screens are named, not tapped: `home`, `rules`, `compendium`, `draft`, `split`.
-An unrecognised name falls back to `home`, so a typo costs one wrong image
-rather than a crashed run. The deal is seeded, so the same screen photographs
-identically every time.
+Screens are named, not tapped: `home`, `rules`, `compendium`, `draft`, `split`,
+`choose` and `removeads`. An unrecognised name falls back to `home`, so a typo
+costs one wrong image rather than a crashed run. The deal is seeded, so the same
+screen photographs identically every time.
+
+`removeads` is the purchase sheet. App Review requires a screenshot of the
+in-app purchase alongside the listing images, so capture it even when it is not
+going on the product page.
 
 Two screens are deliberately absent. Career Stats and the Claim Journal are
 empty until someone has played, and the only ways to fill them are to play a
