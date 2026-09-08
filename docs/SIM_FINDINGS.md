@@ -778,14 +778,14 @@ Worth stating plainly: this was invisible to the test suite, which asserts
 that the draft terminates with legal hands, and it does. Only counting how
 often each card actually reached a scoring sheet found it.
 
-### Still open
+### Closed since
 
-`draftPick` has the same blindness `draftDiscard` just lost -- it also ranks
-candidates by `selfValue`, so it under-rates comparison cards during the
-draft itself. It is not fatal there, because every card in the pool gets
-taken by someone whatever the order, but the picks are worse than they need
-to be. Fixing it means the same two-sided scoring, and re-measuring the
-drafted sweep afterwards.
+This section previously recorded `draftPick` as still ranking candidates by
+`selfValue` and so under-rating comparison cards. That is no longer true and
+the note was stale: `GreedyAgent.draftPick` and `InferenceAgent.draftPick`
+both call `draftPriorValue`, the same six-board two-sided prior `draftDiscard`
+uses, and `selfValue` no longer appears anywhere in a draft path. The numbers
+in §14 were measured against the corrected agents.
 
 
 ## Reproducing

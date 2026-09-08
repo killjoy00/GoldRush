@@ -7,6 +7,41 @@ public enum HiddenPolicy: Sendable, Codable, Equatable, Hashable {
     case fixed(Int)
 }
 
+/// How the scoring-card draft is shaped.
+///
+/// A config option rather than a replacement so the simulator can play both
+/// and the numbers can decide, which is the only way to answer "is this
+/// better" for a rules change.
+public enum DraftShape: String, Sendable, Codable, Equatable, Hashable, CaseIterable {
+    /// Open eight: keep one and burn one face up, pass six, then single picks
+    /// down to a final pair where one is kept and one burned. Six decisions
+    /// and two burns per player. What every shipped version plays.
+    case eightSingles
+    /// Open seven: take one and pass, then two, then two, then keep one and
+    /// burn one. Four decisions and one burn per player.
+    ///
+    /// Your own pack comes back to you at four cards, so you learn exactly
+    /// which two the opponent took from it -- an information beat the single
+    /// picks give up more diffusely.
+    case sevenPaired
+
+    /// Cards dealt to each player's opening pack.
+    public var openingPackSize: Int {
+        switch self {
+        case .eightSingles: GameConfig.handSize + 2
+        case .sevenPaired: GameConfig.handSize + 1
+        }
+    }
+
+    /// Pack sizes at which the player takes two cards rather than one.
+    public var pairedPackSizes: Set<Int> {
+        switch self {
+        case .eightSingles: []
+        case .sevenPaired: [6, 4]
+        }
+    }
+}
+
 /// Every rules variant, settable from the CLI so the simulator can A/B them.
 public struct GameConfig: Sendable, Codable, Equatable, Hashable {
     /// Replaces the blind deal with a two-pack draft. Each player opens eight:
@@ -32,6 +67,8 @@ public struct GameConfig: Sendable, Codable, Equatable, Hashable {
     /// of the deck is never seen -- the quantity `sim deck` studies.
     public var deckSize: Int
     public var roundCount: Int
+    /// Only consulted when `scoringDraft` is on.
+    public var draftShape: DraftShape
 
     public init(
         scoringDraft: Bool = false,
@@ -41,8 +78,10 @@ public struct GameConfig: Sendable, Codable, Equatable, Hashable {
         motherlodeRounds: Bool = true,
         hiddenPolicy: HiddenPolicy = .standard,
         deckSize: Int = MiningDeck.standardSize,
-        roundCount: Int? = nil
+        roundCount: Int? = nil,
+        draftShape: DraftShape = .eightSingles
     ) {
+        self.draftShape = draftShape
         self.scoringDraft = scoringDraft
         self.simultaneousSplit = simultaneousSplit
         self.progressiveReveal = progressiveReveal
@@ -56,6 +95,27 @@ public struct GameConfig: Sendable, Codable, Equatable, Hashable {
         // four splits and four choices. Every invariant the sequential game is
         // measured against carries over exactly.
         self.roundCount = roundCount ?? (simultaneousSplit ? 4 : 8)
+    }
+
+    /// Decoding that survives match data written before `draftShape` existed.
+    ///
+    /// A `GameState` travels between devices as GameKit `matchData`, so an
+    /// online game already in flight was encoded without this key. Synthesised
+    /// decoding would reject it outright and strand the match. Absence is not
+    /// ambiguous: a game encoded before the option existed was played under
+    /// the only shape there was.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        scoringDraft = try container.decode(Bool.self, forKey: .scoringDraft)
+        simultaneousSplit = try container.decode(Bool.self, forKey: .simultaneousSplit)
+        progressiveReveal = try container.decode(Bool.self, forKey: .progressiveReveal)
+        persistentHiddenCards = try container.decode(Bool.self, forKey: .persistentHiddenCards)
+        motherlodeRounds = try container.decode(Bool.self, forKey: .motherlodeRounds)
+        hiddenPolicy = try container.decode(HiddenPolicy.self, forKey: .hiddenPolicy)
+        deckSize = try container.decode(Int.self, forKey: .deckSize)
+        roundCount = try container.decode(Int.self, forKey: .roundCount)
+        draftShape = try container.decodeIfPresent(DraftShape.self, forKey: .draftShape)
+            ?? .eightSingles
     }
 
     public static let standard = GameConfig()

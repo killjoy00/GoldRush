@@ -25,7 +25,8 @@ enum Sim {
             hiddenPolicy: args.has("hidden-cards")
                 ? .fixed(args.int("hidden-cards", default: 1))
                 : .standard,
-            deckSize: args.int("deck-size", default: MiningDeck.standardSize)
+            deckSize: args.int("deck-size", default: MiningDeck.standardSize),
+            draftShape: args.has("paired-draft") ? .sevenPaired : .eightSingles
         )
         overrides(&config)
         return config
@@ -156,6 +157,13 @@ enum Sim {
             Hybrid(name: "\(splitName)-split/\(chooseName)-choose",
                    splitter: agent(splitName), chooser: agent(chooseName))
         }
+        /// Splits and chooses naively on both sides, so the only thing that
+        /// differs is how the cards were drafted. This is the row that answers
+        /// whether a draft shape rewards thinking about it.
+        @Sendable func drafter(_ name: String) -> Hybrid {
+            Hybrid(name: "\(name)-draft", splitter: agent("naive"),
+                   chooser: agent("naive"), drafter: agent(name))
+        }
 
         print("# dissect: games=\(games) -- each row is P1 vs P2, both seats averaged")
         print("p1,p2,p1_win_rate,ci95,p1_mean_score,p2_mean_score")
@@ -170,6 +178,11 @@ enum Sim {
             // Is it maximin that helps, or is it size balance? Test each alone.
             ("maximin-split", { hybrid("maximin", "naive") }, "naive", { agent("naive") }),
             ("balanced-split", { hybrid("balanced", "naive") }, "naive", { agent("naive") }),
+            // Draft skill alone, everything else naive on both sides. Only
+            // meaningful with --scoring-draft; without it both sides are dealt
+            // and the row collapses to noise around 50%.
+            ("greedy-draft", { drafter("greedy") }, "naive", { agent("naive") }),
+            ("inference-draft", { drafter("inference") }, "naive", { agent("naive") }),
         ]
 
         for (label, make1, label2, make2) in combos {
@@ -298,6 +311,9 @@ enum Sim {
         let name: String
         let splitter: any GameAgent
         let chooser: any GameAgent
+        /// Defaults to the splitter, so every row written before this existed
+        /// keeps exactly the meaning it had. Set it to vary draft skill alone.
+        var drafter: (any GameAgent)?
 
         func split(_ view: PlayerView, rng: inout SeededRNG) -> SplitDecision {
             splitter.split(view, rng: &rng)
@@ -309,7 +325,7 @@ enum Sim {
             splitter.selectReveal(view, count: count, rng: &rng)
         }
         func draftPick(_ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG) -> ScoringCardID {
-            splitter.draftPick(view, legal: legal, rng: &rng)
+            (drafter ?? splitter).draftPick(view, legal: legal, rng: &rng)
         }
         func revealAdditional(_ view: PlayerView, legal: [ScoringCardID], rng: inout SeededRNG) -> ScoringCardID {
             splitter.revealAdditional(view, legal: legal, rng: &rng)

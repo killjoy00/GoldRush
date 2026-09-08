@@ -158,6 +158,10 @@ extension GameAgent {
         let pack = view.draftPool
         guard !pack.isEmpty else { return nil }
 
+        if view.config.draftShape == .sevenPaired {
+            return pairedDraftAction(view, pack: pack, rng: &rng)
+        }
+
         if pack.count == GameConfig.draftOpeningPackSize {
             let keep = draftPick(view, legal: pack, rng: &rng)
             let remaining = pack.filter { $0 != keep }
@@ -177,6 +181,46 @@ extension GameAgent {
 
         let keep = draftPick(view, legal: pack, rng: &rng)
         return .draftPick(keep)
+    }
+
+    /// The seven-card shape: take one, then two, then two, then keep one and
+    /// burn one.
+    ///
+    /// The pair is chosen greedily -- best card, then best of what is left
+    /// given the first is now held -- rather than by scoring all 15 pairs.
+    /// `draftPriorValue` already evaluates the whole hand, so the second pick
+    /// sees the first, which is where most of the interaction lives; scoring
+    /// every pair costs fifteen full evaluations per decision and the sweeps
+    /// here run a hundred thousand games.
+    private func pairedDraftAction(
+        _ view: PlayerView, pack: [ScoringCardID], rng: inout SeededRNG
+    ) -> Action? {
+        if pack.count == 2 {
+            let keep = draftPick(view, legal: pack, rng: &rng)
+            guard let discard = pack.first(where: { $0 != keep }) else { return nil }
+            return .draftClose(keep: keep, discard: discard)
+        }
+
+        let first = draftPick(view, legal: pack, rng: &rng)
+
+        guard view.config.draftShape.pairedPackSizes.contains(pack.count) else {
+            return .draftPick(first)
+        }
+
+        let remaining = pack.filter { $0 != first }
+        guard !remaining.isEmpty else { return .draftPick(first) }
+        // Ranked as though the first card is already in hand, so a pair that
+        // compounds beats two cards that are individually strong.
+        var best = remaining[0]
+        var bestValue = Int.min
+        for candidate in remaining {
+            let value = draftPriorValue(hand: view.hand + [first, candidate])
+            if value > bestValue {
+                bestValue = value
+                best = candidate
+            }
+        }
+        return .draftTakePair(first: first, second: best)
     }
 }
 
