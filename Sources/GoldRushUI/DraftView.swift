@@ -59,7 +59,7 @@ public struct DraftView: View {
                 }
             }
 
-            FillingScrollView {
+            ScrollView {
                 // A pack of eight down one column leaves an iPad mostly empty
                 // and pushes the last cards off-screen. Two columns fit the
                 // whole pack in view, which is the decision the screen is
