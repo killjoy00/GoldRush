@@ -56,15 +56,21 @@ public struct SplitView: View {
                     // underneath. They are also drop targets, so a taller zone
                     // is a more forgiving one to drag a card into.
                     //
-                    // A plain scroll view proposes unbounded height, so the two
-                    // `maxHeight: .infinity` piles resolved to the taller one's
-                    // height instead of the screen's -- equal boxes that hug
-                    // their cards, with the rest of a 13-inch iPad left black.
-                    // `FillingScrollView` floors the proposal at the viewport,
-                    // so they fill it. A fixed cap would also have made them
-                    // equal, but it was a number that would clip the nine-card
-                    // Motherlode round; a floor cannot.
-                    FillingScrollView {
+                    // A scroll view proposes unbounded height, so the two
+                    // `maxHeight: .infinity` piles resolve to the taller one's
+                    // height instead of the screen's: equal boxes that hug
+                    // their cards. A fixed cap did make them equal, but it was
+                    // a number that would clip the nine-card Motherlode round,
+                    // and empty space is a much smaller problem than hidden
+                    // cards.
+                    //
+                    // Centring the pair instead was tried and reverted: a
+                    // `minHeight` frame positions its child at the child's own
+                    // size rather than proposing the larger height to it, so
+                    // the piles did not grow -- they detached from the heading
+                    // and floated in the middle of the display, which reads
+                    // worse than sitting under it.
+                    ScrollView {
                         HStack(alignment: .top, spacing: 14) {
                             pileZone(builder, .a, fill: true)
                             pileZone(builder, .b, fill: true)

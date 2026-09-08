@@ -86,36 +86,4 @@ public extension View {
         #endif
     }
 }
-
-/// A scroll view whose content is at least as tall as the scroll view itself.
-///
-/// A `ScrollView` takes all the height it is offered, but its content hugs the
-/// top of that, so a board with room to spare on a 13-inch iPad left most of
-/// the frame black with the toolbar stranded at the bottom.
-///
-/// `minHeight` is a floor, never a cap. Content taller than the viewport -- the
-/// nine-card Motherlode round, a pack on a narrow screen -- still takes its
-/// natural size and scrolls, so this cannot clip anything. Children that ask
-/// for `maxHeight: .infinity`, like the two pile zones, expand into the extra
-/// height instead of leaving it empty; everything else is positioned by
-/// `alignment`.
-@MainActor
-public struct FillingScrollView<Content: View>: View {
-    private let alignment: Alignment
-    private let content: () -> Content
-
-    public init(alignment: Alignment = .center,
-                @ViewBuilder content: @escaping () -> Content) {
-        self.alignment = alignment
-        self.content = content
-    }
-
-    public var body: some View {
-        GeometryReader { proxy in
-            ScrollView {
-                content().frame(minHeight: proxy.size.height, alignment: alignment)
-            }
-        }
-    }
-}
 #endif
