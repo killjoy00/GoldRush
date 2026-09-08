@@ -99,11 +99,13 @@ public struct RulesView: View {
             Text("Each player receives six scoring cards at random. Three are public and three stay secret.")
 
             miniHeader("DRAFTED")
-            Text("Each player opens a separate pack of eight. The draft goes:")
+            Text("Each player opens a separate pack of seven. The draft goes:")
             draftRail
-            numbered(1, "From 8: keep 1, discard 1 face up, pass the other 6.")
-            numbered(2, "From 6, 5, 4 and 3: keep 1 and pass the rest.")
-            numbered(3, "From the final 2: keep 1 and discard 1 face up.")
+            numbered(1, "From 7: take 1 and pass the other 6.")
+            numbered(2, "From 6: take 2 and pass the other 4.")
+            numbered(3, "From 4: take 2 and pass the other 2.")
+            numbered(4, "From the final 2: keep 1 and discard 1 face up.")
+            Text("Your own pack comes back to you at four cards, so you find out exactly which two your opponent took from it.")
             Text("You finish with six cards. Your opening keep is the one card from that pack your opponent never gets to see.")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(Theme.gold)
@@ -113,12 +115,12 @@ public struct RulesView: View {
     @ViewBuilder
     var draftRail: some View {
         HStack(spacing: 5) {
-            ForEach([8, 6, 5, 4, 3, 2], id: \.self) { count in
+            ForEach([7, 6, 4, 2], id: \.self) { count in
                 Text("\(count)")
                     .font(.system(size: 12, weight: .heavy, design: .rounded))
-                    .foregroundStyle(count == 8 || count == 2 ? Theme.dirt : Theme.parchment)
+                    .foregroundStyle(count == 7 || count == 2 ? Theme.dirt : Theme.parchment)
                     .frame(width: 29, height: 29)
-                    .background(count == 8 || count == 2 ? Theme.gold : Theme.dirtLight,
+                    .background(count == 7 || count == 2 ? Theme.gold : Theme.dirtLight,
                                 in: Circle())
                 if count != 2 {
                     Image(systemName: "chevron.right")

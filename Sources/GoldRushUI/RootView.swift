@@ -349,8 +349,16 @@ public struct NewGameView: View {
     }
 
     var rematchAction: (() -> Void)? {
-        guard localStart != nil else { return nil }
-        return { self.playAgain() }
+        if localStart != nil { return { self.playAgain() } }
+        #if canImport(GameKit)
+        // An online game is the one most worth offering a rematch on and was
+        // the only mode without it: the alternative was leaving to the menu
+        // and re-inviting someone you were mid-conversation with.
+        if model?.transport is GameCenterTransport {
+            return { Task { await self.rematchOnline() } }
+        }
+        #endif
+        return nil
     }
 
     func playAgain() {
@@ -360,6 +368,25 @@ public struct NewGameView: View {
         case nil: exitToMenu()
         }
     }
+
+    #if canImport(GameKit)
+    /// Starts a new match with the same opponent.
+    ///
+    /// `rematch()` keeps the participants, so this never goes near the
+    /// matchmaker -- which matters, because the matchmaker is a re-invite and
+    /// this is meant to feel like "again".
+    @MainActor
+    func rematchOnline() async {
+        guard let transport = model?.transport as? GameCenterTransport else { return }
+        do {
+            let next = try await transport.match.rematch()
+            beginOnlineMatch(next)
+        } catch {
+            onlineError = error.localizedDescription
+            showOnlineError = true
+        }
+    }
+    #endif
 
     @ViewBuilder
     var menu: some View {
@@ -584,7 +611,7 @@ public struct NewGameView: View {
             }
             .pickerStyle(.segmented)
             Text(useDraft
-                 ? "Open 8: keep one, burn one, pass 6. Keep/pass to 2, then keep one and burn one."
+                 ? "Open 7: take one and pass, then two, then two. Keep one of the last two and burn the other."
                  : "Six dealt at random to each player.")
                 .font(.system(size: compact ? 10 : 11))
                 .multilineTextAlignment(.center)
@@ -608,6 +635,38 @@ public struct NewGameView: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(Theme.parchment.opacity(0.55))
                 .frame(height: compact ? 26 : 28)
+
+            // Three tiers already existed; nothing said so, and nothing let
+            // anyone pick. The labels describe what the prospector actually
+            // does differently, because "Easy/Medium/Hard" would say nothing
+            // about a game whose difficulty is how well it reads you.
+            Text("THE PROSPECTOR")
+                .font(.system(size: 10, weight: .bold))
+                .tracking(1)
+                .foregroundStyle(Theme.gold.opacity(0.8))
+                .padding(.top, 2)
+            Picker("Prospector", selection: $difficulty) {
+                Text("Steady").tag(InferenceAgent.Fidelity.basic)
+                Text("Cunning").tag(InferenceAgent.Fidelity.placement)
+                Text("Ruthless").tag(InferenceAgent.Fidelity.full)
+            }
+            .pickerStyle(.segmented)
+            Text(difficultyBlurb)
+                .font(.system(size: compact ? 10 : 11))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Theme.parchment.opacity(0.55))
+                .frame(height: compact ? 30 : 30)
+        }
+    }
+
+    var difficultyBlurb: String {
+        switch difficulty {
+        case .basic:
+            "Splits evenly and takes the better pile. Does not try to mislead you."
+        case .placement:
+            "Also hides the card that will cost you most to guess wrong."
+        case .full:
+            "Also works out what you will do with a split before offering it."
         }
     }
 
