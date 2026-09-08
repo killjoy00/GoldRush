@@ -788,6 +788,100 @@ uses, and `selfValue` no longer appears anywhere in a draft path. The numbers
 in §14 were measured against the corrected agents.
 
 
+## 14. Measured: a paired seven-card draft against the shipped eight
+
+The proposal was to replace the shipped draft -- open eight, keep one and burn
+one, then single picks down to a final pair -- with a shorter one: open seven,
+take one and pass, then two, then two, then keep one and burn one. Four
+decisions and one burn per player instead of six and two.
+
+The appeal is obvious from the screens. The current middle stretch is four
+near-identical decisions ("take one, pass five / four / three / two"), and
+taking two at once is a richer choice than taking one: you pick a pair and
+deny a pair. Both shapes give up exactly one secret card, the opening pick.
+
+Built as a `DraftShape` option rather than a replacement, so both could be
+played and the numbers could decide.
+
+### Does the shape reward drafting well?
+
+`dissect` gained a drafter-only row: naive splitting and choosing on **both**
+sides, so the only thing separating the two players is how they drafted. Any
+gap is draft skill and nothing else.
+
+```
+20,000 games, seed 424242
+shape           smart drafter vs naive drafter    ci95
+eightSingles                 65.16%              +/-0.66pp
+sevenPaired                  60.02%              +/-0.68pp
+```
+
+The intervals do not overlap. **Drafting well is worth about five points less
+under the paired shape.** Committing two cards ahead of the information costs
+more than pairing the decision gains -- taking one card repeatedly lets you
+react to what wheels back, and half those reaction points are gone.
+
+Worth noting that `greedy-draft` and `inference-draft` score identically to
+four decimal places under both shapes. That is not a bug: both call
+`draftPriorValue`, so they draft the same way and differ only in the mining
+game, which is naive on both sides here. The row measures the prior-value
+drafter against a naive one, and the two named agents are indistinguishable
+at the draft.
+
+### Does it break the catalog?
+
+```
+50,000 games, inference, --scoring-draft
+shape           spread    SD       never-held   flagged
+eightSingles    19.05pp   4.75pp        0       S6 D7 V4 V6 P1
+sevenPaired     18.52pp   4.27pp        0       S6 D7 V4 V6 P1
+```
+
+No. Slightly tighter, no card becomes undraftable, and the same five cards
+flag either way. This was the measurement most likely to veto the shape --
+§13 found two cards drafted in zero of 100,000 games under a different change
+-- and it passes.
+
+### Does it favour a seat?
+
+```
+50,000 games, mirror matchups, ci95 +/-0.44pp throughout
+shape           naive    random   greedy   inference
+eightSingles    49.78%   50.24%   49.94%   50.14%
+sevenPaired     49.98%   49.88%   50.14%   49.95%
+```
+
+No. Both shapes sit on 50% within noise for every agent. The simultaneous
+structure makes this unsurprising -- both players take from their own pack and
+pass at the same moment -- but it was the remaining way the change could have
+gone wrong, and it did not.
+
+### Both predictions before measuring were wrong
+
+Written down before the sweeps ran: the paired shape would reward skill *more*
+(the pair being a meatier decision) and would *widen* the spread (chunkier
+picks concentrating the strong cards faster). It does neither. The skill gap
+narrows by five points and the spread tightens slightly.
+
+The lesson is the same one §10 and §13 record: the reasoning was plausible in
+both directions and settled only by counting. Nothing here was measurable from
+the rules alone.
+
+### What it comes down to
+
+The shape is cheaper to play, balance-neutral, seat-neutral, and flatter in
+skill. That is not a verdict, because it depends what the draft is for:
+
+- As a **strategic layer**, this is a downgrade -- roughly a fifth of the skill
+  expression in it goes away.
+- As **fast setup before the real game**, it is a clear win: same balance, two
+  thirds the decisions, and the splitting starts sooner.
+
+The listing sells the game on splitting and choosing, and the draft is an
+opt-in mode. That argues for the second reading. It remains a product call and
+the five points is its price.
+
+
 ## Reproducing
 
 ```bash
@@ -796,6 +890,12 @@ swift build -c release
 ./.build/release/GoldRushSim balance --games 100000 --agent greedy
 ./.build/release/GoldRushSim balance --games 100000 --agent inference
 ./.build/release/GoldRushSim balance --games 100000 --agent inference --scoring-draft
+
+# Section 14: the paired seven-card draft against the shipped eight
+./.build/release/GoldRushSim dissect --games 20000 --scoring-draft
+./.build/release/GoldRushSim dissect --games 20000 --scoring-draft --paired-draft
+./.build/release/GoldRushSim balance --games 50000 --agent inference --scoring-draft --paired-draft
+./.build/release/GoldRushSim seat    --games 50000 --scoring-draft --paired-draft
 ./.build/release/GoldRushSim hidden  --games 50000
 ./.build/release/GoldRushSim reveal  --games 50000
 ./.build/release/GoldRushSim deck    --games 50000 --deck-size 60,72,84
