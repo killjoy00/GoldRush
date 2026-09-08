@@ -91,6 +91,13 @@ public enum Action: Sendable, Codable, Equatable, Hashable {
     case draftOpen(keep: ScoringCardID, discard: ScoringCardID)
     /// Middle draft passes: keep one and pass the remainder.
     case draftPick(ScoringCardID)
+    /// Take two cards from the pack at once, then pass the rest.
+    ///
+    /// A separate case rather than two `draftPick`s because the draft is
+    /// simultaneous: the pack swaps the moment both players have submitted, so
+    /// "pick twice before passing" is not expressible as two of the existing
+    /// action. Only legal under `DraftShape.sevenPaired`.
+    case draftTakePair(first: ScoringCardID, second: ScoringCardID)
     /// Closing a two-card pack: keep one and discard the other face up after
     /// both players have committed.
     case draftClose(keep: ScoringCardID, discard: ScoringCardID)
@@ -246,10 +253,11 @@ public struct GameState: Sendable, Codable, Equatable {
             // Sixteen cards off the shuffled scoring deck, cut into two packs
             // of eight -- one opened by each player. No family cap: every card
             // in a pack is always a legal keep or discard.
-            let pool = Array(scoring.prefix(GameConfig.draftOpeningPoolSize))
+            let packSize = config.draftShape.openingPackSize
+            let pool = Array(scoring.prefix(packSize * 2))
             draftPacks = PlayerPair(
-                p1: Array(pool.prefix(GameConfig.draftOpeningPackSize)),
-                p2: Array(pool.suffix(GameConfig.draftOpeningPackSize))
+                p1: Array(pool.prefix(packSize)),
+                p2: Array(pool.suffix(packSize))
             )
         } else {
             // Deal 6 each, straight off the shuffled deck.
@@ -313,6 +321,27 @@ public struct GameState: Sendable, Codable, Equatable {
         case .draftPick(let id):
             guard phase == .draft else { throw .wrongPhase(expected: .draft, actual: phase) }
             guard draftPacks[actor].contains(id) else { throw .cardNotInPool(id) }
+            // The shape decides how many cards leave a pack of this size.
+            // Taking one where two are required leaves the pack at a size the
+            // rest of the draft has no step for, and the sequence only fails
+            // several actions later with the pack empty. Rejected here instead.
+            guard !config.draftShape.pairedPackSizes.contains(draftPacks[actor].count) else {
+                throw .wrongDraftPackSize(
+                    expected: draftPacks[actor].count - 1,
+                    actual: draftPacks[actor].count
+                )
+            }
+
+        case .draftTakePair(let first, let second):
+            guard config.draftShape.pairedPackSizes.contains(draftPacks[actor].count) else {
+                throw .wrongDraftPackSize(
+                    expected: config.draftShape.pairedPackSizes.min() ?? 0,
+                    actual: draftPacks[actor].count
+                )
+            }
+            guard first != second else { throw .cardNotInPool(second) }
+            guard draftPacks[actor].contains(first) else { throw .cardNotInPool(first) }
+            guard draftPacks[actor].contains(second) else { throw .cardNotInPool(second) }
 
         case .draftClose(let keep, let discard):
             guard phase == .draft else { throw .wrongPhase(expected: .draft, actual: phase) }
@@ -419,14 +448,23 @@ public struct GameState: Sendable, Codable, Equatable {
             }
 
         case .draftPick(let id):
-            // `draftLegacyMode` did not exist in seven-card match data. A nil
-            // value therefore identifies an old saved draft and must behave as
-            // legacy before the first post-upgrade pick is applied.
-            if next.draftLegacyMode == nil { next.draftLegacyMode = true }
-            // An old caller/test that starts a modern eight-card pack with the
-            // old one-card action also completes through the legacy path.
-            if next.hands[actor].isEmpty && next.draftPacks[actor].count == GameConfig.draftOpeningPackSize {
-                next.draftLegacyMode = true
+            if next.config.draftShape == .sevenPaired {
+                // This shape also opens on seven cards, but it postdates the
+                // legacy seven-card pool and shares no saved data with it, so
+                // none of the inference below applies. Saying so explicitly
+                // stops a legal opening pick being misread as an old save.
+                next.draftLegacyMode = false
+            } else {
+                // `draftLegacyMode` did not exist in seven-card match data. A
+                // nil value therefore identifies an old saved draft and must
+                // behave as legacy before the first post-upgrade pick.
+                if next.draftLegacyMode == nil { next.draftLegacyMode = true }
+                // An old caller/test starting a modern eight-card pack with the
+                // old one-card action also completes through the legacy path.
+                if next.hands[actor].isEmpty
+                    && next.draftPacks[actor].count == GameConfig.draftOpeningPackSize {
+                    next.draftLegacyMode = true
+                }
             }
             if next.hands[actor].isEmpty { next.draftFirstPick[actor] = id }
             next.hands[actor].append(id)
@@ -447,6 +485,22 @@ public struct GameState: Sendable, Codable, Equatable {
                     next.phase = .draftDiscard
                 }
             }
+
+        case .draftTakePair(let first, let second):
+            // Two cards, one submission. The pack must not swap between them:
+            // the draft is simultaneous, so a swap after the first card would
+            // hand the opponent a pack this player is still choosing from.
+            if next.hands[actor].isEmpty { next.draftFirstPick[actor] = first }
+            next.hands[actor].append(first)
+            next.hands[actor].append(second)
+            next.draftPacks[actor].removeAll { $0 == first || $0 == second }
+            next.draftSubmitted[actor] = true
+
+            if next.draftSubmitted.p1 && next.draftSubmitted.p2 {
+                next.draftSubmitted = PlayerPair(repeating: false)
+                next.draftPacks = PlayerPair(p1: next.draftPacks.p2, p2: next.draftPacks.p1)
+            }
+
 
         case .draftClose(let keep, let discard):
             next.hands[actor].append(keep)

@@ -178,6 +178,10 @@ public final class GameViewModel {
         await submit(.draftOpen(keep: keep, discard: discard))
     }
 
+    public func draftTakePair(first: ScoringCardID, second: ScoringCardID) async {
+        await submit(.draftTakePair(first: first, second: second))
+    }
+
     public func draftPick(_ id: ScoringCardID) async {
         await submit(.draftPick(id))
     }

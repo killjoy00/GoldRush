@@ -7,7 +7,7 @@ import Testing
 struct DraftV2Tests {
     @Test("New drafts open two distinct packs of eight")
     func opensEight() {
-        let state = GameState.newGame(config: GameConfig(scoringDraft: true), seed: 0xD8A7)
+        let state = GameState.newGame(config: GameConfig(scoringDraft: true, draftShape: .eightSingles), seed: 0xD8A7)
         #expect(state.phase == .draft)
         #expect(state.draftPacks.p1.count == 8)
         #expect(state.draftPacks.p2.count == 8)
@@ -17,7 +17,7 @@ struct DraftV2Tests {
 
     @Test("Opening burn stays sealed until both players commit")
     func openingBurnIsSimultaneous() throws {
-        var state = GameState.newGame(config: GameConfig(scoringDraft: true), seed: 0xB0A7)
+        var state = GameState.newGame(config: GameConfig(scoringDraft: true, draftShape: .eightSingles), seed: 0xB0A7)
         let p1 = state.draftPacks.p1
         state = state.apply(.draftOpen(keep: p1[0], discard: p1[1]))
 
@@ -40,7 +40,7 @@ struct DraftV2Tests {
 
     @Test("Draft follows 8-6-5-4-3-2 and finishes with six kept cards")
     func exactDraftFlow() throws {
-        var state = GameState.newGame(config: GameConfig(scoringDraft: true), seed: 0x86_5432)
+        var state = GameState.newGame(config: GameConfig(scoringDraft: true, draftShape: .eightSingles), seed: 0x86_5432)
         let openingP1 = state.draftPacks.p1[0]
         let openingP2 = state.draftPacks.p2[0]
 
@@ -94,7 +94,7 @@ struct DraftV2Tests {
 
     @Test("Seven-card saved draft without v2 keys can finish")
     func legacySavedDraftResumes() throws {
-        let modern = GameState.newGame(config: GameConfig(scoringDraft: true), seed: 0x01D7)
+        let modern = GameState.newGame(config: GameConfig(scoringDraft: true, draftShape: .eightSingles), seed: 0x01D7)
         let encoded = try JSONEncoder().encode(modern)
         var root = try #require(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
 
