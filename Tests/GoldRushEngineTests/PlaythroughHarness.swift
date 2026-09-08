@@ -61,9 +61,26 @@ struct PlaythroughHarness {
             switch state.phase {
             case .draft:
                 // Anything in the pack is takeable; there is no family cap.
+                // Which action is legal depends on the shape, so the eight-card
+                // path is left exactly as it was -- it drives the draft through
+                // `draftPick` and terminates via the legacy branch, and every
+                // expectation written against this harness assumes that.
                 let legal = state.draftPacks[actor]
-                let pick = legal[rng.next(upperBound: legal.count)]
-                let action = Action.draftPick(pick)
+                let action: Action
+                if config.draftShape == .sevenPaired {
+                    if legal.count == 2 {
+                        action = .draftClose(keep: legal[0], discard: legal[1])
+                    } else if config.draftShape.pairedPackSizes.contains(legal.count) {
+                        var pool = legal
+                        let first = pool.remove(at: rng.next(upperBound: pool.count))
+                        let second = pool[rng.next(upperBound: pool.count)]
+                        action = .draftTakePair(first: first, second: second)
+                    } else {
+                        action = .draftPick(legal[rng.next(upperBound: legal.count)])
+                    }
+                } else {
+                    action = .draftPick(legal[rng.next(upperBound: legal.count)])
+                }
                 actions.append(action)
                 state = state.apply(action)
 

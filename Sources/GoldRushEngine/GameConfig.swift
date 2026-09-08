@@ -79,7 +79,7 @@ public struct GameConfig: Sendable, Codable, Equatable, Hashable {
         hiddenPolicy: HiddenPolicy = .standard,
         deckSize: Int = MiningDeck.standardSize,
         roundCount: Int? = nil,
-        draftShape: DraftShape = .eightSingles
+        draftShape: DraftShape = .sevenPaired
     ) {
         self.draftShape = draftShape
         self.scoringDraft = scoringDraft

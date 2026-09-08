@@ -364,10 +364,23 @@ struct PropertyTests {
     @Test("Discards stay private until both are committed, then both are public",
           arguments: seeds.prefix(15))
     func discardsAreSimultaneousThenPublic(seed: UInt64) throws {
-        var state = GameState.newGame(config: GameConfig(scoringDraft: true), seed: seed)
+        // Pinned to the eight-card shape: this drives the draft with single
+        // picks and expects the legacy `.draftDiscard` landing, neither of
+        // which the paired shape has. It was getting that shape from the
+        // default rather than by saying so.
+        var state = GameState.newGame(
+            config: GameConfig(scoringDraft: true, draftShape: .eightSingles), seed: seed
+        )
         var rng = SeededRNG(seed: seed &+ 77)
 
+        // Bounded, because `apply` returns the state unchanged when an action
+        // is rejected: an unbounded loop over a rejected pick spins forever
+        // instead of failing, which is how a rules change turned into a
+        // forty-minute hang rather than a red test.
+        var steps = 0
         while state.phase == .draft, let actor = state.actingPlayer {
+            steps += 1
+            try #require(steps < 40, "the draft made no progress")
             let pack = state.draftPacks[actor]
             state = state.apply(.draftPick(pack[rng.next(upperBound: pack.count)]))
         }

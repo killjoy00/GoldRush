@@ -321,6 +321,16 @@ public struct GameState: Sendable, Codable, Equatable {
         case .draftPick(let id):
             guard phase == .draft else { throw .wrongPhase(expected: .draft, actual: phase) }
             guard draftPacks[actor].contains(id) else { throw .cardNotInPool(id) }
+            // The shape decides how many cards leave a pack of this size.
+            // Taking one where two are required leaves the pack at a size the
+            // rest of the draft has no step for, and the sequence only fails
+            // several actions later with the pack empty. Rejected here instead.
+            guard !config.draftShape.pairedPackSizes.contains(draftPacks[actor].count) else {
+                throw .wrongDraftPackSize(
+                    expected: draftPacks[actor].count - 1,
+                    actual: draftPacks[actor].count
+                )
+            }
 
         case .draftTakePair(let first, let second):
             guard config.draftShape.pairedPackSizes.contains(draftPacks[actor].count) else {

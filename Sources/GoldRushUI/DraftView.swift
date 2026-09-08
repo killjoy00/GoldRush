@@ -11,6 +11,8 @@ public struct DraftView: View {
     @Bindable public var model: GameViewModel
     @State private var keep: ScoringCardID?
     @State private var discard: ScoringCardID?
+    /// The two cards chosen at a take-two step, in tap order.
+    @State private var taking: [ScoringCardID] = []
 
     public init(model: GameViewModel) {
         self.model = model
@@ -18,8 +20,12 @@ public struct DraftView: View {
 
     var pack: [ScoringCardID] { model.view.draftPool }
     var pairedDecision: Bool {
-        pack.count == GameConfig.draftOpeningPackSize || pack.count == 2
+        pack.count == shape.openingPackSize && shape == .eightSingles
+            || pack.count == 2
     }
+    var shape: DraftShape { model.view.config.draftShape }
+    /// A step where two cards are taken at once and nothing is burned.
+    var takingTwo: Bool { shape.pairedPackSizes.contains(pack.count) }
     var hasPublicBurns: Bool {
         !model.view.draftDiscards.p1.isEmpty || !model.view.draftDiscards.p2.isEmpty
     }
@@ -45,6 +51,12 @@ public struct DraftView: View {
                     selectionChip("KEEP", id: keep, systemImage: "hand.thumbsup.fill")
                     selectionChip("BURN", id: discard, systemImage: "flame.fill")
                 }
+            } else if takingTwo {
+                HStack(spacing: 14) {
+                    selectionChip("FIRST", id: taking.first, systemImage: "1.circle.fill")
+                    selectionChip("SECOND", id: taking.dropFirst().first,
+                                  systemImage: "2.circle.fill")
+                }
             }
 
             ScrollView {
@@ -63,6 +75,13 @@ public struct DraftView: View {
                     ForEach(pack, id: \.index) { id in
                         if pairedDecision {
                             pairedCard(id)
+                        } else if takingTwo {
+                            Button {
+                                toggleTaking(id)
+                            } label: {
+                                ScoringCardView(id: id, selected: taking.contains(id))
+                            }
+                            .buttonStyle(.plain)
                         } else {
                             Button {
                                 Task { await model.draftPick(id) }
@@ -74,7 +93,30 @@ public struct DraftView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, pairedDecision ? 6 : 20)
+                .padding(.bottom, pairedDecision || takingTwo ? 6 : 20)
+            }
+
+            if takingTwo {
+                Button {
+                    guard taking.count == 2 else { return }
+                    let pair = taking
+                    Task { await model.draftTakePair(first: pair[0], second: pair[1]) }
+                } label: {
+                    Text(taking.count == 2
+                         ? "Take these two & pass \(pack.count - 2)"
+                         : "Choose \(2 - taking.count) more")
+                        .font(.system(size: 15, weight: .semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(taking.count == 2 ? Theme.gold : Theme.dirtLight,
+                                    in: RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(taking.count == 2
+                                         ? Theme.dirt : Theme.parchment.opacity(0.4))
+                }
+                .disabled(taking.count != 2)
+                .centredColumn()
+                .padding(.horizontal, 16)
+                .padding(.bottom, 6)
             }
 
             if pairedDecision {
@@ -106,6 +148,19 @@ public struct DraftView: View {
         .onChange(of: pack) { _, _ in
             keep = nil
             discard = nil
+            taking = []
+        }
+    }
+
+    /// Tapping a third card replaces the first, so the selection always moves
+    /// rather than needing to be cleared before a change of mind.
+    private func toggleTaking(_ id: ScoringCardID) {
+        if let index = taking.firstIndex(of: id) {
+            taking.remove(at: index)
+        } else if taking.count < 2 {
+            taking.append(id)
+        } else {
+            taking = [taking[1], id]
         }
     }
 
@@ -149,6 +204,15 @@ public struct DraftView: View {
     }
 
     var title: String {
+        if shape == .sevenPaired {
+            switch pack.count {
+            case 7: return "Open your pack of seven"
+            case 6: return "Take two, pass four"
+            case 4: return "Take two, pass two"
+            case 2: return "Last two cards"
+            default: return "Draft a scoring card"
+            }
+        }
         switch pack.count {
         case GameConfig.draftOpeningPackSize: "Open your pack of eight"
         case 6: "Take one, pass five"
@@ -161,6 +225,16 @@ public struct DraftView: View {
     }
 
     var detail: String {
+        if shape == .sevenPaired {
+            switch pack.count {
+            case 7:
+                return "Keep one card as your secret opener, then pass the rest. It is the only card your opponent never sees."
+            case 2:
+                return "Keep one and burn the other face up. You finish with six scoring cards."
+            default:
+                return "Take two and pass the rest. You have \(model.view.hand.count) of \(GameConfig.handSize)."
+            }
+        }
         switch pack.count {
         case GameConfig.draftOpeningPackSize:
             "Keep one card as your secret opener. Burn one face up. Your opponent gets the other six."
