@@ -51,29 +51,24 @@ public struct SplitView: View {
                 // Both branches use the same `pileZone`, so the piles cannot
                 // drift apart as one layout gets edited.
                 if wide {
-                    // The piles take the height they are given rather than
-                    // sitting in a band with a thousand points of nothing
-                    // underneath. They are also drop targets, so a taller zone
-                    // is a more forgiving one to drag a card into.
+                    // Each zone is floored at the viewport height, so the two
+                    // piles become full-height mats rather than a band of cards
+                    // with a thousand points of nothing underneath. They are
+                    // drop targets too, so a taller zone is a more forgiving
+                    // one to drag a card into.
                     //
-                    // A scroll view proposes unbounded height, so the two
-                    // `maxHeight: .infinity` piles resolve to the taller one's
-                    // height instead of the screen's: equal boxes that hug
-                    // their cards. A fixed cap did make them equal, but it was
-                    // a number that would clip the nine-card Motherlode round,
-                    // and empty space is a much smaller problem than hidden
-                    // cards.
+                    // The floor goes on the zone, not on the HStack around it:
+                    // a `minHeight` frame positions its child at the child's
+                    // own size, so on the container it centres the pair
+                    // instead of growing it. That was tried, shipped and
+                    // reverted -- see MeasuredScrollView.
                     //
-                    // Centring the pair instead was tried and reverted: a
-                    // `minHeight` frame positions its child at the child's own
-                    // size rather than proposing the larger height to it, so
-                    // the piles did not grow -- they detached from the heading
-                    // and floated in the middle of the display, which reads
-                    // worse than sitting under it.
-                    ScrollView {
+                    // Still a floor, never a cap, so the nine-card Motherlode
+                    // round grows past it and scrolls instead of clipping.
+                    MeasuredScrollView { viewport in
                         HStack(alignment: .top, spacing: 14) {
-                            pileZone(builder, .a, fill: true)
-                            pileZone(builder, .b, fill: true)
+                            pileZone(builder, .a, fill: true, minHeight: viewport - 8)
+                            pileZone(builder, .b, fill: true, minHeight: viewport - 8)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 4)
@@ -100,7 +95,8 @@ public struct SplitView: View {
     }
 
     @ViewBuilder
-    func pileZone(_ builder: SplitBuilder, _ pile: PileID, fill: Bool = false) -> some View {
+    func pileZone(_ builder: SplitBuilder, _ pile: PileID,
+                  fill: Bool = false, minHeight: CGFloat? = nil) -> some View {
         let cards = builder.pile(pile)
         VStack(alignment: .leading, spacing: 7) {
             HStack {
@@ -137,7 +133,7 @@ public struct SplitView: View {
         }
         .padding(11)
         .frame(maxWidth: .infinity,
-               maxHeight: fill ? .infinity : nil,
+               minHeight: minHeight,
                alignment: .topLeading)
         .background(Theme.dirtLight.opacity(dropTarget == pile ? 1.0 : 0.7),
                     in: RoundedRectangle(cornerRadius: 13))

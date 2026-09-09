@@ -120,45 +120,52 @@ public struct ScoringCardView: View {
     public let selected: Bool
     public let dimmed: Bool
     public let points: Int?
+    /// Typeset for a screen with room. These rows carry the rule text a whole
+    /// draft decision turns on, and at phone sizes on a 13-inch iPad they were
+    /// both hard to read and short enough to leave the pack hugging the top of
+    /// the display.
+    public let large: Bool
 
-    public init(id: ScoringCardID, selected: Bool = false, dimmed: Bool = false, points: Int? = nil) {
+    public init(id: ScoringCardID, selected: Bool = false, dimmed: Bool = false,
+                points: Int? = nil, large: Bool = false) {
         self.id = id
         self.selected = selected
         self.dimmed = dimmed
         self.points = points
+        self.large = large
     }
 
     var card: ScoringCard { ScoringCardCatalog[id] }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: large ? 7 : 4) {
+            HStack(spacing: large ? 9 : 6) {
                 Text(id.code)
-                    .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                    .font(.system(size: large ? 14 : 11, weight: .heavy, design: .monospaced))
                     .foregroundStyle(Theme.dirt)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(Theme.gold, in: RoundedRectangle(cornerRadius: 4))
+                    .padding(.horizontal, large ? 7 : 5)
+                    .padding(.vertical, large ? 3 : 2)
+                    .background(Theme.gold, in: RoundedRectangle(cornerRadius: large ? 5 : 4))
                 Text(card.name)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: large ? 18 : 13, weight: .semibold))
                     .foregroundStyle(Theme.parchment)
                 Spacer(minLength: 0)
                 if let points {
                     Text("\(points)")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.system(size: large ? 20 : 15, weight: .bold, design: .rounded))
                         .foregroundStyle(points < 0 ? Theme.danger : Theme.goldBright)
                 }
             }
             Text(card.text)
-                .font(.system(size: 11))
+                .font(.system(size: large ? 15 : 11))
                 .foregroundStyle(Theme.parchment.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
             Text(card.family.displayName.uppercased())
-                .font(.system(size: 9, weight: .bold))
+                .font(.system(size: large ? 11 : 9, weight: .bold))
                 .tracking(0.8)
                 .foregroundStyle(Theme.gold.opacity(0.65))
         }
-        .padding(9)
+        .padding(large ? 15 : 9)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.dirtLight, in: RoundedRectangle(cornerRadius: 10))
         .overlay(

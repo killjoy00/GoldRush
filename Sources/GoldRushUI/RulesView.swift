@@ -8,30 +8,109 @@ import GoldRushEngine
 public struct RulesView: View {
     public let onDismiss: (() -> Void)?
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
     public init(onDismiss: (() -> Void)? = nil) {
         self.onDismiss = onDismiss
     }
 
-    public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                hero
-                goal
-                setup
-                round
-                formats
-                scoring
-                information
-                motherlode
-                winning
-                reference
+    var wide: Bool { sizeClass == .regular }
+
+    /// Everything here was typeset for a phone. Left alone on a 13-inch iPad
+    /// it is a wall of 12-point text, so every size goes through `pt`.
+    var scale: CGFloat { wide ? 1.3 : 1 }
+
+    func pt(_ base: CGFloat) -> CGFloat { base * scale }
+
+    /// The column the prose is allowed to fill.
+    ///
+    /// Scaled by the same factor as the type, so the measure -- characters per
+    /// line, which is what actually governs readability -- stays where it was
+    /// tuned on a phone. Filling an iPad's width instead gives lines of about
+    /// 160 characters, which is roughly twice what anyone can track.
+    var columnWidth: CGFloat { wide ? Widths.readable * scale : .infinity }
+
+    /// The sections, in reading order, so the index and the page cannot drift
+    /// apart: both are built from this list.
+    enum Section: String, CaseIterable, Hashable {
+        case goal, setup, round, formats, scoring, information, motherlode, winning, reference
+
+        var label: String {
+            switch self {
+            case .goal: "Goal"
+            case .setup: "Setup"
+            case .round: "A round"
+            case .formats: "Formats"
+            case .scoring: "Scoring"
+            case .information: "Hidden"
+            case .motherlode: "Motherlode"
+            case .winning: "Winning"
+            case .reference: "Families"
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 14)
-            .padding(.bottom, 34)
+        }
+    }
+
+    public var body: some View {
+        ScrollViewReader { scroller in
+            ScrollView {
+                VStack(alignment: .leading, spacing: pt(18)) {
+                    hero
+                    index(scroller)
+                    goal.id(Section.goal)
+                    setup.id(Section.setup)
+                    round.id(Section.round)
+                    formats.id(Section.formats)
+                    scoring.id(Section.scoring)
+                    information.id(Section.information)
+                    motherlode.id(Section.motherlode)
+                    winning.id(Section.winning)
+                    reference.id(Section.reference)
+                }
+                .padding(.horizontal, pt(18))
+                .padding(.top, pt(14))
+                .padding(.bottom, pt(34))
+                // Prose is capped and centred rather than filling the display.
+                .frame(maxWidth: columnWidth)
+                .frame(maxWidth: .infinity)
+            }
         }
         .background(Theme.background)
         .safeAreaInset(edge: .top) { titleBar }
+    }
+
+    /// Jump straight to a section.
+    ///
+    /// Nine sections is a reference document, not a story: the common visit is
+    /// someone mid-game wanting one specific rule back, and making them scroll
+    /// past everything else to find it is the main thing wrong with a long
+    /// rules page.
+    @ViewBuilder
+    func index(_ scroller: ScrollViewProxy) -> some View {
+        VStack(alignment: .leading, spacing: pt(7)) {
+            Text("JUMP TO")
+                .font(.system(size: pt(9), weight: .heavy))
+                .tracking(0.9)
+                .foregroundStyle(Theme.gold.opacity(0.78))
+            FlowRow(spacing: pt(6)) {
+                ForEach(Section.allCases, id: \.self) { section in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.28)) {
+                            scroller.scrollTo(section, anchor: .top)
+                        }
+                    } label: {
+                        Text(section.label)
+                            .font(.system(size: pt(11), weight: .semibold))
+                            .foregroundStyle(Theme.parchment.opacity(0.85))
+                            .padding(.horizontal, pt(10))
+                            .padding(.vertical, pt(6))
+                            .background(Theme.dirtDeep.opacity(0.65), in: Capsule())
+                            .overlay(Capsule().strokeBorder(Theme.gold.opacity(0.22), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -39,16 +118,16 @@ public struct RulesView: View {
         HStack {
             VStack(alignment: .leading, spacing: 1) {
                 Text("HOW TO PLAY")
-                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .font(.system(size: pt(18), weight: .heavy, design: .rounded))
                     .foregroundStyle(Theme.goldBright)
                 Text("Gold Rush · Split the Claim")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: pt(10), weight: .semibold))
                     .foregroundStyle(Theme.parchment.opacity(0.5))
             }
             Spacer()
             if let onDismiss {
                 Button("Done", action: onDismiss)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: pt(14), weight: .semibold))
                     .foregroundStyle(Theme.gold)
             }
         }
@@ -64,10 +143,10 @@ public struct RulesView: View {
     var hero: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Split the claim. Let them choose.")
-                .font(.system(size: 23, weight: .heavy, design: .rounded))
+                .font(.system(size: pt(23), weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.goldBright)
             Text("When you split, make two piles knowing your opponent gets first choice. Your job is to make both piles acceptable to you — because you keep whichever one they leave behind.")
-                .font(.system(size: 13))
+                .font(.system(size: pt(13)))
                 .foregroundStyle(Theme.parchment.opacity(0.8))
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -107,7 +186,7 @@ public struct RulesView: View {
             numbered(4, "From the final 2: keep 1 and discard 1 face up.")
             Text("Your own pack comes back to you at four cards, so you find out exactly which two your opponent took from it.")
             Text("You finish with six cards. Your opening keep is the one card from that pack your opponent never gets to see.")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: pt(11), weight: .semibold))
                 .foregroundStyle(Theme.gold)
         }
     }
@@ -117,14 +196,14 @@ public struct RulesView: View {
         HStack(spacing: 5) {
             ForEach([7, 6, 4, 2], id: \.self) { count in
                 Text("\(count)")
-                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .font(.system(size: pt(12), weight: .heavy, design: .rounded))
                     .foregroundStyle(count == 7 || count == 2 ? Theme.dirt : Theme.parchment)
-                    .frame(width: 29, height: 29)
+                    .frame(width: pt(29), height: pt(29))
                     .background(count == 7 || count == 2 ? Theme.gold : Theme.dirtLight,
                                 in: Circle())
                 if count != 2 {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.system(size: pt(8), weight: .bold))
                         .foregroundStyle(Theme.gold.opacity(0.45))
                 }
             }
@@ -151,7 +230,7 @@ public struct RulesView: View {
             formatRow("Together", "Both players draw and make a split at the same time, then each chooses from the opponent's split. 4 rounds.")
             formatRow("Take Turns", "One player splits and the other chooses, then the roles alternate. 8 rounds.")
             Text("Both formats put the same 60 mining cards into play and give each player four splits and four choices.")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: pt(11), weight: .semibold))
                 .foregroundStyle(Theme.gold)
         }
     }
@@ -167,7 +246,7 @@ public struct RulesView: View {
             }
             Text("A Pack Mule can fill the Shovel slot of one Ore set or the Pan slot of one Gravel set. The app automatically allocates your Mules where they score the most.")
             Text("A Pack Mule also counts as a Tool for scoring cards that reward Tools.")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: pt(11), weight: .semibold))
                 .foregroundStyle(Theme.gold)
         }
     }
@@ -180,7 +259,7 @@ public struct RulesView: View {
             bullet("While choosing a pile, face-down mining cards are unknown.")
             bullet("If you take a pile, you learn its buried cards. A buried card you decline remains unknown to you for the rest of the game — including in the Claim Journal.")
             Text("The Unseen counter combines cards that were never dealt with opponent cards you never identified.")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: pt(11), weight: .semibold))
                 .foregroundStyle(Theme.gold)
         }
     }
@@ -212,22 +291,22 @@ public struct RulesView: View {
             ForEach(ScoringFamily.allCases, id: \.rawValue) { family in
                 HStack(alignment: .top, spacing: 8) {
                     Text(family.letter)
-                        .font(.system(size: 11, weight: .heavy, design: .monospaced))
+                        .font(.system(size: pt(11), weight: .heavy, design: .monospaced))
                         .foregroundStyle(Theme.dirt)
-                        .frame(width: 25, height: 25)
+                        .frame(width: pt(25), height: pt(25))
                         .background(Theme.gold, in: RoundedRectangle(cornerRadius: 6))
                     VStack(alignment: .leading, spacing: 1) {
                         Text(family.displayName)
-                            .font(.system(size: 12, weight: .bold))
+                            .font(.system(size: pt(12), weight: .bold))
                             .foregroundStyle(Theme.parchment)
                         Text("Rewards \(family.rewardSummary).")
-                            .font(.system(size: 11))
+                            .font(.system(size: pt(11)))
                             .foregroundStyle(Theme.parchment.opacity(0.62))
                     }
                 }
             }
             Text("Use Cards on the main menu to browse the full 48-card scoring deck.")
-                .font(.system(size: 11, weight: .semibold))
+                .font(.system(size: pt(11), weight: .semibold))
                 .foregroundStyle(Theme.gold)
                 .padding(.top, 3)
         }
@@ -242,17 +321,17 @@ public struct RulesView: View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(spacing: 7) {
                 Image(systemName: symbol)
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.system(size: pt(12), weight: .bold))
                     .foregroundStyle(Theme.gold)
                 Text(title)
-                    .font(.system(size: 12, weight: .heavy))
+                    .font(.system(size: pt(12), weight: .heavy))
                     .tracking(0.8)
                     .foregroundStyle(Theme.goldBright)
             }
             VStack(alignment: .leading, spacing: 8) {
                 content()
             }
-            .font(.system(size: 12))
+            .font(.system(size: pt(12)))
             .foregroundStyle(Theme.parchment.opacity(0.72))
         }
         .padding(13)
@@ -263,9 +342,9 @@ public struct RulesView: View {
     func numbered(_ number: Int, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Text("\(number)")
-                .font(.system(size: 10, weight: .heavy, design: .rounded))
+                .font(.system(size: pt(10), weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.dirt)
-                .frame(width: 21, height: 21)
+                .frame(width: pt(21), height: pt(21))
                 .background(Theme.gold, in: Circle())
             Text(text)
                 .fixedSize(horizontal: false, vertical: true)
@@ -275,7 +354,9 @@ public struct RulesView: View {
     @ViewBuilder
     func bullet(_ text: String) -> some View {
         HStack(alignment: .top, spacing: 8) {
-            Circle().fill(Theme.gold.opacity(0.75)).frame(width: 5, height: 5).padding(.top, 6)
+            Circle().fill(Theme.gold.opacity(0.75))
+                .frame(width: pt(5), height: pt(5))
+                .padding(.top, pt(6))
             Text(text).fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -283,7 +364,7 @@ public struct RulesView: View {
     @ViewBuilder
     func miniHeader(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 9, weight: .heavy))
+            .font(.system(size: pt(9), weight: .heavy))
             .tracking(0.9)
             .foregroundStyle(Theme.gold.opacity(0.78))
             .padding(.top, 2)
@@ -293,11 +374,11 @@ public struct RulesView: View {
     func callout(_ title: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title.uppercased())
-                .font(.system(size: 9, weight: .heavy))
+                .font(.system(size: pt(9), weight: .heavy))
                 .tracking(0.7)
                 .foregroundStyle(Theme.gold)
             Text(text)
-                .font(.system(size: 11))
+                .font(.system(size: pt(11)))
                 .foregroundStyle(Theme.parchment.opacity(0.7))
         }
         .padding(9)
@@ -309,10 +390,10 @@ public struct RulesView: View {
     func formatRow(_ title: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: pt(12), weight: .bold))
                 .foregroundStyle(Theme.parchment)
             Text(text)
-                .font(.system(size: 11))
+                .font(.system(size: pt(11)))
                 .foregroundStyle(Theme.parchment.opacity(0.62))
         }
         .padding(9)
@@ -326,12 +407,12 @@ public struct RulesView: View {
             HStack(spacing: 3) {
                 MiningCardView(type: a, size: .chip)
                 Text("+")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: pt(13), weight: .bold))
                     .foregroundStyle(Theme.gold)
                 MiningCardView(type: b, size: .chip)
             }
             Text(label)
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: pt(9), weight: .semibold))
                 .foregroundStyle(Theme.parchment.opacity(0.65))
         }
         .frame(maxWidth: .infinity)

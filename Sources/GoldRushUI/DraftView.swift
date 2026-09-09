@@ -74,19 +74,20 @@ public struct DraftView: View {
                 ) {
                     ForEach(pack, id: \.index) { id in
                         if pairedDecision {
-                            pairedCard(id)
+                            pairedCard(id, large: wide)
                         } else if takingTwo {
                             Button {
                                 toggleTaking(id)
                             } label: {
-                                ScoringCardView(id: id, selected: taking.contains(id))
+                                ScoringCardView(id: id, selected: taking.contains(id),
+                                                large: wide)
                             }
                             .buttonStyle(.plain)
                         } else {
                             Button {
                                 Task { await model.draftPick(id) }
                             } label: {
-                                ScoringCardView(id: id)
+                                ScoringCardView(id: id, large: wide)
                             }
                             .buttonStyle(.plain)
                         }
@@ -249,9 +250,9 @@ public struct DraftView: View {
     }
 
     @ViewBuilder
-    func pairedCard(_ id: ScoringCardID) -> some View {
+    func pairedCard(_ id: ScoringCardID, large: Bool = false) -> some View {
         VStack(spacing: 6) {
-            ScoringCardView(id: id, selected: keep == id || discard == id)
+            ScoringCardView(id: id, selected: keep == id || discard == id, large: large)
             HStack(spacing: 8) {
                 roleButton("Keep", systemImage: "hand.thumbsup.fill", selected: keep == id) {
                     keep = keep == id ? nil : id

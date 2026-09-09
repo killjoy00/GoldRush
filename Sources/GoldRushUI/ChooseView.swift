@@ -36,10 +36,15 @@ public struct ChooseView: View {
                     // Choosing is a comparison too, so the piles sit next to
                     // each other for the same reason they do when splitting.
                     if wide {
-                        ScrollView {
+                        // Floored at the viewport so the two piles read as
+                        // full-height mats to compare, not as a band floating
+                        // above a black screen. The floor is on each pile, not
+                        // on the HStack: see MeasuredScrollView for why that
+                        // distinction matters.
+                        MeasuredScrollView { viewport in
                             HStack(alignment: .top, spacing: 14) {
-                                pileCard(.a, piles.a, fill: true)
-                                pileCard(.b, piles.b, fill: true)
+                                pileCard(.a, piles.a, fill: true, minHeight: viewport - 8)
+                                pileCard(.b, piles.b, fill: true, minHeight: viewport - 8)
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 4)
@@ -74,7 +79,8 @@ public struct ChooseView: View {
     }
 
     @ViewBuilder
-    func pileCard(_ id: PileID, _ cards: [VisibleCard], fill: Bool = false) -> some View {
+    func pileCard(_ id: PileID, _ cards: [VisibleCard],
+                  fill: Bool = false, minHeight: CGFloat? = nil) -> some View {
         let hidden = cards.count(where: \.isHidden)
         Button {
             confirming = id
@@ -95,19 +101,23 @@ public struct ChooseView: View {
                             .foregroundStyle(Theme.sluice)
                     }
                 }
+                // Same sizes SplitView uses. These are the cards the player
+                // just saw at `.large` while splitting; rendering them at
+                // `.full` here shrank them between dividing the claim and
+                // choosing from it, on the same screen, for no reason.
                 LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: fill ? 84 : 60), spacing: 8)],
-                    spacing: 8
+                    columns: [GridItem(.adaptive(minimum: fill ? 124 : 60), spacing: 10)],
+                    spacing: 10
                 ) {
                     ForEach(cards, id: \.id.rawValue) { card in
                         MiningCardView(type: card.type, faceDown: card.isHidden,
-                                       size: fill ? .full : .compact)
+                                       size: fill ? .large : .compact)
                     }
                 }
             }
             .padding(12)
             .frame(maxWidth: .infinity,
-                   maxHeight: fill ? .infinity : nil,
+                   minHeight: minHeight,
                    alignment: .topLeading)
             .background(Theme.dirtLight, in: RoundedRectangle(cornerRadius: 13))
             .overlay(
