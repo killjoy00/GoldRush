@@ -86,4 +86,32 @@ public extension View {
         #endif
     }
 }
+
+/// A scroll view that hands its content the height of the viewport.
+///
+/// The measurement is passed to the content rather than applied for it, and
+/// that distinction is the whole point. `.frame(minHeight:)` sizes the frame
+/// and then positions the child at the child's *own* size inside it -- it
+/// never proposes the larger height downward. Put it on the container and the
+/// content centres instead of growing, detached from whatever heading sits
+/// above it. Put it on the element that draws the background -- a pile zone --
+/// and that element genuinely becomes taller.
+///
+/// So callers apply the height where growth is wanted. It stays a `minHeight`
+/// there, never a cap: a nine-card Motherlode pile taller than the viewport
+/// still takes its natural size and scrolls.
+@MainActor
+public struct MeasuredScrollView<Content: View>: View {
+    private let content: (CGFloat) -> Content
+
+    public init(@ViewBuilder content: @escaping (CGFloat) -> Content) {
+        self.content = content
+    }
+
+    public var body: some View {
+        GeometryReader { proxy in
+            ScrollView { content(proxy.size.height) }
+        }
+    }
+}
 #endif
