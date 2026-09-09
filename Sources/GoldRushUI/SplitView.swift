@@ -51,24 +51,22 @@ public struct SplitView: View {
                 // Both branches use the same `pileZone`, so the piles cannot
                 // drift apart as one layout gets edited.
                 if wide {
-                    // Each zone is floored at the viewport height, so the two
-                    // piles become full-height mats rather than a band of cards
-                    // with a thousand points of nothing underneath. They are
-                    // drop targets too, so a taller zone is a more forgiving
-                    // one to drag a card into.
+                    // Both zones ask for maxHeight .infinity, and a scroll
+                    // view proposes unbounded height, so they settle on the
+                    // taller sibling's height: two equal mats sized to the
+                    // round's larger pile.
                     //
-                    // The floor goes on the zone, not on the HStack around it:
-                    // a `minHeight` frame positions its child at the child's
-                    // own size, so on the container it centres the pair
-                    // instead of growing it. That was tried, shipped and
-                    // reverted -- see MeasuredScrollView.
-                    //
-                    // Still a floor, never a cap, so the nine-card Motherlode
-                    // round grows past it and scrolls instead of clipping.
-                    MeasuredScrollView { viewport in
+                    // Flooring them at the viewport instead was tried and
+                    // reverted. It filled the screen, but three cards in a
+                    // full-height mat is a mostly-empty bordered box, which
+                    // reads worse than the same emptiness left as background.
+                    // The space below a short round is the honest cost of
+                    // cards this size; a fixed cap would close it and clip the
+                    // nine-card Motherlode round instead.
+                    ScrollView {
                         HStack(alignment: .top, spacing: 14) {
-                            pileZone(builder, .a, fill: true, minHeight: viewport - 8)
-                            pileZone(builder, .b, fill: true, minHeight: viewport - 8)
+                            pileZone(builder, .a, fill: true)
+                            pileZone(builder, .b, fill: true)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 4)
@@ -95,8 +93,7 @@ public struct SplitView: View {
     }
 
     @ViewBuilder
-    func pileZone(_ builder: SplitBuilder, _ pile: PileID,
-                  fill: Bool = false, minHeight: CGFloat? = nil) -> some View {
+    func pileZone(_ builder: SplitBuilder, _ pile: PileID, fill: Bool = false) -> some View {
         let cards = builder.pile(pile)
         VStack(alignment: .leading, spacing: 7) {
             HStack {
@@ -133,7 +130,7 @@ public struct SplitView: View {
         }
         .padding(11)
         .frame(maxWidth: .infinity,
-               minHeight: minHeight,
+               maxHeight: fill ? .infinity : nil,
                alignment: .topLeading)
         .background(Theme.dirtLight.opacity(dropTarget == pile ? 1.0 : 0.7),
                     in: RoundedRectangle(cornerRadius: 13))

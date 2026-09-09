@@ -36,15 +36,15 @@ public struct ChooseView: View {
                     // Choosing is a comparison too, so the piles sit next to
                     // each other for the same reason they do when splitting.
                     if wide {
-                        // Floored at the viewport so the two piles read as
-                        // full-height mats to compare, not as a band floating
-                        // above a black screen. The floor is on each pile, not
-                        // on the HStack: see MeasuredScrollView for why that
-                        // distinction matters.
-                        MeasuredScrollView { viewport in
+                        // Equal mats sized to the larger pile, matching
+                        // SplitView. Filling the viewport was tried on both
+                        // screens and reverted: it turned the empty space into
+                        // an empty bordered box, which is worse, and worst
+                        // here because choosing shows the fewest cards.
+                        ScrollView {
                             HStack(alignment: .top, spacing: 14) {
-                                pileCard(.a, piles.a, fill: true, minHeight: viewport - 8)
-                                pileCard(.b, piles.b, fill: true, minHeight: viewport - 8)
+                                pileCard(.a, piles.a, fill: true)
+                                pileCard(.b, piles.b, fill: true)
                             }
                             .padding(.horizontal, 16)
                             .padding(.vertical, 4)
@@ -79,8 +79,7 @@ public struct ChooseView: View {
     }
 
     @ViewBuilder
-    func pileCard(_ id: PileID, _ cards: [VisibleCard],
-                  fill: Bool = false, minHeight: CGFloat? = nil) -> some View {
+    func pileCard(_ id: PileID, _ cards: [VisibleCard], fill: Bool = false) -> some View {
         let hidden = cards.count(where: \.isHidden)
         Button {
             confirming = id
@@ -117,7 +116,7 @@ public struct ChooseView: View {
             }
             .padding(12)
             .frame(maxWidth: .infinity,
-                   minHeight: minHeight,
+                   maxHeight: fill ? .infinity : nil,
                    alignment: .topLeading)
             .background(Theme.dirtLight, in: RoundedRectangle(cornerRadius: 13))
             .overlay(
