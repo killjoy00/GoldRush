@@ -145,7 +145,7 @@ public struct RulesView: View {
             Text("Split the claim. Let them choose.")
                 .font(.system(size: pt(23), weight: .heavy, design: .rounded))
                 .foregroundStyle(Theme.goldBright)
-            Text("When you split, make two piles knowing your opponent gets first choice. Your job is to make both piles acceptable to you — because you keep whichever one they leave behind.")
+            Text("When it is your turn to split, you divide your cards into two piles and your opponent picks first. So build two piles you would be happy to keep — because you get whichever one they walk away from.")
                 .font(.system(size: pt(13)))
                 .foregroundStyle(Theme.parchment.opacity(0.8))
                 .fixedSize(horizontal: false, vertical: true)
@@ -165,27 +165,27 @@ public struct RulesView: View {
     @ViewBuilder
     var goal: some View {
         ruleSection("1 · YOUR GOAL", symbol: "flag.checkered") {
-            Text("Collect mining cards that pay your six scoring cards. After all 60 cards in play have been claimed, every scoring card pays out. Highest score wins.")
-            callout("The important twist", "The same mining card can be excellent for you and nearly worthless to your opponent. Your scoring cards are what make a fair split difficult.")
+            Text("Collect mining cards that pay off your six scoring cards. Once all 60 cards in play have been claimed, every scoring card pays out and the higher score wins.")
+            callout("The important twist", "The same card can be worth a fortune to you and almost nothing to your opponent. Your scoring cards are why an even split is rarely an equal one.")
         }
     }
 
     @ViewBuilder
     var setup: some View {
         ruleSection("2 · GET SIX SCORING CARDS", symbol: "rectangle.stack.fill") {
-            Text("Choose one setup before the game:")
+            Text("Pick one setup before the game starts:")
             miniHeader("DEALT")
-            Text("Each player receives six scoring cards at random. Three are public and three stay secret.")
+            Text("You each get six scoring cards at random — three public, three secret.")
 
             miniHeader("DRAFTED")
-            Text("Each player opens a separate pack of seven. The draft goes:")
+            Text("You each open a separate pack of seven and pass it back and forth:")
             draftRail
-            numbered(1, "From 7: take 1 and pass the other 6.")
-            numbered(2, "From 6: take 2 and pass the other 4.")
-            numbered(3, "From 4: take 2 and pass the other 2.")
-            numbered(4, "From the final 2: keep 1 and discard 1 face up.")
-            Text("Your own pack comes back to you at four cards, so you find out exactly which two your opponent took from it.")
-            Text("You finish with six cards. Your opening keep is the one card from that pack your opponent never gets to see.")
+            numbered(1, "From 7: take 1, pass the other 6.")
+            numbered(2, "From 6: take 2, pass the other 4.")
+            numbered(3, "From 4: take 2, pass the other 2.")
+            numbered(4, "From the last 2: keep 1, burn the other face up.")
+            Text("Your own pack comes back to you with four cards left, so you see exactly which two your opponent took.")
+            Text("You end with six. Only your opening pick stays secret — everything after it passed through your opponent's hands.")
                 .font(.system(size: pt(11), weight: .semibold))
                 .foregroundStyle(Theme.gold)
         }
@@ -215,21 +215,21 @@ public struct RulesView: View {
     @ViewBuilder
     var round: some View {
         ruleSection("3 · PLAY A ROUND", symbol: "arrow.triangle.2.circlepath") {
-            numbered(1, "Draw your cards privately: 7 in a normal round.")
-            numbered(2, "Divide every drawn card between two non-empty piles. The piles do not have to be the same size.")
-            numbered(3, "Turn 1 card face down anywhere in the two piles. You know what it is; your opponent must choose without seeing it.")
+            numbered(1, "Draw your cards where your opponent cannot see them: 7 in a normal round.")
+            numbered(2, "Divide the cards you drew between two piles. Neither may be empty, and they do not have to be the same size.")
+            numbered(3, "Turn 1 card face down in either pile. You know what it is; your opponent has to choose without knowing.")
             numbered(4, "Your opponent takes one pile. You keep the other.")
-            numbered(5, "A buried card is revealed to the player who ends up taking it. If your opponent leaves a buried card with you, they never learn what it was.")
-            callout("The splitter's test", "Would you be happy getting either pile? If not, your opponent probably has an easy choice.")
+            numbered(5, "Whoever takes a pile sees its face-down card. If your opponent leaves that pile with you, they never find out what it was.")
+            callout("The splitter's test", "Would you be happy with either pile? If not, you have just made your opponent's choice an easy one.")
         }
     }
 
     @ViewBuilder
     var formats: some View {
         ruleSection("4 · TOGETHER OR TAKE TURNS", symbol: "person.2.fill") {
-            formatRow("Together", "Both players draw and make a split at the same time, then each chooses from the opponent's split. 4 rounds.")
-            formatRow("Take Turns", "One player splits and the other chooses, then the roles alternate. 8 rounds.")
-            Text("Both formats put the same 60 mining cards into play and give each player four splits and four choices.")
+            formatRow("Together", "You both draw and split at the same time, then each of you chooses from the other's split. Four rounds.")
+            formatRow("Take Turns", "One splits and the other chooses, then you swap. Eight rounds.")
+            Text("Either way the same 60 mining cards come into play, and you each split four times and choose four times.")
                 .font(.system(size: pt(11), weight: .semibold))
                 .foregroundStyle(Theme.gold)
         }
@@ -238,14 +238,14 @@ public struct RulesView: View {
     @ViewBuilder
     var scoring: some View {
         ruleSection("5 · WHAT SCORES", symbol: "star.fill") {
-            Text("Your six scoring cards tell you exactly what is worth points. Some reward one mining type, some reward thresholds or majorities, and some reward sets.")
+            Text("Your six scoring cards decide what is worth points. Some pay per mining type, some pay for reaching a threshold or holding more than your opponent, and some pay for completed sets.")
             miniHeader("SETS")
             HStack(spacing: 10) {
                 setTile(.goldOre, .shovel, label: "Ore + Shovel")
                 setTile(.gravel, .pan, label: "Gravel + Pan")
             }
-            Text("A Pack Mule can fill the Shovel slot of one Ore set or the Pan slot of one Gravel set. The app automatically allocates your Mules where they score the most.")
-            Text("A Pack Mule also counts as a Tool for scoring cards that reward Tools.")
+            Text("A Pack Mule stands in for the Shovel in one Ore set, or the Pan in one Gravel set. Your Mules are always placed wherever they earn you the most.")
+            Text("A Pack Mule counts as a Tool as well, for cards that pay for Tools.")
                 .font(.system(size: pt(11), weight: .semibold))
                 .foregroundStyle(Theme.gold)
         }
@@ -254,11 +254,11 @@ public struct RulesView: View {
     @ViewBuilder
     var information: some View {
         ruleSection("6 · WHAT STAYS HIDDEN", symbol: "eye.slash.fill") {
-            bullet("Dealt setup: three of each player's scoring cards are public; three are secret.")
-            bullet("Drafted setup: your opening keep stays secret. Every later kept card passed through your opponent's hands, and both burns are face up.")
-            bullet("While choosing a pile, face-down mining cards are unknown.")
-            bullet("If you take a pile, you learn its buried cards. A buried card you decline remains unknown to you for the rest of the game — including in the Claim Journal.")
-            Text("The Unseen counter combines cards that were never dealt with opponent cards you never identified.")
+            bullet("Dealt setup: three of your scoring cards are public and three stay secret. The same goes for your opponent.")
+            bullet("Drafted setup: only your opening pick stays secret. Every later card passed through your opponent's hands, and both burns are face up.")
+            bullet("While you are choosing between two piles, a face-down card is just a question mark.")
+            bullet("Take a pile and you see its face-down cards. Decline it and you never find out — not at scoring, and not in the Claim Journal.")
+            Text("The Unseen counter tracks everything you have not identified: cards never dealt this game, plus face-down cards you let your opponent keep.")
                 .font(.system(size: pt(11), weight: .semibold))
                 .foregroundStyle(Theme.gold)
         }
@@ -267,21 +267,21 @@ public struct RulesView: View {
     @ViewBuilder
     var motherlode: some View {
         ruleSection("7 · THE MOTHERLODE", symbol: "sparkles") {
-            Text("The final 18 mining cards are bigger decisions.")
-            bullet("Together: in round 4, each player draws 9 and buries 2.")
-            bullet("Take Turns: rounds 7 and 8 each use a 9-card draw with 2 buried cards.")
-            Text("The rules are otherwise unchanged: any two non-empty piles are legal, and the chooser still takes first pick.")
+            Text("The last 18 mining cards come out in bigger handfuls.")
+            bullet("Together: in round 4 you each draw 9 and turn 2 face down.")
+            bullet("Take Turns: rounds 7 and 8 each draw 9 with 2 turned face down.")
+            Text("Nothing else changes. Any two non-empty piles are legal, and the chooser still picks first.")
         }
     }
 
     @ViewBuilder
     var winning: some View {
         ruleSection("8 · WINNING", symbol: "crown.fill") {
-            Text("After the final claim, the app chooses the best legal Pack Mule allocation and scores all six scoring cards for each player.")
+            Text("After the last pile is claimed, each player's Mules are placed in whichever arrangement scores highest, and all six scoring cards pay out.")
             miniHeader("TIEBREAKS")
             numbered(1, "Most Gold Nuggets.")
             numbered(2, "Fewest Fool's Gold.")
-            numbered(3, "If still tied, Player 2 wins the final tiebreak.")
+            numbered(3, "Still level: Player 2 takes it.")
         }
     }
 
@@ -305,7 +305,7 @@ public struct RulesView: View {
                     }
                 }
             }
-            Text("Use Cards on the main menu to browse the full 48-card scoring deck.")
+            Text("Browse the full 48-card scoring deck from Cards on the main menu.")
                 .font(.system(size: pt(11), weight: .semibold))
                 .foregroundStyle(Theme.gold)
                 .padding(.top, 3)
