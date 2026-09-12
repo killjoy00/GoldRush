@@ -535,7 +535,7 @@ private fun handoffDetail(phase: Phase, round: Int): String = when (phase) {
     Phase.DRAFT -> "Your scoring-card pack is private until you finish this draft decision."
     Phase.DRAFT_DISCARD -> "Finish this older saved scoring-card draft privately."
     Phase.SPLIT -> "Round $round: your draw is private. Divide it into two piles before handing the phone over."
-    Phase.CHOOSE -> "Round $round: your opponent's split is locked. Choose a pile without seeing the buried cards."
+    Phase.CHOOSE -> "Round $round: your opponent's split is locked. Choose a pile without seeing the face-down cards."
     Phase.FINISHED -> "Scoring is ready."
 }
 
@@ -806,7 +806,7 @@ private fun SplitPhase(view: PlayerView, onAction: (Action) -> Unit) {
     }
 
     Text(
-        if (valid) "Legal split · ${faceDown.size}/$hiddenNeeded buried" else "Need two non-empty piles and exactly $hiddenNeeded buried.",
+        if (valid) "Legal split · ${faceDown.size}/$hiddenNeeded face down" else "Need two non-empty piles and exactly $hiddenNeeded face down.",
         color = if (valid) GoldRushColors.Gold else GoldRushColors.Danger,
         fontSize = 11.sp,
         fontWeight = FontWeight.SemiBold,
@@ -1053,7 +1053,7 @@ private fun RulesScreen(onBack: () -> Unit) {
         )
         RuleSection(
             "3 · PLAY A ROUND",
-            "Draw privately. Split every card between two non-empty piles. In a normal round turn exactly 1 card face down. Your opponent chooses a pile; you keep the other. A chooser learns buried cards only in the pile they take.",
+            "Draw privately. Split every card between two non-empty piles. In a normal round turn exactly 1 card face down. Your opponent chooses a pile; you keep the other. A chooser learns face-down cards only in the pile they take.",
         )
         RuleSection(
             "4 · TWO FORMATS",
@@ -1069,7 +1069,7 @@ private fun RulesScreen(onBack: () -> Unit) {
         )
         RuleSection(
             "7 · THE MOTHERLODE",
-            "The final 18 mining cards arrive in larger draws. Together: round 4 gives each player 9 cards and 2 buried. Take Turns: rounds 7 and 8 draw 9 with 2 buried. All other split rules stay the same.",
+            "The final 18 mining cards arrive in larger draws. Together: round 4 gives each player 9 cards and 2 face down. Take Turns: rounds 7 and 8 draw 9 with 2 face down. All other split rules stay the same.",
         )
         RuleSection(
             "8 · WINNING",
