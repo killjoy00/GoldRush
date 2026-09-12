@@ -499,19 +499,35 @@ private fun GameScreen(
     onExit: () -> Unit,
 ) {
     val view = state.view(player)
-    ScreenColumn {
-        GameHeader(view = view, onExit = onExit)
-        when (state.phase) {
-            Phase.REVEAL_SELECTION -> RevealSelectionPhase(view, onAction)
-            Phase.ADDITIONAL_REVEAL -> AdditionalRevealPhase(view, onAction)
-            Phase.DRAFT -> DraftPhase(view, onAction)
-            Phase.DRAFT_DISCARD -> LegacyDraftDiscardPhase(view, onAction)
-            Phase.SPLIT -> SplitPhase(view, onAction)
-            Phase.CHOOSE -> ChoosePhase(view, onAction)
-            Phase.FINISHED -> Unit
+    var showJournal by remember(player) { mutableStateOf(false) }
+
+    if (showJournal) {
+        ClaimJournalScreen(
+            rounds = state.claimJournal(player),
+            onBack = { showJournal = false },
+        )
+    } else {
+        ScreenColumn {
+            GameHeader(view = view, onExit = onExit)
+            when (state.phase) {
+                Phase.REVEAL_SELECTION -> RevealSelectionPhase(view, onAction)
+                Phase.ADDITIONAL_REVEAL -> AdditionalRevealPhase(view, onAction)
+                Phase.DRAFT -> DraftPhase(view, onAction)
+                Phase.DRAFT_DISCARD -> LegacyDraftDiscardPhase(view, onAction)
+                Phase.SPLIT -> SplitPhase(view, onAction)
+                Phase.CHOOSE -> ChoosePhase(view, onAction)
+                Phase.FINISHED -> Unit
+            }
+            CurrentHand(view)
+            LastRoundSummary(view)
+            Spacer(Modifier.height(8.dp))
+            TextButton(
+                onClick = { showJournal = true },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("CLAIM JOURNAL", color = GoldRushColors.Gold)
+            }
         }
-        CurrentHand(view)
-        LastRoundSummary(view)
     }
 }
 
@@ -978,7 +994,7 @@ private fun RulesScreen(onBack: () -> Unit) {
         )
         RuleSection(
             "4 · TWO FORMATS",
-            "Together: both players split, then both choose; 4 rounds. Take Turns: one splits and the other chooses, then swap; 8 rounds. Either way each player splits four times, chooses four times, and 60 mining cards are claimed.",
+            "Together: both players split, then both choose; 4 rounds. Take Turns: one splits and the other chooses, then swap. Eight rounds. Either way each player splits four times, chooses four times, and 60 mining cards are claimed.",
         )
         RuleSection(
             "5 · SETS AND PACK MULES",
