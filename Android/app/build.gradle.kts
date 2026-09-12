@@ -34,7 +34,9 @@ android {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
+    // The September 2026 BOM pulls Compose 1.12, whose Android artifacts require
+    // compileSdk 37. Keep this on the June production BOM until API 37 is stable.
+    val composeBom = platform("androidx.compose:compose-bom:2026.06.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
