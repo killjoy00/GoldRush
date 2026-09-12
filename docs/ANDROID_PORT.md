@@ -17,7 +17,7 @@ The Swift engine remains the source of truth for game rules and the Swift agents
 | StoreKit remove-ads purchase | Google Play Billing (remaining) |
 | Google Mobile Ads iOS | Google Mobile Ads Android (remaining) |
 
-The parity contract is behavioral: identical deck composition, SplitMix64 stream, deterministic shuffle, setup/draft decisions, hidden-information boundaries, round transitions, scoring, Pack Mule optimization, tiebreaks, Prospector decision policy, and career-stat aggregation.
+The parity contract is behavioral: identical deck composition, SplitMix64 stream, deterministic shuffle, setup/draft decisions, hidden-information boundaries, round transitions, scoring, Pack Mule optimization, tiebreaks, Prospector decision policy, career-stat aggregation, and privacy-safe Claim Journal projection.
 
 ## Rules parity
 
@@ -39,6 +39,19 @@ The Android engine now implements the current game rather than a one-round proto
 - Full pass-and-play Compose routing for reveal/draft/split/choose/endgame instead of the temporary one-round demo.
 
 Kotlin tests mirror the Swift scoring fixtures and full-game invariants so rule changes can be checked on both platforms.
+
+## Claim Journal parity
+
+Android now exposes the same match-long Claim Journal concept as iOS from inside an active game.
+
+- Completed rounds are shown newest-first, grouped by round and split.
+- Each split identifies who divided the cards and which pile the viewer took or kept.
+- Mining cards are shown from the viewing player's permanent information boundary rather than from global `GameState` truth.
+- A splitter remembers every card they personally drew, including a card they buried.
+- A chooser learns a buried card only when they take that pile; a buried card in a declined pile remains `?` in the journal permanently.
+- Pass-and-play projects the journal for the player currently holding the device; solo always projects it for the human Player 1.
+
+Tests cover both ownership labels and the buried-card privacy boundary in each direction.
 
 ## Prospector parity
 
@@ -71,7 +84,7 @@ Pure Kotlin tests cover aggregation, all four format labels, deduplication, the 
 
 ## Remaining Android platform work
 
-The remaining work is platform functionality, not game-rule, AI, or career-stat reconstruction:
+The remaining work is platform functionality, not game-rule, AI, career-stat, or journal reconstruction:
 
 1. Add Android AdMob and Google Play Billing remove-ads entitlement.
 2. Add Play Console signing/release automation and store metadata/screenshots.
@@ -79,7 +92,7 @@ The remaining work is platform functionality, not game-rule, AI, or career-stat 
 
 ## Vercel
 
-There is no Gold Rush Vercel project today. Pass-and-play, solo, and career stats are on-device and should stay that way. Vercel becomes relevant only if Gold Rush replaces Game Center with cross-platform online matches or adds a web companion/admin surface.
+There is no Gold Rush Vercel project today. Pass-and-play, solo, career stats, and the Claim Journal are on-device and should stay that way. Vercel becomes relevant only if Gold Rush replaces Game Center with cross-platform online matches or adds a web companion/admin surface.
 
 ## Build
 
