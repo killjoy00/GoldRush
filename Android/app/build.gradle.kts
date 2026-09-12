@@ -5,7 +5,10 @@ plugins {
 
 android {
     namespace = "com.killjoy00.goldrush"
-    compileSdk = 37
+    // Android 17 / API 37 is still a preview SDK in September 2026. Compile
+    // against the current stable platform so CI and Play release builds do not
+    // depend on preview-channel SDK packages.
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.killjoy00.goldrush"
