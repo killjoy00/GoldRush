@@ -1,0 +1,52 @@
+name: One-off Android copy cleanup
+
+on:
+  push:
+    branches: ["chatgpt/android-release-hardening"]
+    paths:
+      - ".github/workflows/_oneoff-normalize-android-copy.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/android-release-hardening
+
+      - name: Apply exact copy substitutions
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("Android/app/src/main/java/com/killjoy00/goldrush/ui/GoldRushApp.kt")
+          text = path.read_text()
+          replacements = [
+              ("val controller = rebuiltSession?.controller", "val controller = rebuiltSession.controller"),
+              ("Choose a pile without seeing the buried cards.", "Choose a pile without seeing the face-down cards."),
+              ("Legal split · ${faceDown.size}/$hiddenNeeded buried", "Legal split · ${faceDown.size}/$hiddenNeeded face down"),
+              ("Need two non-empty piles and exactly $hiddenNeeded buried.", "Need two non-empty piles and exactly $hiddenNeeded face down."),
+              ("A chooser learns buried cards only in the pile they take.", "A chooser learns face-down cards only in the pile they take."),
+              ("9 cards and 2 buried. Take Turns: rounds 7 and 8 draw 9 with 2 buried.", "9 cards and 2 face down. Take Turns: rounds 7 and 8 draw 9 with 2 face down."),
+          ]
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one match for {old!r}, found {count}")
+              text = text.replace(old, new)
+          path.write_text(text)
+          PY
+
+      - name: Commit cleanup and remove one-off workflow
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/_oneoff-normalize-android-copy.yml
+          git add Android/app/src/main/java/com/killjoy00/goldrush/ui/GoldRushApp.kt
+          git commit -m "Normalize Android face-down terminology"
+          git push origin HEAD:chatgpt/android-release-hardening
