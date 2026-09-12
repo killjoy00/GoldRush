@@ -4,12 +4,12 @@ Gold Rush is ported in-place rather than split into a second repository. The iOS
 
 ## Architecture
 
-The Swift engine remains the source of truth for game rules. Android ports those deterministic rules into Kotlin rather than trying to bridge Swift through JNI or ship a second native toolchain.
+The Swift engine remains the source of truth for game rules and the Swift agents remain the source of truth for bot behavior. Android ports those deterministic rules and policies into Kotlin rather than trying to bridge Swift through JNI or ship a second native toolchain.
 
 | iOS / shared Swift | Android |
 |---|---|
 | `GoldRushEngine` | Kotlin engine package (`com.killjoy00.goldrush.engine`) |
-| `GoldRushAgents` | Kotlin AI package (remaining platform work) |
+| `GoldRushAgents` | Kotlin Prospector package (`com.killjoy00.goldrush.ai`) |
 | `GoldRushUICore` | Kotlin/Compose controller state |
 | `GoldRushUI` | Jetpack Compose |
 | UserDefaults career data | Android DataStore (remaining) |
@@ -17,7 +17,7 @@ The Swift engine remains the source of truth for game rules. Android ports those
 | StoreKit remove-ads purchase | Google Play Billing (remaining) |
 | Google Mobile Ads iOS | Google Mobile Ads Android (remaining) |
 
-The parity contract is behavioral: identical deck composition, SplitMix64 stream, deterministic shuffle, setup/draft decisions, hidden-information boundaries, round transitions, scoring, Pack Mule optimization, and tiebreaks.
+The parity contract is behavioral: identical deck composition, SplitMix64 stream, deterministic shuffle, setup/draft decisions, hidden-information boundaries, round transitions, scoring, Pack Mule optimization, tiebreaks, and Prospector decision policy.
 
 ## Rules parity
 
@@ -40,11 +40,25 @@ The Android engine now implements the current game rather than a one-round proto
 
 Kotlin tests mirror the Swift scoring fixtures and full-game invariants so rule changes can be checked on both platforms.
 
+## Prospector parity
+
+Android also ports the shipping iOS `InferenceAgent` rather than using a simplified bot. The agent receives only `PlayerView`, never omniscient `GameState`, so secret scoring cards and unobserved buried cards remain genuinely unavailable to it.
+
+- **Steady** matches iOS basic fidelity: maximin near-even splits, opponent-aware split tiebreaking, and expected-value pile selection without deliberate hidden-card placement.
+- **Cunning** adds the iOS hidden-card placement policy, burying cards whose true opponent value is furthest from the opponent's inferred unseen-pool average.
+- **Ruthless** adds the iOS full chooser model, including the hidden-card suspicion adjustment on close pile decisions.
+- The opponent model reconstructs opponent-specific uncertainty from the public split log rather than incorrectly reusing the bot's own unseen pool.
+- Scoring-card reveal priorities and the six-board draft prior match the Swift agent, including the current seven-card paired draft and saved-draft compatibility path.
+- Solo keeps the human in Player 1 and the Prospector in Player 2, matching iOS `AgentTransport`.
+- Compose exposes the same Steady / Cunning / Ruthless choice and defaults to Ruthless.
+
+Integration tests drive complete games through the real Kotlin reducer for every Prospector tier, plus a drafted Take-Turns game. They assert that every bot action remains legal, control returns to the human correctly, the game terminates, and every drawn mining card is claimed.
+
 ## Remaining Android platform work
 
-The remaining work is platform functionality, not game-rule reconstruction:
+The remaining work is platform functionality, not game-rule or AI reconstruction:
 
-1. Port the Prospector AI and career/stat persistence.
+1. Port career/stat persistence to Android DataStore.
 2. Add Android AdMob and Google Play Billing remove-ads entitlement.
 3. Add Play Console signing/release automation and store metadata/screenshots.
 4. Decide online architecture. Game Center cannot provide Android/iOS cross-play; if cross-platform friend play is desired, move turn transport to a small shared backend while keeping the engine client-side.
