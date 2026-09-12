@@ -1,0 +1,3 @@
+Gold Rush Prospecting arrives on Android with the complete current game: Dealt or Drafted scoring cards, Together or Take Turns formats, all 48 scoring cards, the Prospector AI with three difficulty levels, Claim Journal, My Claim tableau, and persistent career stats.
+
+This first Android release also includes adaptive/themed launcher icons, saved setup preferences, leave-game protection, and the foundation for a one-time Remove Ads purchase.
