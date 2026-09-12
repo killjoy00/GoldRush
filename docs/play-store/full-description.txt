@@ -3,13 +3,13 @@ Gold Rush Prospecting is a two-player strategy game built on one simple rule: if
 Each round, privately draw mining cards and divide them into two piles. Turn a card face down, then offer the choice. Your opponent takes whichever pile they want. You keep the other.
 
 SPLIT CAREFULLY
-Make one pile too good and your opponent will take it. Make the choice close and every hidden card, scoring clue, and bluff starts to matter.
+Make one pile too good and your opponent will take it. Make the choice close and every face-down card, scoring clue, and bluff starts to matter.
 
 BUILD YOUR CLAIM
 Collect Gold Nuggets, Quartz, Ore and Shovels, Gravel and Pans, plus Pack Mules that can fill missing tools. Your six scoring cards decide what your claim is actually worth.
 
 KEEP THEM GUESSING
-Some scoring cards are public and some stay secret. Buried cards in a pile your opponent rejects can stay unknown for the rest of the game. You are never working with perfect information.
+Some scoring cards are public and some stay secret. Face-down cards in a pile your opponent rejects can stay unknown for the rest of the game. You are never working with perfect information.
 
 DEAL OR DRAFT
 Start with six random scoring cards, or draft them from seven-card packs. Drafting gives you more control, but it also tells your opponent more about what you may be chasing.
