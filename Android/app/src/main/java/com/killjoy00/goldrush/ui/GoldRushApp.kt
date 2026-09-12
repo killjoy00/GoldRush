@@ -500,14 +500,18 @@ private fun GameScreen(
 ) {
     val view = state.view(player)
     var showJournal by remember(player) { mutableStateOf(false) }
+    var showTableau by remember(player) { mutableStateOf(false) }
 
-    if (showJournal) {
-        ClaimJournalScreen(
+    when {
+        showJournal -> ClaimJournalScreen(
             rounds = state.claimJournal(player),
             onBack = { showJournal = false },
         )
-    } else {
-        ScreenColumn {
+        showTableau -> TableauScreen(
+            view = view,
+            onBack = { showTableau = false },
+        )
+        else -> ScreenColumn {
             GameHeader(view = view, onExit = onExit)
             when (state.phase) {
                 Phase.REVEAL_SELECTION -> RevealSelectionPhase(view, onAction)
@@ -521,11 +525,22 @@ private fun GameScreen(
             CurrentHand(view)
             LastRoundSummary(view)
             Spacer(Modifier.height(8.dp))
-            TextButton(
-                onClick = { showJournal = true },
+            Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("CLAIM JOURNAL", color = GoldRushColors.Gold)
+                TextButton(
+                    onClick = { showTableau = true },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("MY CLAIM (${view.collectionCounts.total})", color = GoldRushColors.Gold)
+                }
+                TextButton(
+                    onClick = { showJournal = true },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("JOURNAL", color = GoldRushColors.Gold)
+                }
             }
         }
     }
