@@ -26,11 +26,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,8 +42,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.killjoy00.goldrush.ai.ProspectorAgent
-import com.killjoy00.goldrush.ai.ProspectorController
 import com.killjoy00.goldrush.ai.ProspectorFidelity
 import com.killjoy00.goldrush.career.CareerStats
 import com.killjoy00.goldrush.career.CareerStatsRecorder
@@ -57,6 +57,9 @@ import com.killjoy00.goldrush.engine.ScoringCard
 import com.killjoy00.goldrush.engine.ScoringCardCatalog
 import com.killjoy00.goldrush.engine.ScoringCardId
 import com.killjoy00.goldrush.engine.VisibleCard
+import com.killjoy00.goldrush.session.ActiveGameSession
+import com.killjoy00.goldrush.session.ActiveGameSessionCodec
+import com.killjoy00.goldrush.session.ActiveGameSessionRepository
 import com.killjoy00.goldrush.settings.SetupPreferences
 import com.killjoy00.goldrush.settings.SetupPreferencesRepository
 import java.util.UUID
@@ -71,79 +74,104 @@ fun GoldRushApp() {
     val careerStats by careerRepository.stats.collectAsState(initial = CareerStats())
     val setupRepository = remember(context) { SetupPreferencesRepository(context) }
     val setup by setupRepository.preferences.collectAsState(initial = SetupPreferences())
+    val sessionRepository = remember(context) { ActiveGameSessionRepository(context) }
     val scope = rememberCoroutineScope()
 
-    var screen by remember { mutableStateOf(AppScreen.MENU) }
+    var screenName by rememberSaveable { mutableStateOf(AppScreen.MENU.name) }
+    var prospectorName by rememberSaveable { mutableStateOf(ProspectorFidelity.RUTHLESS.name) }
+    var encodedSession by rememberSaveable { mutableStateOf<String?>(null) }
+    var sessionLoaded by rememberSaveable { mutableStateOf(false) }
+
     val drafted = setup.scoringDraft
     val together = setup.simultaneousSplit
-    var prospector by remember { mutableStateOf(ProspectorFidelity.RUTHLESS) }
-    var game by remember { mutableStateOf<GameState?>(null) }
-    var gameId by remember { mutableStateOf<String?>(null) }
-    var visibleSeat by remember { mutableStateOf<PlayerId?>(null) }
-    var solo by remember { mutableStateOf(false) }
-    var prospectorController by remember { mutableStateOf<ProspectorController?>(null) }
+    val prospector = runCatching { ProspectorFidelity.valueOf(prospectorName) }
+        .getOrDefault(ProspectorFidelity.RUTHLESS)
+    val activeSession = remember(encodedSession) { ActiveGameSessionCodec.decode(encodedSession) }
+    val rebuiltSession = remember(encodedSession) { activeSession?.rebuild() }
+    val game = rebuiltSession?.state
+    val screen = if (activeSession != null && rebuiltSession != null) {
+        AppScreen.GAME
+    } else {
+        runCatching { AppScreen.valueOf(screenName) }.getOrDefault(AppScreen.MENU)
+    }
     val leaveConfirmation = remember { LeaveConfirmationController() }
 
-    fun newGameState(): GameState = GameState.newGame(
-        config = GameConfig(scoringDraft = drafted, simultaneousSplit = together),
-        seed = System.nanoTime().toULong(),
-    )
+    LaunchedEffect(Unit) {
+        if (encodedSession == null) {
+            val stored = sessionRepository.loadEncoded()
+            val storedSession = ActiveGameSessionCodec.decode(stored)
+            if (storedSession?.rebuild() != null) {
+                encodedSession = stored
+            } else if (stored != null) {
+                sessionRepository.saveEncoded(null)
+            }
+        }
+        sessionLoaded = true
+    }
+
+    LaunchedEffect(sessionLoaded, encodedSession) {
+        if (sessionLoaded) sessionRepository.saveEncoded(encodedSession)
+    }
+
+    fun show(target: AppScreen) {
+        screenName = target.name
+    }
 
     fun startPassAndPlay() {
-        solo = false
-        prospectorController = null
-        gameId = UUID.randomUUID().toString()
-        game = newGameState()
-        visibleSeat = null
-        screen = AppScreen.GAME
+        val session = ActiveGameSession(
+            gameId = UUID.randomUUID().toString(),
+            seed = System.nanoTime().toULong(),
+            scoringDraft = drafted,
+            simultaneousSplit = together,
+            solo = false,
+            prospector = prospector,
+            visibleSeat = null,
+        )
+        encodedSession = ActiveGameSessionCodec.encode(session)
+        show(AppScreen.GAME)
     }
 
     fun startProspector() {
-        val controller = ProspectorController(
-            humanSeat = PlayerId.P1,
-            agent = ProspectorAgent(prospector),
+        val session = ActiveGameSession(
+            gameId = UUID.randomUUID().toString(),
+            seed = System.nanoTime().toULong(),
+            scoringDraft = drafted,
+            simultaneousSplit = together,
+            solo = true,
+            prospector = prospector,
+            visibleSeat = PlayerId.P1,
         )
-        solo = true
-        prospectorController = controller
-        gameId = UUID.randomUUID().toString()
-        game = controller.start(newGameState())
-        visibleSeat = PlayerId.P1
-        screen = AppScreen.GAME
+        encodedSession = ActiveGameSessionCodec.encode(session)
+        show(AppScreen.GAME)
     }
 
     fun leaveGame() {
-        game = null
-        gameId = null
-        visibleSeat = null
-        solo = false
-        prospectorController = null
-        screen = AppScreen.MENU
+        encodedSession = null
+        show(AppScreen.MENU)
     }
 
     fun submit(action: Action) {
+        val session = activeSession ?: return
         val current = game ?: return
-        val seatHoldingPhone = visibleSeat
-        val next = if (solo) {
-            prospectorController?.submit(current, action) ?: current.apply(action)
+        val controller = rebuiltSession?.controller
+        val seatHoldingPhone = session.visibleSeat
+        val next = if (session.solo) {
+            controller?.submit(current, action) ?: return
         } else {
             current.apply(action)
         }
         if (next === current) return
-        game = next
 
-        if (next.isFinished) {
-            val completed = gameId?.let { id ->
-                CareerStatsRecorder.completedGame(id, next, PlayerId.P1)
-            }
-            if (completed != null) {
-                scope.launch { careerRepository.record(completed) }
-            }
-        }
-
-        visibleSeat = if (solo) {
+        val nextVisibleSeat = if (session.solo) {
             if (next.isFinished) null else PlayerId.P1
         } else {
             if (next.actingPlayer == seatHoldingPhone) seatHoldingPhone else null
+        }
+        encodedSession = ActiveGameSessionCodec.encode(session.append(action, nextVisibleSeat))
+
+        if (next.isFinished) {
+            val completed = CareerStatsRecorder.completedGame(session.gameId, next, PlayerId.P1)
+            scope.launch { careerRepository.record(completed) }
         }
     }
 
@@ -160,7 +188,7 @@ fun GoldRushApp() {
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            when (screen) {
+            if (sessionLoaded) when (screen) {
                 AppScreen.MENU -> MenuScreen(
                     drafted = drafted,
                     together = together,
@@ -171,36 +199,39 @@ fun GoldRushApp() {
                     onTogetherChange = { enabled ->
                         scope.launch { setupRepository.setSimultaneousSplit(enabled) }
                     },
-                    onProspectorChange = { prospector = it },
+                    onProspectorChange = {
+                        prospectorName = it.name
+                    },
                     onPassAndPlay = ::startPassAndPlay,
                     onProspector = ::startProspector,
-                    onRules = { screen = AppScreen.RULES },
-                    onCards = { screen = AppScreen.CARDS },
-                    onCareer = { screen = AppScreen.CAREER },
+                    onRules = { show(AppScreen.RULES) },
+                    onCards = { show(AppScreen.CARDS) },
+                    onCareer = { show(AppScreen.CAREER) },
                 )
 
-                AppScreen.RULES -> RulesScreen(onBack = { screen = AppScreen.MENU })
-                AppScreen.CARDS -> CardCompendiumScreen(onBack = { screen = AppScreen.MENU })
+                AppScreen.RULES -> RulesScreen(onBack = { show(AppScreen.MENU) })
+                AppScreen.CARDS -> CardCompendiumScreen(onBack = { show(AppScreen.MENU) })
                 AppScreen.CAREER -> CareerStatsScreen(
                     stats = careerStats,
-                    onBack = { screen = AppScreen.MENU },
+                    onBack = { show(AppScreen.MENU) },
                 )
                 AppScreen.GAME -> {
                     val state = game
-                    if (state == null) {
-                        screen = AppScreen.MENU
+                    val session = activeSession
+                    if (state == null || session == null) {
+                        show(AppScreen.MENU)
                     } else if (state.isFinished) {
                         FinalScoreScreen(
                             state = state,
-                            solo = solo,
+                            solo = session.solo,
                             onRematch = {
-                                if (solo) startProspector() else startPassAndPlay()
+                                if (session.solo) startProspector() else startPassAndPlay()
                             },
                             onMenu = ::leaveGame,
                         )
                     } else {
                         val actor = state.actingPlayer
-                        if (solo) {
+                        if (session.solo) {
                             if (actor == PlayerId.P1) {
                                 GameScreen(
                                     state = state,
@@ -209,12 +240,14 @@ fun GoldRushApp() {
                                     onExit = leaveConfirmation::request,
                                 )
                             }
-                        } else if (actor != null && visibleSeat != actor) {
+                        } else if (actor != null && session.visibleSeat != actor) {
                             HandoffScreen(
                                 player = actor,
                                 phase = state.phase,
                                 round = state.round,
-                                onReady = { visibleSeat = actor },
+                                onReady = {
+                                    encodedSession = ActiveGameSessionCodec.encode(session.withVisibleSeat(actor))
+                                },
                                 onExit = leaveConfirmation::request,
                             )
                         } else if (actor != null) {
@@ -231,7 +264,7 @@ fun GoldRushApp() {
         }
 
         LeaveConfirmationGuard(
-            active = screen == AppScreen.GAME && game?.isFinished == false,
+            active = sessionLoaded && screen == AppScreen.GAME && game?.isFinished == false,
             controller = leaveConfirmation,
             onLeave = ::leaveGame,
         )

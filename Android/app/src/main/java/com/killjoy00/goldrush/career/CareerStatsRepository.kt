@@ -27,11 +27,11 @@ class CareerStatsRepository(context: Context) {
         }
         .map(CareerStatsPreferencesCodec::decode)
 
-    suspend fun record(game: CompletedCareerGame): CareerStats {
+    suspend fun record(game: CompletedCareerGame?): CareerStats {
         var result = CareerStats()
         dataStore.edit { preferences ->
             val current = CareerStatsPreferencesCodec.decode(preferences)
-            val next = CareerStatsRecorder.record(current, game)
+            val next = if (game == null) current else CareerStatsRecorder.record(current, game)
             if (next != current) CareerStatsPreferencesCodec.write(preferences, next)
             result = next
         }
