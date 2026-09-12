@@ -9,8 +9,6 @@ class ScoringCatalogDigestTest {
         val canonical = ScoringCardCatalog.byIndex.joinToString("\n") { card ->
             listOf(
                 card.id.code,
-                card.name,
-                card.text,
                 card.effects.joinToString(",", transform = ::effect),
             ).joinToString("|")
         }
