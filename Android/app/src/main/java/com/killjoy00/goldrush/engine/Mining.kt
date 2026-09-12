@@ -64,9 +64,21 @@ data class MiningCounts(
         this[type] = this[type] + amount
     }
 
+    operator fun plus(other: MiningCounts): MiningCounts = MiningCounts().also { out ->
+        MiningType.entries.forEach { out[it] = this[it] + other[it] }
+    }
+
+    operator fun minus(other: MiningCounts): MiningCounts = MiningCounts().also { out ->
+        MiningType.entries.forEach { out[it] = this[it] - other[it] }
+    }
+
     companion object {
         fun counting(cards: Iterable<MiningCard>): MiningCounts = MiningCounts().also { counts ->
             cards.forEach { counts.add(it.type) }
+        }
+
+        fun countingTypes(types: Iterable<MiningType>): MiningCounts = MiningCounts().also { counts ->
+            types.forEach { counts.add(it) }
         }
     }
 }
@@ -77,6 +89,11 @@ object MiningDeck {
     val standardComposition: List<Pair<MiningType, Int>> = MiningType.entries.map {
         it to it.standardCount
     }
+
+    val standardCounts: MiningCounts
+        get() = MiningCounts().also { counts ->
+            standardComposition.forEach { (type, count) -> counts[type] = count }
+        }
 
     fun standardDeck(): List<MiningCard> = build(standardComposition)
 
