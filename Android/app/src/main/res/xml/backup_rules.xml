@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Career/setup preferences may follow the player to a replacement phone. -->
+    <!-- Never restore an unfinished local game on a different device. -->
+    <exclude domain="file" path="datastore/goldrush_active_game_v1.preferences_pb" />
+</full-backup-content>
