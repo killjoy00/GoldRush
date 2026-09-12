@@ -37,6 +37,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.killjoy00.goldrush.ai.ProspectorAgent
+import com.killjoy00.goldrush.ai.ProspectorController
+import com.killjoy00.goldrush.ai.ProspectorFidelity
 import com.killjoy00.goldrush.engine.Action
 import com.killjoy00.goldrush.engine.GameConfig
 import com.killjoy00.goldrush.engine.GameState
@@ -56,26 +59,60 @@ fun GoldRushApp() {
     var screen by remember { mutableStateOf(AppScreen.MENU) }
     var drafted by remember { mutableStateOf(false) }
     var together by remember { mutableStateOf(true) }
+    var prospector by remember { mutableStateOf(ProspectorFidelity.RUTHLESS) }
     var game by remember { mutableStateOf<GameState?>(null) }
     var visibleSeat by remember { mutableStateOf<PlayerId?>(null) }
+    var solo by remember { mutableStateOf(false) }
+    var prospectorController by remember { mutableStateOf<ProspectorController?>(null) }
 
-    fun startGame() {
-        val state = GameState.newGame(
-            config = GameConfig(scoringDraft = drafted, simultaneousSplit = together),
-            seed = System.nanoTime().toULong(),
-        )
-        game = state
+    fun newGameState(): GameState = GameState.newGame(
+        config = GameConfig(scoringDraft = drafted, simultaneousSplit = together),
+        seed = System.nanoTime().toULong(),
+    )
+
+    fun startPassAndPlay() {
+        solo = false
+        prospectorController = null
+        game = newGameState()
         visibleSeat = null
         screen = AppScreen.GAME
     }
 
+    fun startProspector() {
+        val controller = ProspectorController(
+            humanSeat = PlayerId.P1,
+            agent = ProspectorAgent(prospector),
+        )
+        solo = true
+        prospectorController = controller
+        game = controller.start(newGameState())
+        visibleSeat = PlayerId.P1
+        screen = AppScreen.GAME
+    }
+
+    fun leaveGame() {
+        game = null
+        visibleSeat = null
+        solo = false
+        prospectorController = null
+        screen = AppScreen.MENU
+    }
+
     fun submit(action: Action) {
         val current = game ?: return
-        val next = current.apply(action)
-        if (next === current) return
         val seatHoldingPhone = visibleSeat
+        val next = if (solo) {
+            prospectorController?.submit(current, action) ?: current.apply(action)
+        } else {
+            current.apply(action)
+        }
+        if (next === current) return
         game = next
-        visibleSeat = if (next.actingPlayer == seatHoldingPhone) seatHoldingPhone else null
+        visibleSeat = if (solo) {
+            if (next.isFinished) null else PlayerId.P1
+        } else {
+            if (next.actingPlayer == seatHoldingPhone) seatHoldingPhone else null
+        }
     }
 
     GoldRushTheme {
@@ -95,9 +132,12 @@ fun GoldRushApp() {
                 AppScreen.MENU -> MenuScreen(
                     drafted = drafted,
                     together = together,
+                    prospector = prospector,
                     onDraftedChange = { drafted = it },
                     onTogetherChange = { together = it },
-                    onPassAndPlay = ::startGame,
+                    onProspectorChange = { prospector = it },
+                    onPassAndPlay = ::startPassAndPlay,
+                    onProspector = ::startProspector,
                     onRules = { screen = AppScreen.RULES },
                     onCards = { screen = AppScreen.CARDS },
                 )
@@ -111,37 +151,37 @@ fun GoldRushApp() {
                     } else if (state.isFinished) {
                         FinalScoreScreen(
                             state = state,
-                            onRematch = ::startGame,
-                            onMenu = {
-                                game = null
-                                visibleSeat = null
-                                screen = AppScreen.MENU
+                            solo = solo,
+                            onRematch = {
+                                if (solo) startProspector() else startPassAndPlay()
                             },
+                            onMenu = ::leaveGame,
                         )
                     } else {
                         val actor = state.actingPlayer
-                        if (actor != null && visibleSeat != actor) {
+                        if (solo) {
+                            if (actor == PlayerId.P1) {
+                                GameScreen(
+                                    state = state,
+                                    player = PlayerId.P1,
+                                    onAction = ::submit,
+                                    onExit = ::leaveGame,
+                                )
+                            }
+                        } else if (actor != null && visibleSeat != actor) {
                             HandoffScreen(
                                 player = actor,
                                 phase = state.phase,
                                 round = state.round,
                                 onReady = { visibleSeat = actor },
-                                onExit = {
-                                    game = null
-                                    visibleSeat = null
-                                    screen = AppScreen.MENU
-                                },
+                                onExit = ::leaveGame,
                             )
                         } else if (actor != null) {
                             GameScreen(
                                 state = state,
                                 player = actor,
                                 onAction = ::submit,
-                                onExit = {
-                                    game = null
-                                    visibleSeat = null
-                                    screen = AppScreen.MENU
-                                },
+                                onExit = ::leaveGame,
                             )
                         }
                     }
@@ -155,9 +195,12 @@ fun GoldRushApp() {
 private fun MenuScreen(
     drafted: Boolean,
     together: Boolean,
+    prospector: ProspectorFidelity,
     onDraftedChange: (Boolean) -> Unit,
     onTogetherChange: (Boolean) -> Unit,
+    onProspectorChange: (ProspectorFidelity) -> Unit,
     onPassAndPlay: () -> Unit,
+    onProspector: () -> Unit,
     onRules: () -> Unit,
     onCards: () -> Unit,
 ) {
@@ -223,6 +266,19 @@ private fun MenuScreen(
             modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
         )
 
+        ProspectorChooser(
+            selected = prospector,
+            onChange = onProspectorChange,
+        )
+        Text(
+            prospectorBlurb(prospector),
+            color = GoldRushColors.Parchment.copy(alpha = .55f),
+            fontSize = 11.sp,
+            lineHeight = 15.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 7.dp),
+        )
+
         Spacer(Modifier.height(14.dp))
         Button(
             onClick = onPassAndPlay,
@@ -241,14 +297,13 @@ private fun MenuScreen(
 
         Spacer(Modifier.height(10.dp))
         OutlinedButton(
-            onClick = {},
-            enabled = false,
+            onClick = onProspector,
             modifier = Modifier.fillMaxWidth(),
-            border = BorderStroke(1.dp, GoldRushColors.Gold.copy(alpha = .18f)),
+            border = BorderStroke(1.dp, GoldRushColors.Gold.copy(alpha = .45f)),
         ) {
             Column(Modifier.fillMaxWidth()) {
-                Text("Play the prospector", fontWeight = FontWeight.Bold)
-                Text("AI client port follows rules parity", fontSize = 11.sp)
+                Text("Play the prospector", fontWeight = FontWeight.Bold, color = GoldRushColors.GoldBright)
+                Text("Single player · ${prospector.displayName}", fontSize = 11.sp, color = GoldRushColors.Parchment.copy(alpha = .72f))
             }
         }
 
@@ -261,6 +316,38 @@ private fun MenuScreen(
             TextButton(onClick = onCards) { Text("CARDS", color = GoldRushColors.Parchment) }
         }
     }
+}
+
+@Composable
+private fun ProspectorChooser(
+    selected: ProspectorFidelity,
+    onChange: (ProspectorFidelity) -> Unit,
+) {
+    Text(
+        "PROSPECTOR",
+        color = GoldRushColors.Gold.copy(alpha = .82f),
+        fontWeight = FontWeight.Bold,
+        fontSize = 10.sp,
+        letterSpacing = 1.sp,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center,
+    )
+    Spacer(Modifier.height(5.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        ProspectorFidelity.entries.forEach { option ->
+            SetupButton(
+                text = option.displayName,
+                selected = option == selected,
+                modifier = Modifier.weight(1f),
+            ) { onChange(option) }
+        }
+    }
+}
+
+private fun prospectorBlurb(fidelity: ProspectorFidelity): String = when (fidelity) {
+    ProspectorFidelity.STEADY -> "Splits evenly and takes the better pile. Does not try to mislead you."
+    ProspectorFidelity.CUNNING -> "Also hides the card that will cost you most to guess wrong."
+    ProspectorFidelity.RUTHLESS -> "Also works out what you will do with a split before offering it."
 }
 
 @Composable
@@ -750,10 +837,20 @@ private fun LastRoundSummary(view: PlayerView) {
 }
 
 @Composable
-private fun FinalScoreScreen(state: GameState, onRematch: () -> Unit, onMenu: () -> Unit) {
+private fun FinalScoreScreen(
+    state: GameState,
+    solo: Boolean,
+    onRematch: () -> Unit,
+    onMenu: () -> Unit,
+) {
     val p1 = state.scorecard(PlayerId.P1)
     val p2 = state.scorecard(PlayerId.P2)
     val winner = state.winner()
+    val winnerText = if (solo) {
+        if (winner == PlayerId.P1) "You win" else "Prospector wins"
+    } else {
+        "${winner.label} wins"
+    }
 
     ScreenColumn {
         Text(
@@ -766,7 +863,7 @@ private fun FinalScoreScreen(state: GameState, onRematch: () -> Unit, onMenu: ()
             textAlign = TextAlign.Center,
         )
         Text(
-            "${winner.label} wins",
+            winnerText,
             color = GoldRushColors.GoldBright,
             fontSize = 30.sp,
             fontWeight = FontWeight.Black,
@@ -789,9 +886,9 @@ private fun FinalScoreScreen(state: GameState, onRematch: () -> Unit, onMenu: ()
             modifier = Modifier.fillMaxWidth().padding(bottom = 18.dp),
         )
 
-        ScoreBreakdown("PLAYER 1", state.hands.p1, p1.cards.associateBy { it.id })
+        ScoreBreakdown(if (solo) "YOU" else "PLAYER 1", state.hands.p1, p1.cards.associateBy { it.id })
         Spacer(Modifier.height(14.dp))
-        ScoreBreakdown("PLAYER 2", state.hands.p2, p2.cards.associateBy { it.id })
+        ScoreBreakdown(if (solo) "PROSPECTOR" else "PLAYER 2", state.hands.p2, p2.cards.associateBy { it.id })
 
         Spacer(Modifier.height(18.dp))
         GoldButton("REMATCH", enabled = true, onClick = onRematch)
