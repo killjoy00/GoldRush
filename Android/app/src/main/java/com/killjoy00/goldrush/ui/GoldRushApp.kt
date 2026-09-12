@@ -57,6 +57,8 @@ import com.killjoy00.goldrush.engine.ScoringCard
 import com.killjoy00.goldrush.engine.ScoringCardCatalog
 import com.killjoy00.goldrush.engine.ScoringCardId
 import com.killjoy00.goldrush.engine.VisibleCard
+import com.killjoy00.goldrush.settings.SetupPreferences
+import com.killjoy00.goldrush.settings.SetupPreferencesRepository
 import java.util.UUID
 import kotlinx.coroutines.launch
 
@@ -67,11 +69,13 @@ fun GoldRushApp() {
     val context = LocalContext.current.applicationContext
     val careerRepository = remember(context) { CareerStatsRepository(context) }
     val careerStats by careerRepository.stats.collectAsState(initial = CareerStats())
+    val setupRepository = remember(context) { SetupPreferencesRepository(context) }
+    val setup by setupRepository.preferences.collectAsState(initial = SetupPreferences())
     val scope = rememberCoroutineScope()
 
     var screen by remember { mutableStateOf(AppScreen.MENU) }
-    var drafted by remember { mutableStateOf(false) }
-    var together by remember { mutableStateOf(true) }
+    val drafted = setup.scoringDraft
+    val together = setup.simultaneousSplit
     var prospector by remember { mutableStateOf(ProspectorFidelity.RUTHLESS) }
     var game by remember { mutableStateOf<GameState?>(null) }
     var gameId by remember { mutableStateOf<String?>(null) }
@@ -160,8 +164,12 @@ fun GoldRushApp() {
                     drafted = drafted,
                     together = together,
                     prospector = prospector,
-                    onDraftedChange = { drafted = it },
-                    onTogetherChange = { together = it },
+                    onDraftedChange = { enabled ->
+                        scope.launch { setupRepository.setScoringDraft(enabled) }
+                    },
+                    onTogetherChange = { enabled ->
+                        scope.launch { setupRepository.setSimultaneousSplit(enabled) }
+                    },
                     onProspectorChange = { prospector = it },
                     onPassAndPlay = ::startPassAndPlay,
                     onProspector = ::startProspector,
