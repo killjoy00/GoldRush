@@ -98,8 +98,8 @@ internal object CareerStatsPreferencesCodec {
 
         val recordedIds = preferences[recordedIdsKey]
             ?.lineSequence()
-            ?.map(String::trim)
-            ?.filter(String::isNotEmpty)
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
             ?.toList()
             ?.takeLast(CareerStatsRecorder.MAX_RECORDED_GAME_IDS)
             ?: emptyList()
