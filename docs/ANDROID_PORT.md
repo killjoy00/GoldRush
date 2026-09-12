@@ -23,7 +23,7 @@ The parity contract is behavioral, not source-sharing: identical deck compositio
 
 ## Phase 1 — landed on the Android branch
 
-- Modern Android project using AGP 9.4, Kotlin 2.3.21, Compose BOM 2026.08.00, compileSdk 37.
+- Modern Android project using AGP 9.4, Kotlin 2.3.21, Compose BOM 2026.08.00, compile/target SDK 36. Android 17 / API 37 is still a preview SDK as of September 2026, so production CI deliberately stays on the current stable SDK.
 - Gold Rush visual language recreated in Compose.
 - Standard 72-card mining deck ported.
 - `GameConfig` round/draw/hidden-card structure ported.
