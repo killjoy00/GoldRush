@@ -27,11 +27,11 @@ class CareerStatsRepository(context: Context) {
         }
         .map(CareerStatsPreferencesCodec::decode)
 
-    suspend fun record(game: CompletedCareerGame): CareerStats {
+    suspend fun record(game: CompletedCareerGame?): CareerStats {
         var result = CareerStats()
         dataStore.edit { preferences ->
             val current = CareerStatsPreferencesCodec.decode(preferences)
-            val next = CareerStatsRecorder.record(current, game)
+            val next = if (game == null) current else CareerStatsRecorder.record(current, game)
             if (next != current) CareerStatsPreferencesCodec.write(preferences, next)
             result = next
         }
@@ -122,50 +122,26 @@ internal object CareerStatsPreferencesCodec {
         preferences[totalScoreKey] = stats.totalScore
         preferences[totalMarginKey] = stats.totalMargin
         preferences[bestScoreKey] = stats.bestScore
-        preferences[recordedIdsKey] = stats.recordedGameIds.takeLast(CareerStatsRecorder.MAX_RECORDED_GAME_IDS).joinToString("\n")
+        preferences[recordedIdsKey] = stats.recordedGameIds.joinToString("\n")
 
         CareerStatsRecorder.modeLabels.forEach { label ->
-            val record = stats.modes[label]
-            writeInt(preferences, modeKey(label, "games"), record?.games)
-            writeInt(preferences, modeKey(label, "wins"), record?.wins)
-            writeInt(preferences, modeKey(label, "total_score"), record?.totalScore)
-            writeInt(preferences, modeKey(label, "total_margin"), record?.totalMargin)
-            writeInt(preferences, modeKey(label, "best_score"), record?.bestScore)
+            val record = stats.modes[label] ?: CareerModeRecord()
+            preferences[modeKey(label, "games")] = record.games
+            preferences[modeKey(label, "wins")] = record.wins
+            preferences[modeKey(label, "total_score")] = record.totalScore
+            preferences[modeKey(label, "total_margin")] = record.totalMargin
+            preferences[modeKey(label, "best_score")] = record.bestScore
         }
 
         ScoringFamily.entries.forEach { family ->
-            val record = stats.families[family.displayName]
-            writeInt(preferences, familyKey(family, "cards"), record?.cards)
-            writeInt(preferences, familyKey(family, "points"), record?.points)
-            writeInt(preferences, familyKey(family, "games"), record?.games)
+            val record = stats.families[family.displayName] ?: CareerFamilyRecord()
+            preferences[familyKey(family, "cards")] = record.cards
+            preferences[familyKey(family, "points")] = record.points
+            preferences[familyKey(family, "games")] = record.games
         }
     }
 
     fun clear(preferences: MutablePreferences) {
-        preferences.remove(gamesKey)
-        preferences.remove(winsKey)
-        preferences.remove(totalScoreKey)
-        preferences.remove(totalMarginKey)
-        preferences.remove(bestScoreKey)
-        preferences.remove(recordedIdsKey)
-
-        CareerStatsRecorder.modeLabels.forEach { label ->
-            listOf("games", "wins", "total_score", "total_margin", "best_score").forEach { field ->
-                preferences.remove(modeKey(label, field))
-            }
-        }
-        ScoringFamily.entries.forEach { family ->
-            listOf("cards", "points", "games").forEach { field ->
-                preferences.remove(familyKey(family, field))
-            }
-        }
-    }
-
-    private fun writeInt(
-        preferences: MutablePreferences,
-        key: Preferences.Key<Int>,
-        value: Int?,
-    ) {
-        if (value == null) preferences.remove(key) else preferences[key] = value
+        preferences.clear()
     }
 }
