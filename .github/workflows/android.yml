@@ -5,11 +5,15 @@ on:
     branches: ["main", "chatgpt/android-port"]
     paths:
       - "Android/**"
+      - "docs/play-store/**"
       - ".github/workflows/android.yml"
+      - ".github/workflows/android-play-release.yml"
   pull_request:
     paths:
       - "Android/**"
+      - "docs/play-store/**"
       - ".github/workflows/android.yml"
+      - ".github/workflows/android-play-release.yml"
   workflow_dispatch:
 
 jobs:
