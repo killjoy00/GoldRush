@@ -4,3 +4,10 @@
 xcuserdata/
 DerivedData/
 __pycache__/
+
+# Android
+Android/.gradle/
+Android/**/build/
+Android/local.properties
+Android/.idea/
+*.iml
