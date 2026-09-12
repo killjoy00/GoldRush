@@ -14,6 +14,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Probe live app-ads.txt delivery
+        run: |
+          set -euo pipefail
+          expected='google.com, pub-1217971050094766, DIRECT, f08c47fec0942fa0'
+          for url in \
+            'http://killjoy00.github.io/app-ads.txt' \
+            'https://killjoy00.github.io/app-ads.txt'
+          do
+            echo "=== $url ==="
+            rm -f /tmp/headers /tmp/body
+            curl -sS -L --max-redirs 1 -D /tmp/headers -o /tmp/body "$url"
+            cat /tmp/headers
+            printf 'BODY: '
+            cat /tmp/body
+            echo
+            if [ "$(cat /tmp/body)" != "$expected" ]; then
+              echo "::error::Unexpected app-ads.txt body from $url"
+              exit 1
+            fi
+          done
+
+          echo '=== HTTPS as Googlebot ==='
+          rm -f /tmp/headers /tmp/body
+          curl -sS -L --max-redirs 1 \
+            -A 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' \
+            -D /tmp/headers -o /tmp/body \
+            'https://killjoy00.github.io/app-ads.txt'
+          cat /tmp/headers
+          printf 'BODY: '
+          cat /tmp/body
+          echo
+          if [ "$(cat /tmp/body)" != "$expected" ]; then
+            echo '::error::Unexpected app-ads.txt body for Googlebot user agent'
+            exit 1
+          fi
+
+          echo '=== robots.txt ==='
+          curl -sS -L --max-redirs 1 -D - -o /tmp/robots \
+            'https://killjoy00.github.io/robots.txt' || true
+          printf 'BODY: '
+          cat /tmp/robots 2>/dev/null || true
+          echo
+
       - name: Check App Store Connect secrets
         run: |
           missing=""
