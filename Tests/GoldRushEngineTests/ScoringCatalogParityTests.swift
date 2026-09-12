@@ -71,7 +71,10 @@ final class ScoringCatalogParityTests: XCTestCase {
     }
 
     private func tiersToken(_ tiers: [Tier]) -> String {
-        tiers.map { "\($0.maxCount):\($0.points)" }.joined(separator: ",")
+        tiers.map {
+            let max = $0.maxCount == Int.max ? "MAX" : String($0.maxCount)
+            return "\(max):\($0.points)"
+        }.joined(separator: ",")
     }
 
     private func effectToken(_ effect: ScoringEffect) -> String {
