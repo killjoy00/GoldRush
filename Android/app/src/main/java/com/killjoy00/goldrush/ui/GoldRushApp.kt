@@ -33,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -41,7 +40,6 @@ import androidx.compose.ui.unit.sp
 import com.killjoy00.goldrush.engine.Action
 import com.killjoy00.goldrush.engine.GameConfig
 import com.killjoy00.goldrush.engine.GameState
-import com.killjoy00.goldrush.engine.MiningType
 import com.killjoy00.goldrush.engine.Phase
 import com.killjoy00.goldrush.engine.PileId
 import com.killjoy00.goldrush.engine.PlayerId
@@ -961,14 +959,15 @@ private fun CompactScoringCard(card: ScoringCard) {
 }
 
 @Composable
-private fun ScreenColumn(content: @Composable Column.() -> Unit) {
+private fun ScreenColumn(content: @Composable () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 18.dp, vertical = 14.dp),
-        content = content,
-    )
+    ) {
+        content()
+    }
 }
 
 @Composable
