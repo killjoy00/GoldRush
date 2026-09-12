@@ -15,6 +15,7 @@ class ScoringCatalogDigestTest {
             ).joinToString("|")
         }
         val digest = fnv1a64(canonical)
+        println("SCORING_CATALOG_DIGEST=$digest")
 
         assertEquals(
             "PENDING",
