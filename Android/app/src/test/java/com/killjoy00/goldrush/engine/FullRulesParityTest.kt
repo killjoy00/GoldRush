@@ -181,12 +181,14 @@ class FullRulesParityTest {
 
         state = splitSimply(state)
         assertEquals(Phase.CHOOSE, state.phase)
-        assertEquals(PlayerId.P1, state.actingPlayer)
+        // Swift computes simultaneous choosers as [.p1, .p2].map(\.opponent),
+        // therefore P2 chooses first, then P1.
+        assertEquals(PlayerId.P2, state.actingPlayer)
         assertNotNull(state.view(PlayerId.P1).piles)
         assertNotNull(state.view(PlayerId.P2).piles)
 
         state = state.applyChecked(Action.Choose(PileId.A))
-        assertEquals(PlayerId.P2, state.actingPlayer)
+        assertEquals(PlayerId.P1, state.actingPlayer)
         state = state.applyChecked(Action.Choose(PileId.A))
         assertEquals(2, state.round)
         assertEquals(Phase.SPLIT, state.phase)
