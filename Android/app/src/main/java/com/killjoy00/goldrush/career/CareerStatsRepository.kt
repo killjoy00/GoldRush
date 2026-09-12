@@ -100,8 +100,8 @@ internal object CareerStatsPreferencesCodec {
             ?.lineSequence()
             ?.map(String::trim)
             ?.filter(String::isNotEmpty)
-            ?.takeLast(CareerStatsRecorder.MAX_RECORDED_GAME_IDS)
             ?.toList()
+            ?.takeLast(CareerStatsRecorder.MAX_RECORDED_GAME_IDS)
             ?: emptyList()
 
         return CareerStats(
