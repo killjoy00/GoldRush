@@ -994,7 +994,7 @@ private fun RulesScreen(onBack: () -> Unit) {
         )
         RuleSection(
             "4 · TWO FORMATS",
-            "Together: both players split, then both choose; 4 rounds. Take Turns: one splits and the other chooses, then swap. Eight rounds. Either way each player splits four times, chooses four times, and 60 mining cards are claimed.",
+            "Together: both players split, then both choose; 4 rounds. Take Turns: one splits and the other chooses, then swap; 8 rounds. Either way each player splits four times, chooses four times, and 60 mining cards are claimed.",
         )
         RuleSection(
             "5 · SETS AND PACK MULES",
