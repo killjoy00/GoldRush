@@ -17,7 +17,7 @@ The Swift engine remains the source of truth for game rules and the Swift agents
 | StoreKit remove-ads purchase | Google Play Billing (remaining) |
 | Google Mobile Ads iOS | Google Mobile Ads Android (remaining) |
 
-The parity contract is behavioral: identical deck composition, SplitMix64 stream, deterministic shuffle, setup/draft decisions, hidden-information boundaries, round transitions, scoring, Pack Mule optimization, tiebreaks, Prospector decision policy, career-stat aggregation, and privacy-safe Claim Journal projection.
+The parity contract is behavioral: identical deck composition, SplitMix64 stream, deterministic shuffle, setup/draft decisions, hidden-information boundaries, round transitions, scoring, Pack Mule optimization, tiebreaks, Prospector decision policy, career-stat aggregation, Claim Journal projection, and player-tableau privacy.
 
 ## Rules parity
 
@@ -53,6 +53,17 @@ Android now exposes the same match-long Claim Journal concept as iOS from inside
 
 Tests cover both ownership labels and the buried-card privacy boundary in each direction.
 
+## My Claim / Tableau parity
+
+Android now exposes the iOS-style My Claim tableau beside the Claim Journal during active play.
+
+- The player's collected mining cards are grouped by all eight mining types with totals and compact card chips.
+- The opponent section shows only cards the viewer has actually identified plus a count of cards they never saw.
+- The player's six scoring cards are shown with public/secret status; all six remain visible to their owner and score normally.
+- Current paired-draft face-up burns are shown for both players when present.
+- Pass-and-play always builds the tableau from the player currently holding the device, while solo stays on human Player 1.
+- The screen consumes only `PlayerView`, so it cannot reveal opponent collection identities outside the viewer's observation boundary.
+
 ## Prospector parity
 
 Android also ports the shipping iOS `InferenceAgent` rather than using a simplified bot. The agent receives only `PlayerView`, never omniscient `GameState`, so secret scoring cards and unobserved buried cards remain genuinely unavailable to it.
@@ -84,7 +95,7 @@ Pure Kotlin tests cover aggregation, all four format labels, deduplication, the 
 
 ## Remaining Android platform work
 
-The remaining work is platform functionality, not game-rule, AI, career-stat, or journal reconstruction:
+The remaining work is platform functionality, not game-rule, AI, career-stat, journal, or tableau reconstruction:
 
 1. Add Android AdMob and Google Play Billing remove-ads entitlement.
 2. Add Play Console signing/release automation and store metadata/screenshots.
@@ -92,7 +103,7 @@ The remaining work is platform functionality, not game-rule, AI, career-stat, or
 
 ## Vercel
 
-There is no Gold Rush Vercel project today. Pass-and-play, solo, career stats, and the Claim Journal are on-device and should stay that way. Vercel becomes relevant only if Gold Rush replaces Game Center with cross-platform online matches or adds a web companion/admin surface.
+There is no Gold Rush Vercel project today. Pass-and-play, solo, career stats, the Claim Journal, and the My Claim tableau are on-device and should stay that way. Vercel becomes relevant only if Gold Rush replaces Game Center with cross-platform online matches or adds a web companion/admin surface.
 
 ## Build
 
