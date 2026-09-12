@@ -17,6 +17,7 @@ struct ScoringCatalogDigestTests {
             }
             .joined(separator: "\n")
         let digest = fnv1a64(canonical)
+        print("SCORING_CATALOG_DIGEST=\(digest)")
 
         #expect(digest == "PENDING", "Catalog digest: \(digest)")
     }
