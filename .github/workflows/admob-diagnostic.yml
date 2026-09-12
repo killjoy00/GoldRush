@@ -1,0 +1,38 @@
+name: AdMob verification diagnostic
+
+on:
+  push:
+    branches: ["chatgpt/admob-verification-fix"]
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BUNDLE_ID: ${{ vars.GOLDRUSH_BUNDLE_ID || 'com.killjoy00.goldrush' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check App Store Connect secrets
+        run: |
+          missing=""
+          [ -z "${{ secrets.ASC_KEY_ID }}" ] && missing="$missing ASC_KEY_ID"
+          [ -z "${{ secrets.ASC_ISSUER_ID }}" ] && missing="$missing ASC_ISSUER_ID"
+          [ -z "${{ secrets.ASC_KEY_P8 }}" ] && missing="$missing ASC_KEY_P8"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing"
+            exit 1
+          fi
+
+      - name: Install App Store Connect API key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: Tools/install_asc_key.sh
+
+      - name: Diagnose public and App Store Connect metadata
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: python3 Tools/admob_diagnostic.py
