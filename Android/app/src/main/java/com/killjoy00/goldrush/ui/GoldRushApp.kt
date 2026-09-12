@@ -26,13 +26,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -40,6 +43,9 @@ import androidx.compose.ui.unit.sp
 import com.killjoy00.goldrush.ai.ProspectorAgent
 import com.killjoy00.goldrush.ai.ProspectorController
 import com.killjoy00.goldrush.ai.ProspectorFidelity
+import com.killjoy00.goldrush.career.CareerStats
+import com.killjoy00.goldrush.career.CareerStatsRecorder
+import com.killjoy00.goldrush.career.CareerStatsRepository
 import com.killjoy00.goldrush.engine.Action
 import com.killjoy00.goldrush.engine.GameConfig
 import com.killjoy00.goldrush.engine.GameState
@@ -51,16 +57,24 @@ import com.killjoy00.goldrush.engine.ScoringCard
 import com.killjoy00.goldrush.engine.ScoringCardCatalog
 import com.killjoy00.goldrush.engine.ScoringCardId
 import com.killjoy00.goldrush.engine.VisibleCard
+import java.util.UUID
+import kotlinx.coroutines.launch
 
-private enum class AppScreen { MENU, RULES, CARDS, GAME }
+private enum class AppScreen { MENU, RULES, CARDS, CAREER, GAME }
 
 @Composable
 fun GoldRushApp() {
+    val context = LocalContext.current.applicationContext
+    val careerRepository = remember(context) { CareerStatsRepository(context) }
+    val careerStats by careerRepository.stats.collectAsState(initial = CareerStats())
+    val scope = rememberCoroutineScope()
+
     var screen by remember { mutableStateOf(AppScreen.MENU) }
     var drafted by remember { mutableStateOf(false) }
     var together by remember { mutableStateOf(true) }
     var prospector by remember { mutableStateOf(ProspectorFidelity.RUTHLESS) }
     var game by remember { mutableStateOf<GameState?>(null) }
+    var gameId by remember { mutableStateOf<String?>(null) }
     var visibleSeat by remember { mutableStateOf<PlayerId?>(null) }
     var solo by remember { mutableStateOf(false) }
     var prospectorController by remember { mutableStateOf<ProspectorController?>(null) }
@@ -73,6 +87,7 @@ fun GoldRushApp() {
     fun startPassAndPlay() {
         solo = false
         prospectorController = null
+        gameId = UUID.randomUUID().toString()
         game = newGameState()
         visibleSeat = null
         screen = AppScreen.GAME
@@ -85,6 +100,7 @@ fun GoldRushApp() {
         )
         solo = true
         prospectorController = controller
+        gameId = UUID.randomUUID().toString()
         game = controller.start(newGameState())
         visibleSeat = PlayerId.P1
         screen = AppScreen.GAME
@@ -92,6 +108,7 @@ fun GoldRushApp() {
 
     fun leaveGame() {
         game = null
+        gameId = null
         visibleSeat = null
         solo = false
         prospectorController = null
@@ -108,6 +125,16 @@ fun GoldRushApp() {
         }
         if (next === current) return
         game = next
+
+        if (next.isFinished) {
+            val completed = gameId?.let { id ->
+                CareerStatsRecorder.completedGame(id, next, PlayerId.P1)
+            }
+            if (completed != null) {
+                scope.launch { careerRepository.record(completed) }
+            }
+        }
+
         visibleSeat = if (solo) {
             if (next.isFinished) null else PlayerId.P1
         } else {
@@ -140,10 +167,15 @@ fun GoldRushApp() {
                     onProspector = ::startProspector,
                     onRules = { screen = AppScreen.RULES },
                     onCards = { screen = AppScreen.CARDS },
+                    onCareer = { screen = AppScreen.CAREER },
                 )
 
                 AppScreen.RULES -> RulesScreen(onBack = { screen = AppScreen.MENU })
                 AppScreen.CARDS -> CardCompendiumScreen(onBack = { screen = AppScreen.MENU })
+                AppScreen.CAREER -> CareerStatsScreen(
+                    stats = careerStats,
+                    onBack = { screen = AppScreen.MENU },
+                )
                 AppScreen.GAME -> {
                     val state = game
                     if (state == null) {
@@ -203,6 +235,7 @@ private fun MenuScreen(
     onProspector: () -> Unit,
     onRules: () -> Unit,
     onCards: () -> Unit,
+    onCareer: () -> Unit,
 ) {
     ScreenColumn {
         Spacer(Modifier.height(12.dp))
@@ -314,6 +347,7 @@ private fun MenuScreen(
         ) {
             TextButton(onClick = onRules) { Text("HOW TO PLAY", color = GoldRushColors.Parchment) }
             TextButton(onClick = onCards) { Text("CARDS", color = GoldRushColors.Parchment) }
+            TextButton(onClick = onCareer) { Text("CAREER", color = GoldRushColors.Parchment) }
         }
     }
 }
