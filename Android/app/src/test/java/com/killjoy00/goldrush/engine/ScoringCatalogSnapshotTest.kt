@@ -57,7 +57,10 @@ class ScoringCatalogSnapshotTest {
 
     private fun listToken(types: List<MiningType>): String = types.joinToString(",") { miningToken(it) }
 
-    private fun tiersToken(tiers: List<Tier>): String = tiers.joinToString(",") { "${it.maxCount}:${it.points}" }
+    private fun tiersToken(tiers: List<Tier>): String = tiers.joinToString(",") {
+        val max = if (it.maxCount == Int.MAX_VALUE) "MAX" else it.maxCount.toString()
+        "$max:${it.points}"
+    }
 
     private fun effectToken(effect: ScoringEffect): String = when (effect) {
         is ScoringEffect.PerType -> "perType(${miningToken(effect.type)},${effect.points})"
