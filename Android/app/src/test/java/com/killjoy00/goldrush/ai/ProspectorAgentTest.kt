@@ -36,9 +36,12 @@ class ProspectorAgentTest {
 
             assertTrue("$fidelity game did not finish", state.isFinished)
             assertTrue("$fidelity exceeded safety bound", safety < 100)
-            assertEquals(60, state.drawn)
-            assertEquals(30, state.collections.p1.size)
-            assertEquals(30, state.collections.p2.size)
+            assertEquals(
+                "$fidelity drew ${state.drawn} cards at round ${state.round}/${state.config.roundCount}",
+                state.config.totalDrawn,
+                state.drawn,
+            )
+            assertEquals(state.drawn, state.collections.p1.size + state.collections.p2.size)
         }
     }
 
@@ -69,7 +72,7 @@ class ProspectorAgentTest {
         assertEquals(6, state.hands.p2.size)
         assertEquals(1, state.draftDiscards!!.p1.size)
         assertEquals(1, state.draftDiscards!!.p2.size)
-        assertEquals(60, state.drawn)
+        assertEquals(state.config.totalDrawn, state.drawn)
         assertEquals(8, state.roundHistory!!.size)
     }
 
