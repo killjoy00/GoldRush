@@ -12,12 +12,12 @@ The Swift engine remains the source of truth for game rules and the Swift agents
 | `GoldRushAgents` | Kotlin Prospector package (`com.killjoy00.goldrush.ai`) |
 | `GoldRushUICore` | Kotlin/Compose controller state |
 | `GoldRushUI` | Jetpack Compose |
-| UserDefaults career data | Android DataStore (remaining) |
+| UserDefaults career data | Preferences DataStore (`goldrush_career_stats_v1`) |
 | Game Center turn-based | Cross-platform service (later, if desired) |
 | StoreKit remove-ads purchase | Google Play Billing (remaining) |
 | Google Mobile Ads iOS | Google Mobile Ads Android (remaining) |
 
-The parity contract is behavioral: identical deck composition, SplitMix64 stream, deterministic shuffle, setup/draft decisions, hidden-information boundaries, round transitions, scoring, Pack Mule optimization, tiebreaks, and Prospector decision policy.
+The parity contract is behavioral: identical deck composition, SplitMix64 stream, deterministic shuffle, setup/draft decisions, hidden-information boundaries, round transitions, scoring, Pack Mule optimization, tiebreaks, Prospector decision policy, and career-stat aggregation.
 
 ## Rules parity
 
@@ -54,18 +54,32 @@ Android also ports the shipping iOS `InferenceAgent` rather than using a simplif
 
 Integration tests drive complete games through the real Kotlin reducer for every Prospector tier, plus a drafted Take-Turns game. They assert that every bot action remains legal, control returns to the human correctly, the game terminates, and every drawn mining card is claimed.
 
+## Career stats parity
+
+Android now mirrors the on-device iOS career model and keeps the data local in Jetpack Preferences DataStore.
+
+- Overall games, wins/losses, win rate, average score, average margin, and best score.
+- Per-format records for Dealt/Drafted × Together/Take Turns using the same display labels as iOS.
+- Per-scoring-family card counts, total points, games touched, and points per card for Strike, Dig, Sluice, Vein, Outfit, and Prospect.
+- Pass-and-play records Player 1; solo records the human Player 1, matching the current iOS seat convention.
+- Each started game receives a stable UUID and completed games are deduplicated before recording.
+- The dedupe history retains the newest 500 game IDs, matching iOS's bounded-history behavior.
+- Recording is triggered when the reducer first reaches `FINISHED`, so quickly leaving the score screen does not lose the result.
+- Compose exposes a Career screen from the main menu and observes DataStore as a live Flow.
+
+Pure Kotlin tests cover aggregation, all four format labels, deduplication, the 500-ID cap, and DataStore preference round-tripping.
+
 ## Remaining Android platform work
 
-The remaining work is platform functionality, not game-rule or AI reconstruction:
+The remaining work is platform functionality, not game-rule, AI, or career-stat reconstruction:
 
-1. Port career/stat persistence to Android DataStore.
-2. Add Android AdMob and Google Play Billing remove-ads entitlement.
-3. Add Play Console signing/release automation and store metadata/screenshots.
-4. Decide online architecture. Game Center cannot provide Android/iOS cross-play; if cross-platform friend play is desired, move turn transport to a small shared backend while keeping the engine client-side.
+1. Add Android AdMob and Google Play Billing remove-ads entitlement.
+2. Add Play Console signing/release automation and store metadata/screenshots.
+3. Decide online architecture. Game Center cannot provide Android/iOS cross-play; if cross-platform friend play is desired, move turn transport to a small shared backend while keeping the engine client-side.
 
 ## Vercel
 
-There is no Gold Rush Vercel project today. Pass-and-play and solo are on-device and should stay that way. Vercel becomes relevant only if Gold Rush replaces Game Center with cross-platform online matches or adds a web companion/admin surface.
+There is no Gold Rush Vercel project today. Pass-and-play, solo, and career stats are on-device and should stay that way. Vercel becomes relevant only if Gold Rush replaces Game Center with cross-platform online matches or adds a web companion/admin surface.
 
 ## Build
 
