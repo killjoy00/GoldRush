@@ -82,6 +82,7 @@ fun GoldRushApp() {
     var visibleSeat by remember { mutableStateOf<PlayerId?>(null) }
     var solo by remember { mutableStateOf(false) }
     var prospectorController by remember { mutableStateOf<ProspectorController?>(null) }
+    val leaveConfirmation = remember { LeaveConfirmationController() }
 
     fun newGameState(): GameState = GameState.newGame(
         config = GameConfig(scoringDraft = drafted, simultaneousSplit = together),
@@ -205,7 +206,7 @@ fun GoldRushApp() {
                                     state = state,
                                     player = PlayerId.P1,
                                     onAction = ::submit,
-                                    onExit = ::leaveGame,
+                                    onExit = leaveConfirmation::request,
                                 )
                             }
                         } else if (actor != null && visibleSeat != actor) {
@@ -214,20 +215,26 @@ fun GoldRushApp() {
                                 phase = state.phase,
                                 round = state.round,
                                 onReady = { visibleSeat = actor },
-                                onExit = ::leaveGame,
+                                onExit = leaveConfirmation::request,
                             )
                         } else if (actor != null) {
                             GameScreen(
                                 state = state,
                                 player = actor,
                                 onAction = ::submit,
-                                onExit = ::leaveGame,
+                                onExit = leaveConfirmation::request,
                             )
                         }
                     }
                 }
             }
         }
+
+        LeaveConfirmationGuard(
+            active = screen == AppScreen.GAME && game?.isFinished == false,
+            controller = leaveConfirmation,
+            onLeave = ::leaveGame,
+        )
     }
 }
 
