@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Keep long-lived preferences, but do not migrate an unfinished game. -->
+        <exclude domain="file" path="datastore/goldrush_active_game_v1.preferences_pb" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore/goldrush_active_game_v1.preferences_pb" />
+    </device-transfer>
+</data-extraction-rules>
