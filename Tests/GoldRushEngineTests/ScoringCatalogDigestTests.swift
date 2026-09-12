@@ -10,8 +10,6 @@ struct ScoringCatalogDigestTests {
             .map { card in
                 [
                     card.id.code,
-                    card.name,
-                    card.text,
                     card.effects.map(effect).joined(separator: ","),
                 ].joined(separator: "|")
             }
