@@ -30,6 +30,7 @@ class RemoveAdsStore(context: Context) : PurchasesUpdatedListener {
         val price: String? = null,
         val isReady: Boolean = false,
         val isWorking: Boolean = false,
+        val isEntitlementResolved: Boolean = false,
         val failure: String? = null,
     )
 
@@ -94,9 +95,12 @@ class RemoveAdsStore(context: Context) : PurchasesUpdatedListener {
                 _state.value = _state.value.copy(
                     isPurchased = owned,
                     isWorking = false,
+                    isEntitlementResolved = true,
                     failure = null,
                 )
             } else {
+                // Fail closed for ads: if Play cannot confirm entitlement, do not
+                // risk showing a paid user a banner while ownership is unknown.
                 _state.value = _state.value.copy(
                     isWorking = false,
                     failure = billingFailure(result),
@@ -163,6 +167,7 @@ class RemoveAdsStore(context: Context) : PurchasesUpdatedListener {
                         _state.value = _state.value.copy(
                             isPurchased = true,
                             isWorking = false,
+                            isEntitlementResolved = true,
                             failure = null,
                         )
                     }
