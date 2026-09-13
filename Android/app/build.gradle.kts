@@ -19,7 +19,9 @@ android {
         applicationId = "com.killjoy00.goldrush"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        // versionCode 1 is reserved for the initial Play seed upload that
+        // unlocks product configuration. This monetization-enabled build is 2.
+        versionCode = 2
         versionName = "1.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
