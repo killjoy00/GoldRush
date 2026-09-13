@@ -20,6 +20,7 @@ class RemoveAdsStoreTest {
         assertFalse(state.isPurchased)
         assertFalse(state.isReady)
         assertFalse(state.isWorking)
+        assertFalse(state.isEntitlementResolved)
         assertNull(state.price)
         assertNull(state.failure)
     }
