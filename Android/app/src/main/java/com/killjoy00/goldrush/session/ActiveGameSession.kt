@@ -16,7 +16,9 @@ import com.killjoy00.goldrush.engine.PileId
 import com.killjoy00.goldrush.engine.PlayerId
 import com.killjoy00.goldrush.engine.ScoringCardId
 import java.util.Base64
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 private const val STORE_NAME = "goldrush_active_game_v1"
 private val Context.activeGameDataStore: DataStore<Preferences> by preferencesDataStore(name = STORE_NAME)
@@ -74,6 +76,8 @@ data class RebuiltGameSession(
 
 class ActiveGameSessionRepository(context: Context) {
     private val dataStore = context.applicationContext.activeGameDataStore
+
+    val encoded: Flow<String?> = dataStore.data.map { it[SESSION_KEY] }
 
     suspend fun loadEncoded(): String? = dataStore.data.first()[SESSION_KEY]
 
