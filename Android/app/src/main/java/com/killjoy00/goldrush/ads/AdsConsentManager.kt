@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Runs Google's UMP consent flow before Mobile Ads is initialized or any ad is
@@ -21,6 +22,7 @@ class AdsConsentManager(context: Context) {
         val canRequestAds: Boolean = false,
         val privacyOptionsRequired: Boolean = false,
         val isReady: Boolean = false,
+        val mobileAdsReady: Boolean = false,
     )
 
     private val appContext = context.applicationContext
@@ -58,7 +60,7 @@ class AdsConsentManager(context: Context) {
     }
 
     private fun updateState(isReady: Boolean = _state.value.isReady) {
-        _state.value = State(
+        _state.value = _state.value.copy(
             canRequestAds = consentInformation.canRequestAds(),
             privacyOptionsRequired = consentInformation.privacyOptionsRequirementStatus ==
                 ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED,
@@ -70,7 +72,9 @@ class AdsConsentManager(context: Context) {
         if (!_state.value.canRequestAds) return
         if (!mobileAdsInitialized.compareAndSet(false, true)) return
         Thread {
-            MobileAds.initialize(appContext) {}
+            MobileAds.initialize(appContext) {
+                _state.update { it.copy(mobileAdsReady = true) }
+            }
         }.start()
     }
 }
