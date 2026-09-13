@@ -8,7 +8,7 @@ import com.killjoy00.goldrush.ads.AdsConsentManager
 import com.killjoy00.goldrush.career.CareerStats
 import com.killjoy00.goldrush.career.CareerStatsRepository
 import com.killjoy00.goldrush.review.RatingsPrompt
-import com.killjoy00.goldrush.ui.GoldRushApp
+import com.killjoy00.goldrush.ui.MonetizedGoldRushApp
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         observeCareerForRatingsPrompt()
         adsConsentManager.gatherConsent(this)
-        setContent { GoldRushApp(adsConsentManager) }
+        setContent { MonetizedGoldRushApp(adsConsentManager) }
     }
 
     override fun onDestroy() {
