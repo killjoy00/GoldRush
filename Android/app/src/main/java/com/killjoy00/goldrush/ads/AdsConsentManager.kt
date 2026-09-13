@@ -69,6 +69,8 @@ class AdsConsentManager(context: Context) {
     private fun initializeMobileAdsIfAllowed() {
         if (!_state.value.canRequestAds) return
         if (!mobileAdsInitialized.compareAndSet(false, true)) return
-        MobileAds.initialize(appContext)
+        Thread {
+            MobileAds.initialize(appContext) {}
+        }.start()
     }
 }
