@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import com.killjoy00.goldrush.ads.AdsConsentManager
 import com.killjoy00.goldrush.career.CareerStats
 import com.killjoy00.goldrush.career.CareerStatsRepository
 import com.killjoy00.goldrush.review.RatingsPrompt
@@ -16,12 +17,14 @@ import kotlinx.coroutines.launch
 class MainActivity : ComponentActivity() {
     private val activityScope = MainScope()
     private val careerRepository by lazy { CareerStatsRepository(applicationContext) }
+    private val adsConsentManager by lazy { AdsConsentManager(applicationContext) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         observeCareerForRatingsPrompt()
-        setContent { GoldRushApp() }
+        adsConsentManager.gatherConsent(this)
+        setContent { GoldRushApp(adsConsentManager) }
     }
 
     override fun onDestroy() {
