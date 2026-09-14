@@ -31,13 +31,16 @@ Current checkpoint: the Android client implements the shipped Gold Rush rules, P
 - Play Developer API service account connected via GitHub Actions.
 - Remove Ads product `com.killjoy00.goldrush.removeads` created and active.
 - Remove Ads purchase option `buy` active at US `$2.99` with Google-generated regional prices.
+- English title, short description, and full description synced through the Play Developer API.
+- Default language, contact website, and contact email configured through the Play Developer API.
+- Play Store icon uploaded from the existing production artwork and verified live (`icon=1`).
 
 ## External release work still required
 
 ### Google Play Console / release track
 
 1. Add/verify tester access and install the app from the Play internal-test link.
-2. Complete or verify store listing, content rating, target audience, ads declaration, Data Safety, privacy-policy, and production-track requirements.
+2. Complete or verify content rating, target audience, ads declaration, Data Safety, privacy-policy, and production-track requirements.
 3. Any later binary must increment `versionCode` to at least 3 before running `Android Play release`.
 
 ### AdMob
@@ -46,8 +49,8 @@ The Android AdMob app entry and banner identifiers are already wired in code. Be
 
 ### Store assets / QA
 
-- Capture Android phone screenshots from the release-equivalent build.
-- Provide Play feature graphic / icon assets as required by the listing.
+- Generate and upload Android phone screenshots from the release-equivalent build. The Play API currently reports `phoneScreenshots=0`.
+- Generate and upload the 1024×500 Play feature graphic. The Play API currently reports `featureGraphic=0`.
 - Exercise Dealt/Drafted x Together/Take Turns in both pass-and-play and Prospector modes on physical Android hardware.
 - Rotate the device and background/restore during both a split and handoff to verify active-game restoration and hidden-information boundaries.
 - Test Billing through a Play internal-testing account, including purchase, reinstall/restore, pending purchase, and refund/revocation behavior.
