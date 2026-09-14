@@ -1,10 +1,6 @@
 name: Sync Play Data Safety
 
 on:
-  push:
-    branches: ["play-data-safety"]
-    paths:
-      - ".github/workflows/play-sync-data-safety.yml"
   workflow_dispatch:
 
 permissions:
