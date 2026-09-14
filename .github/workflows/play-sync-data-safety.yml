@@ -34,52 +34,18 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import csv
-          import html
-          import io
-          import json
-          import os
-          import re
-          import sys
-          import urllib.error
-          import urllib.request
+          import csv, io, json, os, urllib.error, urllib.request
 
-          help_url = "https://support.google.com/googleplay/android-developer/answer/10787469?hl=en"
           package = os.environ["PACKAGE_NAME"]
           token = os.environ["ACCESS_TOKEN"]
+          template_url = "https://storage.googleapis.com/support-kms-prod/b5v9It2EgwrgyY1gPFVB3jPUypc5lL3oNg2G"
 
-          # Pull Google's current official template instead of pinning an old copy.
-          with urllib.request.urlopen(help_url, timeout=30) as response:
-              help_html = response.read().decode("utf-8", errors="replace")
-          help_html = html.unescape(help_html)
-          candidates = re.findall(
-              r'https://storage\.googleapis\.com/support-kms-prod/[A-Za-z0-9_-]+',
-              help_html,
-          )
-          if not candidates:
-              raise SystemExit("Could not locate Google's current Data Safety CSV template link")
+          with urllib.request.urlopen(template_url, timeout=30) as response:
+              text = response.read().decode("utf-8-sig")
+          if "Question ID (machine readable)" not in text:
+              raise SystemExit("Official Google Data Safety CSV did not have the expected header")
 
-          template_bytes = None
-          template_url = None
-          for candidate in dict.fromkeys(candidates):
-              try:
-                  with urllib.request.urlopen(candidate, timeout=30) as response:
-                      body = response.read()
-                  decoded = body.decode("utf-8-sig")
-                  if "Question ID (machine readable)" in decoded and "Response value" in decoded:
-                      template_bytes = body
-                      template_url = candidate
-                      break
-              except Exception:
-                  continue
-          if template_bytes is None:
-              raise SystemExit("Located Google storage links, but none was the Data Safety CSV template")
-
-          text = template_bytes.decode("utf-8-sig")
-          reader = csv.reader(io.StringIO(text))
-          rows = list(reader)
-          if not rows or len(rows[0]) < 5:
-              raise SystemExit("Unexpected Data Safety CSV template shape")
+          rows = list(csv.reader(io.StringIO(text)))
           header = rows[0]
           q_col = header.index("Question ID (machine readable)")
           r_col = header.index("Response ID (machine readable)")
@@ -87,38 +53,28 @@ jobs:
           req_col = header.index("Answer requirement")
           label_col = header.index("Human-friendly question label")
 
-          # Start from a clean response column while preserving Google's current schema/labels.
           for row in rows[1:]:
               while len(row) < len(header):
                   row.append("")
               row[v_col] = ""
 
           def matches(question_id, response_id=None):
-              out = []
-              for row in rows[1:]:
-                  if row[q_col] != question_id:
-                      continue
-                  if response_id is not None and row[r_col] != response_id:
-                      continue
-                  out.append(row)
-              return out
+              return [row for row in rows[1:]
+                      if row[q_col] == question_id
+                      and (response_id is None or row[r_col] == response_id)]
 
           def set_value(question_id, response_id, value, required=True):
               found = matches(question_id, response_id)
               if not found:
                   if required:
-                      raise SystemExit(f"Current Google template is missing {question_id} / {response_id!r}")
+                      raise SystemExit(f"Google template missing {question_id} / {response_id!r}")
                   return False
               for row in found:
                   row[v_col] = value
               return True
 
-          # Top-level collection/security answers.
           set_value("PSL_DATA_COLLECTION_COLLECTS_PERSONAL_DATA", "", "TRUE")
           set_value("PSL_DATA_COLLECTION_ENCRYPTED_IN_TRANSIT", "", "TRUE")
-
-          # Gold Rush has no account or first-party server-side profile. These questions have
-          # changed over time, so fill them when present in Google's current template.
           set_value("PSL_SUPPORTED_ACCOUNT_CREATION_METHODS", "PSL_ACM_NONE", "TRUE", required=False)
           set_value("PSL_HAS_OUTSIDE_APP_ACCOUNTS", "", "FALSE", required=False)
           set_value("PSL_SUPPORT_DATA_DELETION_BY_USER", "DATA_DELETION_NO", "TRUE", required=False)
@@ -129,42 +85,24 @@ jobs:
               ("PSL_DATA_TYPES_APP_PERFORMANCE", "PSL_PERFORMANCE_DIAGNOSTICS"),
               ("PSL_DATA_TYPES_IDENTIFIERS", "PSL_DEVICE_ID"),
           ]
-
-          purpose_ids = [
-              "PSL_ANALYTICS",
-              "PSL_FRAUD_PREVENTION_SECURITY",
-              "PSL_ADVERTISING",
-          ]
+          purposes = ["PSL_ANALYTICS", "PSL_FRAUD_PREVENTION_SECURITY", "PSL_ADVERTISING"]
 
           for group_id, data_id in selected_types:
               set_value(group_id, data_id, "TRUE")
               prefix = f"PSL_DATA_USAGE_RESPONSES:{data_id}:"
-              set_value(
-                  prefix + "PSL_DATA_USAGE_COLLECTION_AND_SHARING",
-                  "PSL_DATA_USAGE_ONLY_COLLECTED",
-                  "TRUE",
-              )
-              set_value(
-                  prefix + "PSL_DATA_USAGE_COLLECTION_AND_SHARING",
-                  "PSL_DATA_USAGE_ONLY_SHARED",
-                  "TRUE",
-              )
+              set_value(prefix + "PSL_DATA_USAGE_COLLECTION_AND_SHARING", "PSL_DATA_USAGE_ONLY_COLLECTED", "TRUE")
+              set_value(prefix + "PSL_DATA_USAGE_COLLECTION_AND_SHARING", "PSL_DATA_USAGE_ONLY_SHARED", "TRUE")
               set_value(prefix + "PSL_DATA_USAGE_EPHEMERAL", "", "FALSE")
-              set_value(
-                  prefix + "DATA_USAGE_USER_CONTROL",
-                  "PSL_DATA_USAGE_USER_CONTROL_REQUIRED",
-                  "TRUE",
-              )
-              for purpose in purpose_ids:
+              set_value(prefix + "DATA_USAGE_USER_CONTROL", "PSL_DATA_USAGE_USER_CONTROL_REQUIRED", "TRUE")
+              for purpose in purposes:
                   set_value(prefix + "DATA_USAGE_COLLECTION_PURPOSE", purpose, "TRUE")
                   set_value(prefix + "DATA_USAGE_SHARING_PURPOSE", purpose, "TRUE")
 
-          # Fail before touching Play if Google's current template adds a new unconditional
-          # required question we have not consciously answered.
-          missing_required = []
-          for row in rows[1:]:
-              if row[req_col] == "REQUIRED" and not row[v_col].strip():
-                  missing_required.append((row[q_col], row[r_col], row[label_col]))
+          missing_required = [
+              (row[q_col], row[r_col], row[label_col])
+              for row in rows[1:]
+              if row[req_col] == "REQUIRED" and not row[v_col].strip()
+          ]
           if missing_required:
               print("Unanswered current-template REQUIRED rows:")
               for item in missing_required:
@@ -172,15 +110,12 @@ jobs:
               raise SystemExit(2)
 
           output = io.StringIO()
-          writer = csv.writer(output, lineterminator="\n")
-          writer.writerows(rows)
+          csv.writer(output, lineterminator="\n").writerows(rows)
           safety_csv = output.getvalue()
 
           print(f"Official template rows: {len(rows) - 1}")
           print("Selected data types: approximate location, app interactions, diagnostics, device/other IDs")
           print("Purposes: advertising/marketing, analytics, fraud prevention/security/compliance")
-          print("Encrypted in transit: yes")
-          print("Developer-operated deletion request mechanism: no")
 
           payload = json.dumps({"safetyLabels": safety_csv}).encode("utf-8")
           endpoint = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{package}/dataSafety"
@@ -188,21 +123,17 @@ jobs:
               endpoint,
               data=payload,
               method="POST",
-              headers={
-                  "Authorization": f"Bearer {token}",
-                  "Content-Type": "application/json; charset=utf-8",
-              },
+              headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json; charset=utf-8"},
           )
           try:
               with urllib.request.urlopen(request, timeout=60) as response:
-                  response_body = response.read().decode("utf-8", errors="replace")
                   print(f"Data Safety API HTTP {response.status}")
-                  if response_body:
-                      print(response_body)
+                  body = response.read().decode("utf-8", errors="replace")
+                  if body:
+                      print(body)
           except urllib.error.HTTPError as exc:
-              error_body = exc.read().decode("utf-8", errors="replace")
               print(f"Data Safety API HTTP {exc.code}")
-              print(error_body)
+              print(exc.read().decode("utf-8", errors="replace"))
               raise
 
           print("DATA_SAFETY_SYNC_SUCCESS")
