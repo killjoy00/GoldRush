@@ -34,6 +34,7 @@ Current checkpoint: the Android client implements the shipped Gold Rush rules, P
 - English title, short description, and full description synced through the Play Developer API.
 - Default language, contact website, and contact email configured through the Play Developer API.
 - Play Store icon uploaded from the existing production artwork and verified live (`icon=1`).
+- 1024×500 RGB Play feature graphic generated from the shipping Gold Rush visual language, visually reviewed, uploaded, and verified live (`featureGraphic=1`).
 
 ## External release work still required
 
@@ -50,7 +51,6 @@ The Android AdMob app entry and banner identifiers are already wired in code. Be
 ### Store assets / QA
 
 - Generate and upload Android phone screenshots from the release-equivalent build. The Play API currently reports `phoneScreenshots=0`.
-- Generate and upload the 1024×500 Play feature graphic. The Play API currently reports `featureGraphic=0`.
 - Exercise Dealt/Drafted x Together/Take Turns in both pass-and-play and Prospector modes on physical Android hardware.
 - Rotate the device and background/restore during both a split and handoff to verify active-game restoration and hidden-information boundaries.
 - Test Billing through a Play internal-testing account, including purchase, reinstall/restore, pending purchase, and refund/revocation behavior.
