@@ -19,9 +19,9 @@ android {
         applicationId = "com.killjoy00.goldrush"
         minSdk = 26
         targetSdk = 36
-        // versionCode 2 is the first Gold Rush build accepted by Google Play.
-        // Every later Play upload must use a strictly higher version code.
-        versionCode = 2
+        // versionCode 2 is already consumed by Google Play. This compliance
+        // follow-up is the next Play-deliverable Android build.
+        versionCode = 3
         versionName = "1.5"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
