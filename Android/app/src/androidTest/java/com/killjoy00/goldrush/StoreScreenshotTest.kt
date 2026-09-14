@@ -6,9 +6,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.fetchSemanticsNodes
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -37,8 +35,12 @@ class StoreScreenshotTest {
     val composeRule = createComposeRule()
 
     private val scoringCardMatcher = SemanticsMatcher("clickable scoring card") { node ->
-        val clickable = node.config.getOrNull(SemanticsActions.OnClick) != null
-        val texts = node.config.getOrNull(SemanticsProperties.Text).orEmpty()
+        val clickable = node.config.contains(SemanticsActions.OnClick)
+        val texts = if (node.config.contains(SemanticsProperties.Text)) {
+            node.config[SemanticsProperties.Text]
+        } else {
+            emptyList()
+        }
         clickable && texts.any { SCORING_CODE.matches(it.text) }
     }
 
