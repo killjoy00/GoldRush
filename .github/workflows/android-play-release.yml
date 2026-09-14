@@ -2,6 +2,8 @@ name: Android Play release
 
 on:
   workflow_dispatch:
+  push:
+    branches: ["play-release"]
 
 permissions:
   contents: read
