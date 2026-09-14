@@ -1,10 +1,6 @@
 name: Sync Play Store listing
 
 on:
-  push:
-    branches: ["android-play-listing-sync"]
-    paths:
-      - ".github/workflows/play-sync-store-listing.yml"
   workflow_dispatch:
 
 permissions:
