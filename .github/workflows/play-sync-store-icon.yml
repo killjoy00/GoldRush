@@ -1,0 +1,130 @@
+name: Sync Play Store icon
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare 512px Play Store icon
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          source = Path("App/GoldRush/Assets.xcassets/AppIcon.appiconset/icon-1024.png")
+          output = Path("/tmp/goldrush-play-icon.png")
+          image = Image.open(source)
+          if image.size != (1024, 1024):
+              raise SystemExit(f"Unexpected source icon dimensions: {image.size}")
+          image = image.convert("RGB")
+          image = image.resize((512, 512), Image.Resampling.LANCZOS)
+          image.save(output, format="PNG", optimize=True)
+          check = Image.open(output)
+          if check.size != (512, 512):
+              raise SystemExit(f"Bad Play icon dimensions: {check.size}")
+          if output.stat().st_size > 1024 * 1024:
+              raise SystemExit(f"Play icon exceeds 1 MiB: {output.stat().st_size} bytes")
+          print(f"Prepared Play icon: {output.stat().st_size} bytes, mode={check.mode}, size={check.size}")
+          PY
+
+      - name: Authenticate to Google Play Developer API
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Upload and verify store icon
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PACKAGE_NAME: com.killjoy00.goldrush
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          upload_base="https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          work="$(mktemp -d)"
+          edit_id=""
+
+          cleanup() {
+            if [ -n "$edit_id" ]; then
+              curl -sS -X DELETE \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                "${base}/edits/${edit_id}" >/dev/null || true
+            fi
+            rm -rf "$work"
+          }
+          trap cleanup EXIT
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits" > "$work/edit.json"
+          edit_id="$(jq -r '.id' "$work/edit.json")"
+          test -n "$edit_id" && test "$edit_id" != "null"
+
+          curl --fail-with-body -sS \
+            -X DELETE \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/listings/en-US/icon" > "$work/delete.json"
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: image/png" \
+            --data-binary @/tmp/goldrush-play-icon.png \
+            "${upload_base}/edits/${edit_id}/listings/en-US/icon?uploadType=media" \
+            > "$work/upload.json"
+
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/listings/en-US/icon" > "$work/list.json"
+          count="$(jq '(.images // []) | length' "$work/list.json")"
+          test "$count" -eq 1
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits/${edit_id}:validate" > "$work/validated.json"
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits/${edit_id}:commit" > "$work/committed.json"
+          edit_id=""
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits" > "$work/verify-edit.json"
+          edit_id="$(jq -r '.id' "$work/verify-edit.json")"
+
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/listings/en-US/icon" > "$work/final-list.json"
+          final_count="$(jq '(.images // []) | length' "$work/final-list.json")"
+          test "$final_count" -eq 1
+
+          echo "Play Store icon synced successfully."
+          echo "icon=${final_count}"

@@ -1,0 +1,73 @@
+name: Google Play assets audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Authenticate to Google Play Developer API
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Inspect live store graphics
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PACKAGE_NAME: com.killjoy00.goldrush
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          work="$(mktemp -d)"
+          edit_id=""
+
+          cleanup() {
+            if [ -n "$edit_id" ]; then
+              curl -sS -X DELETE \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                "${base}/edits/${edit_id}" >/dev/null || true
+            fi
+            rm -rf "$work"
+          }
+          trap cleanup EXIT
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits" > "$work/edit.json"
+          edit_id="$(jq -r '.id' "$work/edit.json")"
+          test -n "$edit_id" && test "$edit_id" != "null"
+
+          count_images() {
+            image_type="$1"
+            output="$work/${image_type}.json"
+            curl --fail-with-body -sS \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              "${base}/edits/${edit_id}/listings/en-US/${image_type}" > "$output"
+            jq '(.images // []) | length' "$output"
+          }
+
+          icon_count="$(count_images icon)"
+          feature_count="$(count_images featureGraphic)"
+          phone_count="$(count_images phoneScreenshots)"
+          seven_count="$(count_images sevenInchScreenshots)"
+          ten_count="$(count_images tenInchScreenshots)"
+
+          echo "Google Play store graphics audit:"
+          echo "icon=${icon_count}"
+          echo "featureGraphic=${feature_count}"
+          echo "phoneScreenshots=${phone_count}"
+          echo "sevenInchScreenshots=${seven_count}"
+          echo "tenInchScreenshots=${ten_count}"
