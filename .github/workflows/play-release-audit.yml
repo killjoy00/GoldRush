@@ -31,6 +31,8 @@ jobs:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           PACKAGE_NAME: com.killjoy00.goldrush
           PRODUCT_ID: com.killjoy00.goldrush.removeads
+          EXPECTED_CONTACT_WEBSITE: https://killjoy00.github.io/
+          EXPECTED_CONTACT_EMAIL: killjoy00@yahoo.com
         shell: bash
         run: |
           set -euo pipefail
@@ -116,6 +118,23 @@ jobs:
             -H "Authorization: Bearer ${ACCESS_TOKEN}" \
             "${base}/edits/${edit_id}/details" > "$work/details.json"
 
+          default_language="$(jq -r '.defaultLanguage // ""' "$work/details.json")"
+          contact_website="$(jq -r '.contactWebsite // ""' "$work/details.json")"
+          contact_email="$(jq -r '.contactEmail // ""' "$work/details.json")"
+
+          if [ "$default_language" != "en-US" ]; then
+            echo "::error::Default Play language drifted from en-US."
+            exit 1
+          fi
+          if [ "$contact_website" != "$EXPECTED_CONTACT_WEBSITE" ]; then
+            echo "::error::Play contact website does not match the expected website."
+            exit 1
+          fi
+          if [ "$contact_email" != "$EXPECTED_CONTACT_EMAIL" ]; then
+            echo "::error::Play contact email does not match the expected contact."
+            exit 1
+          fi
+
           tester_status="unknown"
           if curl --fail-with-body -sS \
             -H "Authorization: Bearer ${ACCESS_TOKEN}" \
@@ -128,7 +147,7 @@ jobs:
           echo "Internal completed versionCode: ${expected_version_code}"
           echo "Remove Ads: ACTIVE / USD 2.99"
           echo "English listing: matches repository"
-          echo "Default language: $(jq -r '.defaultLanguage // "not-returned"' "$work/details.json")"
-          echo "Contact website configured: $(jq '(.contactWebsite // "") != ""' "$work/details.json")"
-          echo "Contact email configured: $(jq '(.contactEmail // "") != ""' "$work/details.json")"
+          echo "Default language: en-US"
+          echo "Contact website configured: true"
+          echo "Contact email configured: true"
           echo "Internal tester API status: ${tester_status}"
