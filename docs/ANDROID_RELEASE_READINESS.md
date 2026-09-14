@@ -1,6 +1,6 @@
 # Android release readiness
 
-Current checkpoint: the Android client implements the shipped Gold Rush rules, Prospector AI, career stats, Claim Journal, My Claim/Tableau, persisted setup choices, active-game restoration, Play Billing Remove Ads, Google Mobile Ads, UMP consent handling, Play In-App Review, adaptive/themed launcher icons, and CI release bundle builds. The first Android bundle has been accepted by Google Play and is rolled out on Internal testing; the Remove Ads product, listing metadata, and required Play store graphics are live. No production release has been created yet.
+Current checkpoint: the Android client implements the shipped Gold Rush rules, Prospector AI, career stats, Claim Journal, My Claim/Tableau, persisted setup choices, active-game restoration, Play Billing Remove Ads, Google Mobile Ads, UMP consent handling, Play In-App Review, adaptive/themed launcher icons, and CI release bundle builds. Android 1.5 / versionCode 3 is completed on Google Play Internal testing; the Remove Ads product, listing metadata, required Play store graphics, and in-app privacy-policy link are live. No production release has been created yet.
 
 ## Ready in-repo
 
@@ -11,7 +11,7 @@ Current checkpoint: the Android client implements the shipped Gold Rush rules, P
 - Active local/Prospector games restore from a deterministic seed + action transcript after rotation or process recreation.
 - Release R8 minification and resource shrinking are enabled and exercised by CI.
 - Android public version name is aligned with iOS at `1.5`.
-- Version code 2 is the first bundle accepted by Google Play; every later Play build must use a higher version code.
+- Version code 3 is the current Internal-testing build. Any later Play binary must use version code 4 or higher.
 - Explicit backup policy: career/setup preferences may restore, while the active-game transcript is excluded from cloud backup and device transfer.
 - Play In-App Review follows the iOS prompt policy: only after a win, after at least three completed games, and at most once per app version.
 - Debug APK artifact and release AAB artifact.
@@ -20,17 +20,17 @@ Current checkpoint: the Android client implements the shipped Gold Rush rules, P
 - Adaptive launcher icon with monochrome themed-icon layer.
 - Career and setup persistence through Preferences DataStore.
 - Android Lint runs against the release variant in CI and archives its report.
-- `Android Play release` verifies the upload certificate, signs the release AAB, archives release artifacts, and uploads future releases to Google Play Internal testing using the stored service-account credential.
+- Android menu/footer includes a direct Privacy Policy action linking to `https://killjoy00.github.io/GoldRush/privacy.html`.
+- `Android Play release` verifies the upload certificate, signs the release AAB, archives release artifacts, and uploads releases to Google Play Internal testing using the stored service-account credential.
 - `Android Play screenshots` can manually regenerate, validate, archive, and sync the four real Compose phone screenshots to Play.
-- `Google Play release audit` now performs a broad read-only audit of the live bundle, tracks, listing/contact metadata, required graphics, Remove Ads state/pricing/regions, tester-Google-Group visibility, and country-availability API responses.
+- `Google Play release audit` performs a broad read-only audit of the live bundle, tracks, listing/contact metadata, required graphics, Remove Ads state/pricing/regions, tester-Google-Group visibility, and country-availability API responses.
 
 ## Google Play configuration completed
 
 - Play app/package configured as `com.killjoy00.goldrush`.
 - Upload certificate established. Expected SHA-1: `8A:D5:7A:08:05:70:96:CD:6F:D4:70:39:EA:86:1C:E1:63:E3:AC:26`.
-- Version code 2 / version 1.5 accepted by Google Play.
-- Play Developer API confirms exactly one current uploaded bundle and confirms version code 2 is present.
-- Play Developer API confirms version code 2 is on the `internal` track with release status `completed`.
+- Android 1.5 / version code 3 uploaded through the guarded GitHub release workflow.
+- Post-upload Play Developer API readback confirms version code 3 is on the `internal` track with release status `completed`.
 - Production track exists but currently has **zero releases**; Gold Rush has not been rolled out to production.
 - Play Developer API service account connected via GitHub Actions.
 - Remove Ads product `com.killjoy00.goldrush.removeads` created and active.
@@ -50,17 +50,18 @@ The Android Publisher API does not expose every Play Console declaration. The re
 
 ### Google Play Console
 
-1. Confirm the intended Google account is present in the Internal testing email list and that the tester opt-in/install link works. The Android Publisher Testers API exposes Google Groups but does **not** expose Play Console email-list testers; the latest audit found zero Google Groups, which says nothing about email-list membership.
+1. Confirm the intended Google account is present in the Internal testing email list and that the tester opt-in/install link works. The Android Publisher Testers API exposes Google Groups but does **not** expose Play Console email-list testers.
 2. Under **Policy and programs → App content**, complete or verify: Privacy policy, Ads declaration, App access, Target audience and content, Content rating, and Data Safety.
-3. Open the configured public privacy-policy URL once and confirm it loads the current Gold Rush policy. Repository/Pages configuration is present, but the final public HTTP response was not independently verified by this audit environment.
+3. Open `https://killjoy00.github.io/GoldRush/privacy.html` once in a normal browser and confirm it loads the current Gold Rush policy, then save that URL in the Play Privacy policy declaration.
 4. Review production country/device availability and distribution settings in Play Console. The country-availability API did not return usable production targeting data before a production release exists.
 5. Resolve every production-review error or warning shown by Play Console before starting production rollout.
 6. Keep Production empty until the physical-device/internal-test QA below passes.
-7. Any later binary must increment `versionCode` to at least 3 before running `Android Play release`.
+7. Any later binary must increment `versionCode` to at least 4 before running `Android Play release`.
 
 ### Physical-device / Play-delivered QA
 
-- Install from the Google Play Internal testing opt-in/install flow on a physical Android device.
+- Install/update to versionCode 3 from the Google Play Internal testing opt-in/install flow on a physical Android device.
+- Confirm the new Privacy Policy action opens the public Gold Rush policy.
 - Confirm the menu shows the localized Remove Ads price returned by Play.
 - Confirm banner ads appear only on intended non-gameplay surfaces before purchase and never during an active game.
 - Complete a test Remove Ads purchase; verify immediate removal, force-close/reopen persistence, reinstall ownership restore, and explicit Restore Purchase behavior.
