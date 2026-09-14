@@ -4,8 +4,8 @@ This is the short manual-only checklist after the September 14, 2026 Play Develo
 
 ## Play Console — manual declarations
 
-- [ ] **Internal testing:** confirm the intended Google account is in the tester email list and the opt-in/install link works. Play's Testers API exposes Google Groups, not Play Console email lists.
-- [ ] **Privacy policy:** open the configured public privacy-policy URL and confirm the current Gold Rush policy loads.
+- [ ] **Internal testing:** confirm the intended Google account is in the tester email list and the opt-in/install link works.
+- [ ] **Privacy policy:** open `https://killjoy00.github.io/GoldRush/privacy.html`, confirm the current Gold Rush policy loads, and save that URL in App content → Privacy policy.
 - [ ] **App content → Ads:** confirm **Yes, contains ads**.
 - [ ] **App content → App access:** confirm the app does not require restricted login/access.
 - [ ] **App content → Target audience and content:** complete/verify the intended age selections and child-directed status.
@@ -16,7 +16,8 @@ This is the short manual-only checklist after the September 14, 2026 Play Develo
 
 ## Physical Android / Play-delivered QA
 
-- [ ] Install from the Google Play Internal testing flow on a physical Android device.
+- [ ] Install/update to **versionCode 3** from Google Play Internal testing on a physical Android device.
+- [ ] Confirm the in-app **Privacy Policy** action opens the current public policy.
 - [ ] Confirm the localized Remove Ads price appears.
 - [ ] Confirm banner ads appear only on intended non-gameplay surfaces and never during an active game.
 - [ ] Buy Remove Ads with a test account and confirm the banner disappears immediately.
@@ -33,4 +34,4 @@ This is the short manual-only checklist after the September 14, 2026 Play Develo
 ## Release guardrails
 
 - Production currently has **zero releases**. Keep it that way until the checklist above passes.
-- Version code 2 is already consumed by Play. Any new binary must use **versionCode 3 or higher**.
+- **Version code 3 is already consumed by Play. Any new binary must use versionCode 4 or higher.**
