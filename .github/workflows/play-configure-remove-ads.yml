@@ -1,0 +1,183 @@
+name: Configure Play Remove Ads
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/play-configure-remove-ads.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check Play credentials
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:-}" ]; then
+            echo "::error::Missing GitHub Actions secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"
+            exit 1
+          fi
+
+      - name: Authenticate to Google Play Developer API
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+
+      - name: Create or activate Remove Ads
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PACKAGE_NAME: com.killjoy00.goldrush
+          PRODUCT_ID: com.killjoy00.goldrush.removeads
+          DEFAULT_USD_UNITS: "2"
+          DEFAULT_USD_NANOS: "990000000"
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+
+          api_get() {
+            curl -sS \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "Accept: application/json" \
+              "$1"
+          }
+
+          status="$(curl -sS -o "$work/current.json" -w '%{http_code}' \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Accept: application/json" \
+            "${base}/oneTimeProducts/${PRODUCT_ID}")"
+
+          needs_config=0
+          purchase_option_id=""
+
+          if [ "$status" = "200" ]; then
+            purchase_option_id="$(jq -r '[.purchaseOptions[]? | select(.buyOption != null)][0].purchaseOptionId // empty' "$work/current.json")"
+            title="$(jq -r '[.listings[]? | select(.languageCode == "en-US")][0].title // empty' "$work/current.json")"
+            config_count="$(jq '[.purchaseOptions[]? | select(.buyOption != null)][0].regionalPricingAndAvailabilityConfigs // [] | length' "$work/current.json")"
+            if [ -z "$purchase_option_id" ] || [ -z "$title" ] || [ "$config_count" -eq 0 ]; then
+              needs_config=1
+              purchase_option_id="buy"
+            fi
+          elif [ "$status" = "404" ]; then
+            needs_config=1
+            purchase_option_id="buy"
+          else
+            echo "::error::Could not read current Play product (HTTP ${status})."
+            cat "$work/current.json"
+            exit 1
+          fi
+
+          if [ "$needs_config" -eq 1 ]; then
+            jq -n \
+              --arg units "$DEFAULT_USD_UNITS" \
+              --argjson nanos "$DEFAULT_USD_NANOS" \
+              '{price:{currencyCode:"USD",units:$units,nanos:$nanos}}' > "$work/convert-request.json"
+
+            curl --fail-with-body -sS \
+              -X POST \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data-binary @"$work/convert-request.json" \
+              "${base}/pricing:convertRegionPrices" > "$work/prices.json"
+
+            region_version="$(jq -r '.regionVersion.version' "$work/prices.json")"
+            if [ -z "$region_version" ] || [ "$region_version" = "null" ]; then
+              echo "::error::Google Play did not return a regions version."
+              cat "$work/prices.json"
+              exit 1
+            fi
+
+            jq -n \
+              --arg package "$PACKAGE_NAME" \
+              --arg product "$PRODUCT_ID" \
+              --arg option "$purchase_option_id" \
+              --slurpfile prices "$work/prices.json" \
+              '{
+                packageName:$package,
+                productId:$product,
+                listings:[{
+                  languageCode:"en-US",
+                  title:"Remove Ads",
+                  description:"Permanently remove banner ads from Gold Rush."
+                }],
+                purchaseOptions:[{
+                  purchaseOptionId:$option,
+                  regionalPricingAndAvailabilityConfigs:($prices[0].convertedRegionPrices | to_entries | map({
+                    regionCode:.value.regionCode,
+                    price:.value.price,
+                    availability:"AVAILABLE"
+                  })),
+                  newRegionsConfig:{
+                    usdPrice:$prices[0].convertedOtherRegionsPrice.usdPrice,
+                    eurPrice:$prices[0].convertedOtherRegionsPrice.eurPrice,
+                    availability:"AVAILABLE"
+                  },
+                  buyOption:{
+                    legacyCompatible:true,
+                    multiQuantityEnabled:false
+                  }
+                }]
+              }' > "$work/product.json"
+
+            encoded_region_version="$(python3 -c 'import os,urllib.parse; print(urllib.parse.quote(os.environ["REGION_VERSION"], safe=""))' REGION_VERSION="$region_version" 2>/dev/null || true)"
+            if [ -z "$encoded_region_version" ]; then
+              encoded_region_version="$region_version"
+            fi
+
+            curl --fail-with-body -sS \
+              -X PATCH \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data-binary @"$work/product.json" \
+              "${base}/onetimeproducts/${PRODUCT_ID}?allowMissing=true&updateMask=listings%2CpurchaseOptions&regionsVersion.version=${encoded_region_version}" \
+              > "$work/upsert.json"
+          fi
+
+          activation="$(jq -n \
+            --arg package "$PACKAGE_NAME" \
+            --arg product "$PRODUCT_ID" \
+            --arg option "$purchase_option_id" \
+            '{requests:[{activatePurchaseOptionRequest:{packageName:$package,productId:$product,purchaseOptionId:$option}}]}')"
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data-binary "$activation" \
+            "${base}/oneTimeProducts/${PRODUCT_ID}/purchaseOptions:batchUpdateStates" \
+            > "$work/activated.json"
+
+          api_get "${base}/oneTimeProducts/${PRODUCT_ID}" > "$work/final.json"
+
+          state="$(jq -r --arg option "$purchase_option_id" '.purchaseOptions[] | select(.purchaseOptionId == $option) | .state' "$work/final.json")"
+          title="$(jq -r '[.listings[] | select(.languageCode == "en-US")][0].title' "$work/final.json")"
+          us_price="$(jq -r --arg option "$purchase_option_id" '.purchaseOptions[] | select(.purchaseOptionId == $option) | [.regionalPricingAndAvailabilityConfigs[] | select(.regionCode == "US")][0].price | ((.units // "0") + "." + (((.nanos // 0) / 10000000 | floor) | tostring | if length == 1 then "0" + . else . end))' "$work/final.json")"
+
+          if [ "$state" != "ACTIVE" ]; then
+            echo "::error::Remove Ads purchase option is not ACTIVE; Play returned state '${state}'."
+            exit 1
+          fi
+          if [ "$title" != "Remove Ads" ]; then
+            echo "::error::Unexpected Remove Ads listing title '${title}'."
+            exit 1
+          fi
+
+          echo "Remove Ads configured successfully."
+          echo "Product: ${PRODUCT_ID}"
+          echo "Purchase option: ${purchase_option_id}"
+          echo "State: ${state}"
+          echo "US price: USD ${us_price}"
