@@ -12,6 +12,8 @@ These answers describe the current Android release: local gameplay/persistence, 
 
 ## Data types to declare for AdMob
 
+Google's current disclosure for Google Mobile Ads SDK 25.4.0 says the SDK automatically collects and shares IP address, user product interactions, diagnostic information, and device/account identifiers for advertising, analytics, and fraud-prevention purposes. The Play form maps those to the declarations below.
+
 ### Approximate location
 - Collected: **Yes**
 - Shared: **Yes**
@@ -30,7 +32,8 @@ These answers describe the current Android release: local gameplay/persistence, 
 - Collected: **Yes**
 - Shared: **Yes**
 - Required when ads are enabled
-- Purposes: **Analytics; Fraud prevention, security and compliance**
+- Purposes: **Advertising or marketing; Analytics; Fraud prevention, security and compliance**
+- Basis: the SDK records performance/diagnostic information such as app launch time, hang rate, and energy usage.
 
 ### Device or other IDs
 - Collected: **Yes**
