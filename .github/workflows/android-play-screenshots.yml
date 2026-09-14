@@ -1,0 +1,83 @@
+name: Android Play screenshots
+
+on:
+  push:
+    branches: ["android-store-screenshots"]
+    paths:
+      - "Android/**"
+      - ".github/workflows/android-play-screenshots.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Install screenshot image tools
+        run: python3 -m pip install --quiet pillow
+
+      - name: Capture real Compose UI on Pixel 2 emulator
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect -camera-back none
+          script: |
+            set -euo pipefail
+            gradle -p Android :app:connectedDebugAndroidTest \
+              -Pandroid.testInstrumentationRunnerArguments.class=com.killjoy00.goldrush.StoreScreenshotTest \
+              --no-daemon --stacktrace
+
+            mkdir -p generated/play-store/android-phone
+            adb pull /sdcard/Android/data/com.killjoy00.goldrush/files/play-store/. generated/play-store/android-phone/
+
+            python3 - <<'PY'
+            from pathlib import Path
+            from PIL import Image
+
+            directory = Path("generated/play-store/android-phone")
+            expected = [
+                "01-play-your-way.png",
+                "02-draft-scoring-plan.png",
+                "03-split-the-claim.png",
+                "04-choose-a-pile.png",
+            ]
+
+            for name in expected:
+                path = directory / name
+                if not path.is_file():
+                    raise SystemExit(f"Missing screenshot: {path}")
+                with Image.open(path) as source:
+                    image = source.convert("RGB")
+                    width, height = image.size
+                    if min(width, height) < 320 or max(width, height) > 3840:
+                        raise SystemExit(f"Play screenshot dimensions out of range: {name} {image.size}")
+                    if max(width, height) > 2 * min(width, height):
+                        raise SystemExit(f"Play screenshot aspect ratio exceeds 2:1: {name} {image.size}")
+                    image.save(path, format="PNG", optimize=True)
+                    print(f"Validated {name}: {width}x{height}")
+            PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gold-rush-android-play-screenshots
+          path: generated/play-store/android-phone/*.png
+          if-no-files-found: error
+          retention-days: 14
