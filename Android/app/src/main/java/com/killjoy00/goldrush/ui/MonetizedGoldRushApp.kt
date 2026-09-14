@@ -1,6 +1,8 @@
 package com.killjoy00.goldrush.ui
 
 import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +32,8 @@ import com.killjoy00.goldrush.ads.AdMobBanner
 import com.killjoy00.goldrush.ads.AdsConsentManager
 import com.killjoy00.goldrush.billing.RemoveAdsStore
 import com.killjoy00.goldrush.session.ActiveGameSessionRepository
+
+private const val PRIVACY_POLICY_URL = "https://killjoy00.github.io/GoldRush/privacy.html"
 
 /**
  * Android-only shell around the game UI. Monetization stays outside the game
@@ -89,32 +93,40 @@ fun MonetizedGoldRushApp(adsConsentManager: AdsConsentManager) {
                             )
                         }
 
-                        if ((!removeAdsState.isPurchased && removeAdsState.price != null) ||
-                            adsConsentState.privacyOptionsRequired
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .navigationBarsPadding(),
+                            horizontalArrangement = Arrangement.Center,
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .navigationBarsPadding(),
-                                horizontalArrangement = Arrangement.Center,
-                            ) {
-                                if (!removeAdsState.isPurchased && removeAdsState.price != null) {
-                                    TextButton(onClick = { showRemoveAds = true }) {
-                                        Text(
-                                            "REMOVE ADS",
-                                            color = GoldRushColors.Parchment.copy(alpha = .72f),
-                                        )
-                                    }
+                            if (!removeAdsState.isPurchased && removeAdsState.price != null) {
+                                TextButton(onClick = { showRemoveAds = true }) {
+                                    Text(
+                                        "REMOVE ADS",
+                                        color = GoldRushColors.Parchment.copy(alpha = .72f),
+                                    )
                                 }
-                                if (adsConsentState.privacyOptionsRequired) {
-                                    TextButton(
-                                        onClick = { activity?.let(adsConsentManager::showPrivacyOptions) }
-                                    ) {
-                                        Text(
-                                            "PRIVACY CHOICES",
-                                            color = GoldRushColors.Parchment.copy(alpha = .72f),
-                                        )
-                                    }
+                            }
+                            TextButton(
+                                onClick = {
+                                    activity?.startActivity(
+                                        Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL))
+                                    )
+                                }
+                            ) {
+                                Text(
+                                    "PRIVACY POLICY",
+                                    color = GoldRushColors.Parchment.copy(alpha = .72f),
+                                )
+                            }
+                            if (adsConsentState.privacyOptionsRequired) {
+                                TextButton(
+                                    onClick = { activity?.let(adsConsentManager::showPrivacyOptions) }
+                                ) {
+                                    Text(
+                                        "PRIVACY CHOICES",
+                                        color = GoldRushColors.Parchment.copy(alpha = .72f),
+                                    )
                                 }
                             }
                         }
