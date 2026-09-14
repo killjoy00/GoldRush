@@ -1,11 +1,6 @@
 name: Sync Play feature graphic
 
 on:
-  push:
-    branches: ["android-feature-graphic"]
-    paths:
-      - "Tools/make_play_feature_graphic.py"
-      - ".github/workflows/play-feature-graphic.yml"
   workflow_dispatch:
 
 permissions:
