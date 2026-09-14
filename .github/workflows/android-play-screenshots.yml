@@ -1,0 +1,150 @@
+name: Android Play screenshots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+
+      - name: Enable KVM for Android emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -e /dev/kvm
+          ls -l /dev/kvm
+
+      - name: Install screenshot image tools
+        run: python3 -m pip install --quiet pillow
+
+      - name: Capture real Compose UI on Pixel 2 emulator
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect -camera-back none
+          script: bash .github/scripts/capture-android-play-screenshots.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gold-rush-android-play-screenshots
+          path: generated/play-store/android-phone/*.png
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Authenticate to Google Play Developer API
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Upload and verify Play phone screenshots
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PACKAGE_NAME: com.killjoy00.goldrush
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          upload_base="https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          work="$(mktemp -d)"
+          edit_id=""
+
+          cleanup() {
+            if [ -n "$edit_id" ]; then
+              curl -sS -X DELETE \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                "${base}/edits/${edit_id}" >/dev/null || true
+            fi
+            rm -rf "$work"
+          }
+          trap cleanup EXIT
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits" > "$work/edit.json"
+          edit_id="$(jq -r '.id' "$work/edit.json")"
+          test -n "$edit_id" && test "$edit_id" != "null"
+
+          curl --fail-with-body -sS \
+            -X DELETE \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/listings/en-US/phoneScreenshots" > "$work/delete.json"
+
+          upload_index=0
+          for file in generated/play-store/android-phone/*.png; do
+            upload_index=$((upload_index + 1))
+            curl --fail-with-body -sS \
+              -X POST \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "Content-Type: image/png" \
+              --data-binary "@${file}" \
+              "${upload_base}/edits/${edit_id}/listings/en-US/phoneScreenshots?uploadType=media" \
+              > "$work/upload-${upload_index}.json"
+          done
+          test "$upload_index" -eq 4
+
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/listings/en-US/phoneScreenshots" > "$work/list.json"
+          count="$(jq '(.images // []) | length' "$work/list.json")"
+          test "$count" -eq 4
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits/${edit_id}:validate" > "$work/validated.json"
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits/${edit_id}:commit" > "$work/committed.json"
+          edit_id=""
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits" > "$work/verify-edit.json"
+          edit_id="$(jq -r '.id' "$work/verify-edit.json")"
+
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/listings/en-US/phoneScreenshots" > "$work/final-list.json"
+          final_count="$(jq '(.images // []) | length' "$work/final-list.json")"
+          test "$final_count" -eq 4
+
+          echo "Play phone screenshots synced successfully."
+          echo "phoneScreenshots=${final_count}"
