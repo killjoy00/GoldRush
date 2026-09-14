@@ -51,12 +51,28 @@ jobs:
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect -camera-back none
           script: |
             set -eu
-            adb shell 'rm -rf /sdcard/Download/goldrush-play && mkdir -p /sdcard/Download/goldrush-play'
-            gradle -p Android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.killjoy00.goldrush.StoreScreenshotTest --no-daemon --stacktrace
+
+            gradle -p Android :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
+
+            app_apk="$(find Android/app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+            test_apk="$(find Android/app/build/outputs/apk/androidTest/debug -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+            test -n "$app_apk"
+            test -n "$test_apk"
+
+            adb install -r "$app_apk"
+            adb install -r "$test_apk"
+
+            instrumentation="$(adb shell pm list instrumentation | sed -n 's/^instrumentation:\([^ ]*\).*target=com.killjoy00.goldrush.*/\1/p' | head -n 1 | tr -d '\r')"
+            test -n "$instrumentation"
+            echo "Using instrumentation: $instrumentation"
+
+            result="$(adb shell am instrument -w -r -e class com.killjoy00.goldrush.StoreScreenshotTest "$instrumentation")"
+            printf '%s\n' "$result"
+            printf '%s\n' "$result" | tr -d '\r' | grep -q '^OK ('
 
             mkdir -p generated/play-store/android-phone
-            adb shell 'ls -l /sdcard/Download/goldrush-play'
-            adb pull /sdcard/Download/goldrush-play/. generated/play-store/android-phone/
+            adb shell 'ls -l /sdcard/Android/data/com.killjoy00.goldrush/files/play-store'
+            adb pull /sdcard/Android/data/com.killjoy00.goldrush/files/play-store/. generated/play-store/android-phone/
 
             python3 - <<'PY'
             from pathlib import Path
