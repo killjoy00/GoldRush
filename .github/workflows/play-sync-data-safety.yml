@@ -75,7 +75,23 @@ jobs:
 
           set_value("PSL_DATA_COLLECTION_COLLECTS_PERSONAL_DATA", "", "TRUE")
           set_value("PSL_DATA_COLLECTION_ENCRYPTED_IN_TRANSIT", "", "TRUE")
-          set_value("PSL_SUPPORTED_ACCOUNT_CREATION_METHODS", "PSL_ACM_NONE", "TRUE", required=False)
+
+          if not set_value("PSL_SUPPORTED_ACCOUNT_CREATION_METHODS", "PSL_ACM_NONE", "TRUE", required=False):
+              account_rows = matches("PSL_SUPPORTED_ACCOUNT_CREATION_METHODS")
+              no_account_rows = [
+                  row for row in account_rows
+                  if "not allow users to create an account" in row[label_col].lower()
+                  or "doesn't allow users to create an account" in row[label_col].lower()
+                  or "does not allow users to create an account" in row[label_col].lower()
+              ]
+              if len(no_account_rows) != 1:
+                  print("Current account-creation rows:")
+                  for row in account_rows:
+                      print(row[r_col], row[label_col])
+                  raise SystemExit("Could not uniquely identify Google's current no-account option")
+              no_account_rows[0][v_col] = "TRUE"
+              print(f"No-account response ID: {no_account_rows[0][r_col]}")
+
           set_value("PSL_HAS_OUTSIDE_APP_ACCOUNTS", "", "FALSE", required=False)
           set_value("PSL_SUPPORT_DATA_DELETION_BY_USER", "DATA_DELETION_NO", "TRUE", required=False)
 
