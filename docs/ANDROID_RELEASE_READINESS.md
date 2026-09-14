@@ -1,6 +1,6 @@
 # Android release readiness
 
-Current checkpoint: the Android client implements the shipped Gold Rush rules, Prospector AI, career stats, Claim Journal, My Claim/Tableau, persisted setup choices, active-game restoration, Play Billing Remove Ads, Google Mobile Ads, UMP consent handling, Play In-App Review, adaptive/themed launcher icons, and CI release bundle builds. The first Android bundle has been accepted by Google Play and the Remove Ads product is active.
+Current checkpoint: the Android client implements the shipped Gold Rush rules, Prospector AI, career stats, Claim Journal, My Claim/Tableau, persisted setup choices, active-game restoration, Play Billing Remove Ads, Google Mobile Ads, UMP consent handling, Play In-App Review, adaptive/themed launcher icons, and CI release bundle builds. The first Android bundle has been accepted by Google Play, is rolled out on Internal testing, and the Remove Ads product is active.
 
 ## Ready in-repo
 
@@ -27,6 +27,7 @@ Current checkpoint: the Android client implements the shipped Gold Rush rules, P
 - Play app/package configured as `com.killjoy00.goldrush`.
 - Upload certificate established. Expected SHA-1: `8A:D5:7A:08:05:70:96:CD:6F:D4:70:39:EA:86:1C:E1:63:E3:AC:26`.
 - Version code 2 / version 1.5 accepted by Google Play.
+- Play Developer API confirms version code 2 is on the `internal` track with release status `completed`.
 - Play Developer API service account connected via GitHub Actions.
 - Remove Ads product `com.killjoy00.goldrush.removeads` created and active.
 - Remove Ads purchase option `buy` active at US `$2.99` with Google-generated regional prices.
@@ -35,10 +36,9 @@ Current checkpoint: the Android client implements the shipped Gold Rush rules, P
 
 ### Google Play Console / release track
 
-1. Confirm version code 2 is actually rolled out to Internal testing, not merely uploaded into a release draft.
-2. Add/verify tester access and install the app from the Play internal-test link.
-3. Complete or verify store listing, content rating, target audience, ads declaration, Data Safety, privacy-policy, and production-track requirements.
-4. Any later binary must increment `versionCode` to at least 3 before running `Android Play release`.
+1. Add/verify tester access and install the app from the Play internal-test link.
+2. Complete or verify store listing, content rating, target audience, ads declaration, Data Safety, privacy-policy, and production-track requirements.
+3. Any later binary must increment `versionCode` to at least 3 before running `Android Play release`.
 
 ### AdMob
 
