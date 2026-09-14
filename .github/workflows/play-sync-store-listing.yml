@@ -1,0 +1,108 @@
+name: Sync Play Store listing
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Play Developer API
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Validate and publish English store listing
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PACKAGE_NAME: com.killjoy00.goldrush
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          work="$(mktemp -d)"
+          edit_id=""
+
+          cleanup() {
+            if [ -n "$edit_id" ]; then
+              curl -sS -X DELETE \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                "${base}/edits/${edit_id}" >/dev/null || true
+            fi
+            rm -rf "$work"
+          }
+          trap cleanup EXIT
+
+          title="$(tr -d '\r\n' < docs/play-store/title.txt)"
+          short="$(tr -d '\r\n' < docs/play-store/short-description.txt)"
+          full="$(cat docs/play-store/full-description.txt)"
+
+          test -n "$title"
+          test -n "$short"
+          test -n "$full"
+
+          if [ "${#title}" -gt 30 ]; then
+            echo "::error::Play title exceeds 30 characters."
+            exit 1
+          fi
+          if [ "${#short}" -gt 80 ]; then
+            echo "::error::Play short description exceeds 80 characters."
+            exit 1
+          fi
+          if [ "${#full}" -gt 4000 ]; then
+            echo "::error::Play full description exceeds 4000 characters."
+            exit 1
+          fi
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits" > "$work/edit.json"
+          edit_id="$(jq -r '.id' "$work/edit.json")"
+          test -n "$edit_id" && test "$edit_id" != "null"
+
+          jq -n \
+            --arg title "$title" \
+            --arg short "$short" \
+            --arg full "$full" \
+            '{title:$title,shortDescription:$short,fullDescription:$full}' \
+            > "$work/listing.json"
+
+          curl --fail-with-body -sS \
+            -X PUT \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data-binary @"$work/listing.json" \
+            "${base}/edits/${edit_id}/listings/en-US" > "$work/updated.json"
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits/${edit_id}:validate" > "$work/validated.json"
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits/${edit_id}:commit" > "$work/committed.json"
+
+          edit_id=""
+          echo "Play Store listing synced successfully."
+          echo "Title: $title"
+          echo "Short description length: ${#short}"
+          echo "Full description length: ${#full}"
