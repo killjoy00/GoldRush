@@ -1,7 +1,6 @@
 package com.killjoy00.goldrush
 
 import android.graphics.Bitmap
-import android.os.ParcelFileDescriptor
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -26,10 +25,9 @@ import org.junit.runner.RunWith
 /**
  * Captures real Compose UI states for the Google Play phone screenshot set.
  *
- * This deliberately drives the shipping GoldRushApp instead of rendering a
- * parallel marketing-only mock. Each image is copied to a public emulator
- * staging directory before the instrumentation package is torn down so CI can
- * pull and visually review the exact pixels that the test captured.
+ * The dedicated workflow installs the app/test APKs manually and pulls these
+ * app-scoped files before uninstalling anything, so the test itself only needs
+ * to render and capture the real shipping UI.
  */
 @RunWith(AndroidJUnit4::class)
 class StoreScreenshotTest {
@@ -48,9 +46,6 @@ class StoreScreenshotTest {
 
     @Test
     fun capturePlayStorePhoneScreenshots() {
-        check(shell("mkdir -p $EXPORT_DIRECTORY && echo READY").trim() == "READY") {
-            "Could not prepare screenshot export directory"
-        }
         composeRule.setContent { GoldRushApp() }
         waitForText("GOLD RUSH")
 
@@ -119,8 +114,7 @@ class StoreScreenshotTest {
 
     private fun capture(name: String) {
         composeRule.waitForIdle()
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        val context = instrumentation.targetContext
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
         val directory = File(context.getExternalFilesDir(null), "play-store")
         check(directory.exists() || directory.mkdirs()) { "Could not create screenshot directory $directory" }
 
@@ -132,22 +126,9 @@ class StoreScreenshotTest {
             }
         }
         check(output.isFile && output.length() > 0L) { "Screenshot was not written: $output" }
-
-        val exportedBytes = shell(
-            "cp '${output.absolutePath}' '$EXPORT_DIRECTORY/$name.png' && wc -c < '$EXPORT_DIRECTORY/$name.png'"
-        ).trim().toLongOrNull()
-        check(exportedBytes != null && exportedBytes > 0L) {
-            "Screenshot export failed for $name; shell reported '$exportedBytes'"
-        }
-    }
-
-    private fun shell(command: String): String {
-        val descriptor = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
-        return ParcelFileDescriptor.AutoCloseInputStream(descriptor).bufferedReader().use { it.readText() }
     }
 
     private companion object {
-        const val EXPORT_DIRECTORY = "/sdcard/Download/goldrush-play"
         val SCORING_CODE = Regex("^[A-Z][1-8]$")
     }
 }
