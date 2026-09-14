@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  build-and-upload:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -15,6 +15,7 @@ jobs:
       ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
       ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
       ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+      EXPECTED_UPLOAD_CERT_SHA1: "8A:D5:7A:08:05:70:96:CD:6F:D4:70:39:EA:86:1C:E1:63:E3:AC:26"
     steps:
       - uses: actions/checkout@v4
 
@@ -32,7 +33,9 @@ jobs:
         with:
           gradle-version: "9.6.0"
 
-      - name: Check upload-signing configuration
+      - name: Check release credentials
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         shell: bash
         run: |
           set -euo pipefail
@@ -41,7 +44,8 @@ jobs:
             ANDROID_UPLOAD_KEYSTORE_BASE64 \
             ANDROID_UPLOAD_KEYSTORE_PASSWORD \
             ANDROID_UPLOAD_KEY_ALIAS \
-            ANDROID_UPLOAD_KEY_PASSWORD
+            ANDROID_UPLOAD_KEY_PASSWORD \
+            GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
           do
             if [ -z "${!name:-}" ]; then
               echo "::error::Missing GitHub Actions secret: $name"
@@ -50,12 +54,25 @@ jobs:
           done
           test "$missing" -eq 0
 
-      - name: Decode upload keystore
+      - name: Decode and verify the Play upload key
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s' "$ANDROID_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/goldrush-upload.jks"
-          test -s "$RUNNER_TEMP/goldrush-upload.jks"
+          keystore="$RUNNER_TEMP/goldrush-upload.jks"
+          printf '%s' "$ANDROID_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          test -s "$keystore"
+
+          actual_sha1="$(keytool -list -v \
+            -keystore "$keystore" \
+            -storepass "$ANDROID_UPLOAD_KEYSTORE_PASSWORD" \
+            -alias "$ANDROID_UPLOAD_KEY_ALIAS" 2>/dev/null \
+            | awk -F': ' '/SHA1:/{print $2; exit}')"
+
+          if [ "$actual_sha1" != "$EXPECTED_UPLOAD_CERT_SHA1" ]; then
+            echo "::error::Wrong Gold Rush upload key. Expected $EXPECTED_UPLOAD_CERT_SHA1 but found ${actual_sha1:-unknown}."
+            exit 1
+          fi
+          echo "Verified Gold Rush Play upload certificate: $actual_sha1"
 
       - name: Test, lint, and build release bundle
         run: gradle -p Android :app:testDebugUnitTest :app:lintRelease :app:bundleRelease --no-daemon --stacktrace
@@ -65,25 +82,48 @@ jobs:
         run: |
           set -euo pipefail
           bundle="Android/app/build/outputs/bundle/release/app-release.aab"
+          keystore="$RUNNER_TEMP/goldrush-upload.jks"
           test -s "$bundle"
+
           jarsigner \
-            -keystore "$RUNNER_TEMP/goldrush-upload.jks" \
+            -keystore "$keystore" \
             -storepass "$ANDROID_UPLOAD_KEYSTORE_PASSWORD" \
             -keypass "$ANDROID_UPLOAD_KEY_PASSWORD" \
             "$bundle" \
             "$ANDROID_UPLOAD_KEY_ALIAS"
+
           jarsigner -verify -verbose "$bundle" | tee "$RUNNER_TEMP/jarsigner-verify.txt"
           grep -q "jar verified." "$RUNNER_TEMP/jarsigner-verify.txt"
+
+          bundle_sha1="$(keytool -printcert -jarfile "$bundle" \
+            | awk -F': ' '/SHA1:/{print $2; exit}')"
+          if [ "$bundle_sha1" != "$EXPECTED_UPLOAD_CERT_SHA1" ]; then
+            echo "::error::Signed AAB certificate mismatch. Expected $EXPECTED_UPLOAD_CERT_SHA1 but found ${bundle_sha1:-unknown}."
+            exit 1
+          fi
+
           sha256sum "$bundle" | tee "$RUNNER_TEMP/app-release.aab.sha256"
+          echo "Signed AAB certificate verified: $bundle_sha1"
 
       - uses: actions/upload-artifact@v4
         with:
           name: gold-rush-android-play-aab
           path: |
             Android/app/build/outputs/bundle/release/app-release.aab
+            Android/app/build/outputs/mapping/release/mapping.txt
             ${{ runner.temp }}/app-release.aab.sha256
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload release to Google Play Internal testing
+        uses: r0adkll/upload-google-play@v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.killjoy00.goldrush
+          releaseFiles: Android/app/build/outputs/bundle/release/app-release.aab
+          tracks: internal
+          status: completed
+          mappingFile: Android/app/build/outputs/mapping/release/mapping.txt
 
       - name: Remove temporary keystore
         if: always()
