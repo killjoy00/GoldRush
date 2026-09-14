@@ -6,6 +6,8 @@ Use these as the starting answers for the current Android release, then confirm 
 
 **Contains ads: Yes.** The Android release build includes a Google AdMob banner on menu/non-gameplay surfaces. The banner is consent-gated where required and is removed for users who own the permanent Remove Ads product.
 
+Play Console status: completed September 14, 2026.
+
 ## App access
 
 **No restricted access.** No login, membership, invitation, or special reviewer account is needed. All game modes are accessible from the first screen.
