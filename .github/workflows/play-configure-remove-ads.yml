@@ -133,12 +133,7 @@ jobs:
                 }]
               }' > "$work/product.json"
 
-            encoded_region_version="$(python3 - "$region_version" <<'PY'
-import sys
-import urllib.parse
-print(urllib.parse.quote(sys.argv[1], safe=""))
-PY
-)"
+            encoded_region_version="$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$region_version")"
 
             curl --fail-with-body -sS \
               -X PATCH \
