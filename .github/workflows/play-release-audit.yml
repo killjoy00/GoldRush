@@ -1,0 +1,134 @@
+name: Google Play release audit
+
+on:
+  push:
+    branches: ["android-play-release-audit"]
+    paths:
+      - ".github/workflows/play-release-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Play Developer API
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Audit live Play state
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PACKAGE_NAME: com.killjoy00.goldrush
+          PRODUCT_ID: com.killjoy00.goldrush.removeads
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          work="$(mktemp -d)"
+          edit_id=""
+
+          cleanup() {
+            if [ -n "$edit_id" ]; then
+              curl -sS -X DELETE \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                "${base}/edits/${edit_id}" >/dev/null || true
+            fi
+            rm -rf "$work"
+          }
+          trap cleanup EXIT
+
+          expected_version_code="$(sed -n 's/.*versionCode = \([0-9][0-9]*\).*/\1/p' Android/app/build.gradle.kts | head -n 1)"
+          test -n "$expected_version_code"
+
+          expected_title="$(tr -d '\r\n' < docs/play-store/title.txt)"
+          expected_short="$(tr -d '\r\n' < docs/play-store/short-description.txt)"
+          expected_full="$(cat docs/play-store/full-description.txt)"
+
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Accept: application/json" \
+            "${base}/oneTimeProducts/${PRODUCT_ID}" > "$work/product.json"
+
+          product_state="$(jq -r '[.purchaseOptions[] | select(.purchaseOptionId == "buy")][0].state // empty' "$work/product.json")"
+          us_price="$(jq -r '[.purchaseOptions[] | select(.purchaseOptionId == "buy")][0].regionalPricingAndAvailabilityConfigs[] | select(.regionCode == "US") | .price | ((.units // "0") + "." + (((.nanos // 0) / 10000000 | floor) | tostring | if length == 1 then "0" + . else . end))' "$work/product.json")"
+
+          if [ "$product_state" != "ACTIVE" ]; then
+            echo "::error::Remove Ads option 'buy' is not ACTIVE (found '${product_state:-missing}')."
+            exit 1
+          fi
+          if [ "$us_price" != "2.99" ]; then
+            echo "::error::Remove Ads US price drifted from 2.99 (found '${us_price:-missing}')."
+            exit 1
+          fi
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits" > "$work/edit.json"
+          edit_id="$(jq -r '.id' "$work/edit.json")"
+          test -n "$edit_id" && test "$edit_id" != "null"
+
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/tracks/internal" > "$work/track.json"
+
+          live_version_ok="$(jq -r --arg vc "$expected_version_code" '[.releases[]? | select(.status == "completed") | .versionCodes[]? | select(. == $vc)] | length' "$work/track.json")"
+          if [ "$live_version_ok" -lt 1 ]; then
+            echo "::error::versionCode ${expected_version_code} is not completed on the Internal track."
+            exit 1
+          fi
+
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/listings/en-US" > "$work/listing.json"
+
+          live_title="$(jq -r '.title // ""' "$work/listing.json")"
+          live_short="$(jq -r '.shortDescription // ""' "$work/listing.json")"
+          live_full="$(jq -r '.fullDescription // ""' "$work/listing.json")"
+
+          if [ "$live_title" != "$expected_title" ]; then
+            echo "::error::Play title does not match docs/play-store/title.txt."
+            exit 1
+          fi
+          if [ "$live_short" != "$expected_short" ]; then
+            echo "::error::Play short description does not match the repo."
+            exit 1
+          fi
+          if [ "$live_full" != "$expected_full" ]; then
+            echo "::error::Play full description does not match the repo."
+            exit 1
+          fi
+
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/details" > "$work/details.json"
+
+          tester_status="unknown"
+          if curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/testers/internal" > "$work/testers.json"; then
+            group_count="$(jq '(.googleGroups // []) | length' "$work/testers.json")"
+            tester_status="google-group-count=${group_count}"
+          fi
+
+          echo "Google Play release audit passed."
+          echo "Internal completed versionCode: ${expected_version_code}"
+          echo "Remove Ads: ACTIVE / USD 2.99"
+          echo "English listing: matches repository"
+          echo "Default language: $(jq -r '.defaultLanguage // "not-returned"' "$work/details.json")"
+          echo "Contact website configured: $(jq '(.contactWebsite // "") != ""' "$work/details.json")"
+          echo "Contact email configured: $(jq '(.contactEmail // "") != ""' "$work/details.json")"
+          echo "Internal tester API status: ${tester_status}"
