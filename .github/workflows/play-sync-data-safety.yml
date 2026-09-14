@@ -73,27 +73,42 @@ jobs:
                   row[v_col] = value
               return True
 
+          def ensure_row(question_id, response_id, value, requirement, label):
+              if set_value(question_id, response_id, value, required=False):
+                  return
+              row = [""] * len(header)
+              row[q_col] = question_id
+              row[r_col] = response_id
+              row[v_col] = value
+              row[req_col] = requirement
+              row[label_col] = label
+              rows.append(row)
+              print(f"Added omitted template row: {question_id}/{response_id}")
+
           set_value("PSL_DATA_COLLECTION_COLLECTS_PERSONAL_DATA", "", "TRUE")
           set_value("PSL_DATA_COLLECTION_ENCRYPTED_IN_TRANSIT", "", "TRUE")
 
-          if not set_value("PSL_SUPPORTED_ACCOUNT_CREATION_METHODS", "PSL_ACM_NONE", "TRUE", required=False):
-              account_rows = matches("PSL_SUPPORTED_ACCOUNT_CREATION_METHODS")
-              no_account_rows = [
-                  row for row in account_rows
-                  if "not allow users to create an account" in row[label_col].lower()
-                  or "doesn't allow users to create an account" in row[label_col].lower()
-                  or "does not allow users to create an account" in row[label_col].lower()
-              ]
-              if len(no_account_rows) != 1:
-                  print("Current account-creation rows:")
-                  for row in account_rows:
-                      print(row[r_col], row[label_col])
-                  raise SystemExit("Could not uniquely identify Google's current no-account option")
-              no_account_rows[0][v_col] = "TRUE"
-              print(f"No-account response ID: {no_account_rows[0][r_col]}")
-
-          set_value("PSL_HAS_OUTSIDE_APP_ACCOUNTS", "", "FALSE", required=False)
-          set_value("PSL_SUPPORT_DATA_DELETION_BY_USER", "DATA_DELETION_NO", "TRUE", required=False)
+          ensure_row(
+              "PSL_SUPPORTED_ACCOUNT_CREATION_METHODS",
+              "PSL_ACM_NONE",
+              "TRUE",
+              "MULTIPLE_CHOICE",
+              "Which account creation methods does your app support? / My app does not allow users to create an account",
+          )
+          ensure_row(
+              "PSL_HAS_OUTSIDE_APP_ACCOUNTS",
+              "",
+              "FALSE",
+              "MAYBE_REQUIRED",
+              "Can users log in to your app with accounts created outside of the app?",
+          )
+          ensure_row(
+              "PSL_SUPPORT_DATA_DELETION_BY_USER",
+              "DATA_DELETION_NO",
+              "TRUE",
+              "SINGLE_CHOICE",
+              "Do you provide a way for users to request that their data is deleted? / No",
+          )
 
           selected_types = [
               ("PSL_DATA_TYPES_LOCATION", "PSL_APPROX_LOCATION"),
@@ -129,7 +144,7 @@ jobs:
           csv.writer(output, lineterminator="\n").writerows(rows)
           safety_csv = output.getvalue()
 
-          print(f"Official template rows: {len(rows) - 1}")
+          print(f"Official template rows plus compatibility rows: {len(rows) - 1}")
           print("Selected data types: approximate location, app interactions, diagnostics, device/other IDs")
           print("Purposes: advertising/marketing, analytics, fraud prevention/security/compliance")
 
