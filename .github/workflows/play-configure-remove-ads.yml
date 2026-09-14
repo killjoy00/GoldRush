@@ -1,10 +1,6 @@
 name: Configure Play Remove Ads
 
 on:
-  push:
-    branches: ["android-release-hardening"]
-    paths:
-      - ".github/workflows/play-configure-remove-ads.yml"
   workflow_dispatch:
 
 permissions:
@@ -33,6 +29,7 @@ jobs:
           token_format: access_token
           credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
 
       - name: Create or verify Remove Ads
         env:
