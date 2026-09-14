@@ -1,6 +1,6 @@
 # Android release readiness
 
-Current checkpoint: the Android client implements the shipped Gold Rush rules, Prospector AI, career stats, Claim Journal, My Claim/Tableau, persisted setup choices, active-game restoration, Play Billing Remove Ads, Google Mobile Ads, UMP consent handling, Play In-App Review, adaptive/themed launcher icons, and CI release bundle builds. The first Android bundle has been accepted by Google Play, is rolled out on Internal testing, and the Remove Ads product is active.
+Current checkpoint: the Android client implements the shipped Gold Rush rules, Prospector AI, career stats, Claim Journal, My Claim/Tableau, persisted setup choices, active-game restoration, Play Billing Remove Ads, Google Mobile Ads, UMP consent handling, Play In-App Review, adaptive/themed launcher icons, and CI release bundle builds. The first Android bundle has been accepted by Google Play, is rolled out on Internal testing, the Remove Ads product is active, and the required Play store graphics are live.
 
 ## Ready in-repo
 
@@ -21,6 +21,7 @@ Current checkpoint: the Android client implements the shipped Gold Rush rules, P
 - Career and setup persistence through Preferences DataStore.
 - Android Lint runs against the release variant in CI and archives its report.
 - `Android Play release` verifies the upload certificate, signs the release AAB, archives release artifacts, and uploads future releases to Google Play Internal testing using the stored service-account credential.
+- `Android Play screenshots` can manually regenerate, validate, archive, and sync the four real Compose phone screenshots to Play.
 
 ## Google Play configuration completed
 
@@ -35,6 +36,7 @@ Current checkpoint: the Android client implements the shipped Gold Rush rules, P
 - Default language, contact website, and contact email configured through the Play Developer API.
 - Play Store icon uploaded from the existing production artwork and verified live (`icon=1`).
 - 1024×500 RGB Play feature graphic generated from the shipping Gold Rush visual language, visually reviewed, uploaded, and verified live (`featureGraphic=1`).
+- Four 1080×1920 Android phone screenshots generated from the real Compose UI, visually reviewed, uploaded, and verified live (`phoneScreenshots=4`).
 
 ## External release work still required
 
@@ -48,9 +50,8 @@ Current checkpoint: the Android client implements the shipped Gold Rush rules, P
 
 The Android AdMob app entry and banner identifiers are already wired in code. Before production, confirm the app association and that the Play listing's developer website points at a domain whose root `app-ads.txt` contains the publisher record.
 
-### Store assets / QA
+### Device QA
 
-- Generate and upload Android phone screenshots from the release-equivalent build. The Play API currently reports `phoneScreenshots=0`.
 - Exercise Dealt/Drafted x Together/Take Turns in both pass-and-play and Prospector modes on physical Android hardware.
 - Rotate the device and background/restore during both a split and handoff to verify active-game restoration and hidden-information boundaries.
 - Test Billing through a Play internal-testing account, including purchase, reinstall/restore, pending purchase, and refund/revocation behavior.

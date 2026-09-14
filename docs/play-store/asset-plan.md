@@ -6,23 +6,22 @@ Verified through the Google Play Developer API:
 
 - Store icon: **uploaded and verified** (`icon=1`). It is generated from the existing production 1024×1024 Gold Rush app icon and resized to Play's 512×512 requirement.
 - Feature graphic: **uploaded and verified** (`featureGraphic=1`). It is generated reproducibly at 1024×500 as a 24-bit RGB PNG from the shipping dark/gold palette and the game's split-pile visual language.
-- Phone screenshots: **missing** (`phoneScreenshots=0`).
+- Phone screenshots: **uploaded and verified** (`phoneScreenshots=4`). All four are 1080×1920 captures of the real Jetpack Compose app, driven deterministically on an Android emulator and visually reviewed before the Play upload.
 - 7-inch tablet screenshots: none uploaded.
 - 10-inch tablet screenshots: none uploaded.
 
-The reusable read-only graphics check is `.github/workflows/play-assets-audit.yml`. The existing production icon can be re-synced with `.github/workflows/play-sync-store-icon.yml`; the feature graphic can be regenerated and re-synced with `.github/workflows/play-feature-graphic.yml` and `Tools/make_play_feature_graphic.py`.
+The reusable read-only graphics check is `.github/workflows/play-assets-audit.yml`. The existing production icon can be re-synced with `.github/workflows/play-sync-store-icon.yml`; the feature graphic can be regenerated and re-synced with `.github/workflows/play-feature-graphic.yml` and `Tools/make_play_feature_graphic.py`; the phone screenshot set can be regenerated, validated, and re-synced manually with `.github/workflows/android-play-screenshots.yml`.
 
-## Phone screenshot plan
+## Phone screenshots
 
-Use at least four portrait phone screenshots that satisfy Play's current screenshot dimensions and aspect-ratio limits.
+The live set is generated from real app states at 1080×1920:
 
-Recommended order:
-1. Split the claim - live split with one face-down card.
-2. Choose a pile - both piles visible with an unknown card.
-3. Draft your scoring plan - a real scoring-card draft decision.
-4. Play your way - menu with game format and Prospector options.
-5. Optional: My Claim tableau.
-6. Optional: Career Stats after a real completed test game.
+1. `01-play-your-way.png` - menu with scoring mode, splitting mode, Prospector selection, and play actions.
+2. `02-draft-scoring-plan.png` - live scoring-card draft decision.
+3. `03-split-the-claim.png` - live split with a face-down mining card.
+4. `04-choose-a-pile.png` - live pile choice with both claims visible.
+
+The capture workflow builds and installs the debug app/test APKs on a Pixel 2/API 35 emulator, drives the shipping Compose UI with `StoreScreenshotTest`, pulls the PNGs before teardown, validates Play-compatible dimensions/aspect ratio, and only then uploads them through a validated Google Play edit.
 
 ## Feature graphic
 
