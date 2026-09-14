@@ -1,12 +1,6 @@
 name: Android Play screenshots
 
 on:
-  push:
-    branches: ["android-store-screenshots"]
-    paths:
-      - "Android/**"
-      - ".github/scripts/capture-android-play-screenshots.sh"
-      - ".github/workflows/android-play-screenshots.yml"
   workflow_dispatch:
 
 permissions:
