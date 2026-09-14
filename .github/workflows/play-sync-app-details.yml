@@ -1,10 +1,6 @@
 name: Sync Play app details
 
 on:
-  push:
-    branches: ["android-play-app-details"]
-    paths:
-      - ".github/workflows/play-sync-app-details.yml"
   workflow_dispatch:
 
 permissions:
