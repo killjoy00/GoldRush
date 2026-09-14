@@ -51,9 +51,11 @@ jobs:
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect -camera-back none
           script: |
             set -eu
+            adb shell 'rm -rf /sdcard/Download/goldrush-play && mkdir -p /sdcard/Download/goldrush-play'
             gradle -p Android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.killjoy00.goldrush.StoreScreenshotTest --no-daemon --stacktrace
 
             mkdir -p generated/play-store/android-phone
+            adb shell 'ls -l /sdcard/Download/goldrush-play'
             adb pull /sdcard/Download/goldrush-play/. generated/play-store/android-phone/
 
             python3 - <<'PY'
