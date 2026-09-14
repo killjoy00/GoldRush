@@ -1,10 +1,6 @@
 name: Configure Play Remove Ads
 
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - ".github/workflows/play-configure-remove-ads.yml"
   workflow_dispatch:
 
 permissions:
@@ -28,13 +24,14 @@ jobs:
 
       - name: Authenticate to Google Play Developer API
         id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           token_format: access_token
           credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
 
-      - name: Create or activate Remove Ads
+      - name: Create or verify Remove Ads
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           PACKAGE_NAME: com.killjoy00.goldrush
@@ -50,7 +47,7 @@ jobs:
           trap 'rm -rf "$work"' EXIT
 
           api_get() {
-            curl -sS \
+            curl --fail-with-body -sS \
               -H "Authorization: Bearer ${ACCESS_TOKEN}" \
               -H "Accept: application/json" \
               "$1"
@@ -133,10 +130,7 @@ jobs:
                 }]
               }' > "$work/product.json"
 
-            encoded_region_version="$(python3 -c 'import os,urllib.parse; print(urllib.parse.quote(os.environ["REGION_VERSION"], safe=""))' REGION_VERSION="$region_version" 2>/dev/null || true)"
-            if [ -z "$encoded_region_version" ]; then
-              encoded_region_version="$region_version"
-            fi
+            encoded_region_version="$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$region_version")"
 
             curl --fail-with-body -sS \
               -X PATCH \
@@ -181,3 +175,41 @@ jobs:
           echo "Purchase option: ${purchase_option_id}"
           echo "State: ${state}"
           echo "US price: USD ${us_price}"
+
+      - name: Inspect Internal testing track
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PACKAGE_NAME: com.killjoy00.goldrush
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits" > "$work/edit.json"
+
+          edit_id="$(jq -r '.id' "$work/edit.json")"
+          test -n "$edit_id" && test "$edit_id" != "null"
+
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/tracks/internal" > "$work/track.json"
+
+          curl -sS -X DELETE \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}" >/dev/null || true
+
+          echo "Internal testing track:"
+          jq -r '
+            if ((.releases // []) | length) == 0 then
+              "NO_RELEASE"
+            else
+              .releases[] | "status=\(.status) versionCodes=\((.versionCodes // []) | join(",")) name=\(.name // "")"
+            end
+          ' "$work/track.json"

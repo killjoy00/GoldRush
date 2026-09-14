@@ -11,7 +11,13 @@ The regular `Android` workflow runs the Kotlin unit suite, release lint, and rel
 
 That normal CI AAB is intentionally unsigned so signing material stays out of source control.
 
-The separate manual `Android Play release` workflow is the Play-uploadable path. It materializes the upload keystore only on the runner, runs tests/lint/bundle generation, signs and verifies the AAB, archives the signed bundle plus its SHA-256 hash, and removes the temporary keystore.
+The separate manual `Android Play release` workflow is the Play-upload path. It materializes the upload keystore only on the runner, verifies that the keystore certificate matches the exact upload certificate Google Play expects, runs tests/lint/bundle generation, signs and verifies the AAB, archives the signed bundle plus mapping/hash artifacts, and uploads the release to the Google Play Internal testing track through the Play Developer API.
+
+The expected Gold Rush upload certificate SHA-1 is:
+
+`8A:D5:7A:08:05:70:96:CD:6F:D4:70:39:EA:86:1C:E1:63:E3:AC:26`
+
+The workflow fails before signing or uploading if the configured keystore does not match that certificate.
 
 ## Current release identity
 
@@ -23,33 +29,42 @@ The separate manual `Android Play release` workflow is the Play-uploadable path.
 - current `versionCode`: 2
 - current `versionName`: `1.5`
 
-`versionCode = 1` is deliberately reserved for the initial Play seed upload. The pre-monetization Android 1.5 build at commit `1c90e999f08b920385b76bb2b4514974f8d25f82` is the intended v1 seed. Current `main` is v2 and includes Android AdMob, UMP consent handling, and the Play Billing Remove Ads UI.
+Version code 2 is the first Gold Rush Android bundle accepted by Google Play. The Play Developer API confirms that version code 2 is on the `internal` track with release status `completed` under the release name `Gold Rush Internal Test`.
 
-Every subsequent Play upload must use a strictly higher `versionCode`.
+Every subsequent Play upload must use a strictly higher `versionCode`; the next upload must therefore be 3 or greater.
 
 ## Monetization status
 
-Android monetization is implemented in code:
+Android monetization is implemented in code and the Play one-time product is active:
 
 - Google Mobile Ads SDK with the production Android AdMob app ID and banner ad-unit ID.
 - Google UMP consent gating and Privacy Choices support.
-- Google Play Billing non-consumable Remove Ads entitlement.
+- Google Play Billing permanent Remove Ads entitlement.
 - Product ID: `com.killjoy00.goldrush.removeads`.
+- Purchase option ID: `buy`.
+- US price: `$2.99` with Google-generated regional pricing.
 - Debug builds use Google's test banner ID; release builds use the production banner ID.
 - Ads fail closed while purchase ownership is unresolved so an existing purchaser does not see an ad flash.
 
 See `docs/ANDROID_MONETIZATION.md` for the current identifiers and behavior.
 
-## First Play release sequence
+## Current Play release sequence
 
-1. Create/configure Gold Rush in Play Console with package name `com.killjoy00.goldrush`.
-2. Enroll in Play App Signing and create a dedicated Gold Rush Android upload key.
-3. Configure the manual Play-release workflow for the upload key.
-4. Build/sign the v1 seed build and upload it to Internal Testing.
-5. After Play accepts the first build, create and activate the one-time product `com.killjoy00.goldrush.removeads`.
-6. Upload current `main` as versionCode 2 so the Play-delivered build includes AdMob, UMP, and Remove Ads.
-7. Test purchase, restore, reinstall, pending purchase, refund/revocation, consent, ads, and entitlement behavior from the Play-delivered Internal Testing build.
-8. Complete the Play listing, content rating, target audience, ads declaration, Data Safety form, privacy policy, screenshots, feature graphic, and production rollout.
+Completed:
+
+1. Gold Rush exists in Play Console as `com.killjoy00.goldrush`.
+2. Play App Signing / upload-key configuration is established.
+3. Version code 2 / version 1.5 was accepted by Play.
+4. Version code 2 is rolled out on the Internal testing track with status `completed`.
+5. The one-time product `com.killjoy00.goldrush.removeads` was created and activated through the Play Developer API.
+6. GitHub release automation verifies the exact upload certificate and can send future signed AABs directly to Internal testing.
+
+Remaining release QA / launch work:
+
+1. Add/verify tester access and install version code 2 through the Play internal-test link.
+2. Test purchase, restore, reinstall, pending purchase, refund/revocation, consent, ads, and entitlement behavior from the Play-delivered build.
+3. Complete/verify the Play listing, content rating, target audience, ads declaration, Data Safety form, privacy policy, screenshots, feature graphic, and production rollout requirements.
+4. For any new binary, increment `versionCode` to at least 3 before running `Android Play release`.
 
 ## AdMob
 
