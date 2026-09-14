@@ -1,16 +1,20 @@
 # Android production checklist
 
-This is the short manual-only checklist after the September 14, 2026 Play Developer API audit. Everything that can be verified reliably through the Android Publisher API is intentionally omitted here.
+This is the short manual-only checklist after the September 14, 2026 Play Developer API audit and App content declaration pass. Everything that can be verified or submitted reliably through the Android Publisher API is intentionally omitted from the remaining manual work.
 
-## Play Console — manual declarations
+## Play Console — declarations/status
 
 - [ ] **Internal testing:** confirm the intended Google account is in the tester email list and the opt-in/install link works.
-- [ ] **Privacy policy:** open `https://killjoy00.github.io/GoldRush/privacy.html`, confirm the current Gold Rush policy loads, and save that URL in App content → Privacy policy.
-- [ ] **App content → Ads:** confirm **Yes, contains ads**.
-- [ ] **App content → App access:** confirm the app does not require restricted login/access.
-- [ ] **App content → Target audience and content:** complete/verify the intended age selections and child-directed status.
-- [ ] **App content → Content rating:** complete/verify the questionnaire.
-- [ ] **App content → Data Safety:** submit/verify the answers in `docs/play-store/data-safety.md`.
+- [x] **Privacy policy:** `https://killjoy00.github.io/GoldRush/privacy.html` verified and saved.
+- [x] **Ads:** **Yes, contains ads**.
+- [x] **App access / Sign-in details:** all functionality available without special access.
+- [x] **Target audience and content:** submitted.
+- [x] **Content rating:** IARC questionnaire submitted.
+- [x] **Advertising ID:** submitted for the AdMob integration.
+- [x] **Financial features:** Gold Rush does not provide financial features.
+- [x] **Health apps declaration:** No.
+- [x] **Government apps declaration:** No.
+- [x] **Data Safety:** submitted through the Android Publisher API; Google returned HTTP 204. Source answers are in `docs/play-store/data-safety.md`.
 - [ ] **Country/device availability:** review production countries, device availability, and distribution settings.
 - [ ] **Production readiness:** resolve every Play Console error/warning before rollout.
 

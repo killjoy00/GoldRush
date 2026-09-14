@@ -1,0 +1,167 @@
+name: Sync Play Data Safety
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Play Developer API
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Build current Google Data Safety CSV and submit it
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PACKAGE_NAME: com.killjoy00.goldrush
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import csv, io, json, os, urllib.error, urllib.request
+
+          package = os.environ["PACKAGE_NAME"]
+          token = os.environ["ACCESS_TOKEN"]
+          template_url = "https://storage.googleapis.com/support-kms-prod/b5v9It2EgwrgyY1gPFVB3jPUypc5lL3oNg2G"
+
+          with urllib.request.urlopen(template_url, timeout=30) as response:
+              text = response.read().decode("utf-8-sig")
+          if "Question ID (machine readable)" not in text:
+              raise SystemExit("Official Google Data Safety CSV did not have the expected header")
+
+          rows = list(csv.reader(io.StringIO(text)))
+          header = rows[0]
+          q_col = header.index("Question ID (machine readable)")
+          r_col = header.index("Response ID (machine readable)")
+          v_col = header.index("Response value")
+          req_col = header.index("Answer requirement")
+          label_col = header.index("Human-friendly question label")
+
+          for row in rows[1:]:
+              while len(row) < len(header):
+                  row.append("")
+              row[v_col] = ""
+
+          def matches(question_id, response_id=None):
+              return [row for row in rows[1:]
+                      if row[q_col] == question_id
+                      and (response_id is None or row[r_col] == response_id)]
+
+          def set_value(question_id, response_id, value, required=True):
+              found = matches(question_id, response_id)
+              if not found:
+                  if required:
+                      raise SystemExit(f"Google template missing {question_id} / {response_id!r}")
+                  return False
+              for row in found:
+                  row[v_col] = value
+              return True
+
+          def ensure_row(question_id, response_id, value, requirement, label):
+              if set_value(question_id, response_id, value, required=False):
+                  return
+              row = [""] * len(header)
+              row[q_col] = question_id
+              row[r_col] = response_id
+              row[v_col] = value
+              row[req_col] = requirement
+              row[label_col] = label
+              rows.append(row)
+              print(f"Added omitted template row: {question_id}/{response_id}")
+
+          set_value("PSL_DATA_COLLECTION_COLLECTS_PERSONAL_DATA", "", "TRUE")
+          set_value("PSL_DATA_COLLECTION_ENCRYPTED_IN_TRANSIT", "", "TRUE")
+
+          ensure_row(
+              "PSL_SUPPORTED_ACCOUNT_CREATION_METHODS",
+              "PSL_ACM_NONE",
+              "TRUE",
+              "MULTIPLE_CHOICE",
+              "Which account creation methods does your app support? / My app does not allow users to create an account",
+          )
+          ensure_row(
+              "PSL_HAS_OUTSIDE_APP_ACCOUNTS",
+              "",
+              "FALSE",
+              "MAYBE_REQUIRED",
+              "Can users log in to your app with accounts created outside of the app?",
+          )
+          ensure_row(
+              "PSL_SUPPORT_DATA_DELETION_BY_USER",
+              "DATA_DELETION_NO",
+              "TRUE",
+              "SINGLE_CHOICE",
+              "Do you provide a way for users to request that their data is deleted? / No",
+          )
+
+          selected_types = [
+              ("PSL_DATA_TYPES_LOCATION", "PSL_APPROX_LOCATION"),
+              ("PSL_DATA_TYPES_APP_ACTIVITY", "PSL_USER_INTERACTION"),
+              ("PSL_DATA_TYPES_APP_PERFORMANCE", "PSL_PERFORMANCE_DIAGNOSTICS"),
+              ("PSL_DATA_TYPES_IDENTIFIERS", "PSL_DEVICE_ID"),
+          ]
+          purposes = ["PSL_ANALYTICS", "PSL_FRAUD_PREVENTION_SECURITY", "PSL_ADVERTISING"]
+
+          for group_id, data_id in selected_types:
+              set_value(group_id, data_id, "TRUE")
+              prefix = f"PSL_DATA_USAGE_RESPONSES:{data_id}:"
+              set_value(prefix + "PSL_DATA_USAGE_COLLECTION_AND_SHARING", "PSL_DATA_USAGE_ONLY_COLLECTED", "TRUE")
+              set_value(prefix + "PSL_DATA_USAGE_COLLECTION_AND_SHARING", "PSL_DATA_USAGE_ONLY_SHARED", "TRUE")
+              set_value(prefix + "PSL_DATA_USAGE_EPHEMERAL", "", "FALSE")
+              set_value(prefix + "DATA_USAGE_USER_CONTROL", "PSL_DATA_USAGE_USER_CONTROL_REQUIRED", "TRUE")
+              for purpose in purposes:
+                  set_value(prefix + "DATA_USAGE_COLLECTION_PURPOSE", purpose, "TRUE")
+                  set_value(prefix + "DATA_USAGE_SHARING_PURPOSE", purpose, "TRUE")
+
+          missing_required = [
+              (row[q_col], row[r_col], row[label_col])
+              for row in rows[1:]
+              if row[req_col] == "REQUIRED" and not row[v_col].strip()
+          ]
+          if missing_required:
+              print("Unanswered current-template REQUIRED rows:")
+              for item in missing_required:
+                  print(" -", item)
+              raise SystemExit(2)
+
+          output = io.StringIO()
+          csv.writer(output, lineterminator="\n").writerows(rows)
+          safety_csv = output.getvalue()
+
+          print(f"Official template rows plus compatibility rows: {len(rows) - 1}")
+          print("Selected data types: approximate location, app interactions, diagnostics, device/other IDs")
+          print("Purposes: advertising/marketing, analytics, fraud prevention/security/compliance")
+
+          payload = json.dumps({"safetyLabels": safety_csv}).encode("utf-8")
+          endpoint = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{package}/dataSafety"
+          request = urllib.request.Request(
+              endpoint,
+              data=payload,
+              method="POST",
+              headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json; charset=utf-8"},
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=60) as response:
+                  print(f"Data Safety API HTTP {response.status}")
+                  body = response.read().decode("utf-8", errors="replace")
+                  if body:
+                      print(body)
+          except urllib.error.HTTPError as exc:
+              print(f"Data Safety API HTTP {exc.code}")
+              print(exc.read().decode("utf-8", errors="replace"))
+              raise
+
+          print("DATA_SAFETY_SYNC_SUCCESS")
+          PY
