@@ -1,10 +1,6 @@
 name: Configure Play Remove Ads
 
 on:
-  push:
-    branches: ["main"]
-    paths:
-      - ".github/workflows/play-configure-remove-ads.yml"
   workflow_dispatch:
 
 permissions:
@@ -28,13 +24,13 @@ jobs:
 
       - name: Authenticate to Google Play Developer API
         id: auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           token_format: access_token
           credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           access_token_scopes: https://www.googleapis.com/auth/androidpublisher
 
-      - name: Create or activate Remove Ads
+      - name: Create or verify Remove Ads
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           PACKAGE_NAME: com.killjoy00.goldrush
@@ -50,7 +46,7 @@ jobs:
           trap 'rm -rf "$work"' EXIT
 
           api_get() {
-            curl -sS \
+            curl --fail-with-body -sS \
               -H "Authorization: Bearer ${ACCESS_TOKEN}" \
               -H "Accept: application/json" \
               "$1"
@@ -133,10 +129,12 @@ jobs:
                 }]
               }' > "$work/product.json"
 
-            encoded_region_version="$(python3 -c 'import os,urllib.parse; print(urllib.parse.quote(os.environ["REGION_VERSION"], safe=""))' REGION_VERSION="$region_version" 2>/dev/null || true)"
-            if [ -z "$encoded_region_version" ]; then
-              encoded_region_version="$region_version"
-            fi
+            encoded_region_version="$(python3 - "$region_version" <<'PY'
+import sys
+import urllib.parse
+print(urllib.parse.quote(sys.argv[1], safe=""))
+PY
+)"
 
             curl --fail-with-body -sS \
               -X PATCH \
