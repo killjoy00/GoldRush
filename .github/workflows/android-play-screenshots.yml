@@ -54,7 +54,7 @@ jobs:
             gradle -p Android :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.killjoy00.goldrush.StoreScreenshotTest --no-daemon --stacktrace
 
             mkdir -p generated/play-store/android-phone
-            adb pull /sdcard/Android/data/com.killjoy00.goldrush/files/play-store/. generated/play-store/android-phone/
+            adb pull /sdcard/Download/goldrush-play/. generated/play-store/android-phone/
 
             python3 - <<'PY'
             from pathlib import Path
