@@ -1,6 +1,10 @@
 name: Configure Play Remove Ads
 
 on:
+  push:
+    branches: ["android-release-hardening"]
+    paths:
+      - ".github/workflows/play-configure-remove-ads.yml"
   workflow_dispatch:
 
 permissions:
@@ -179,3 +183,41 @@ PY
           echo "Purchase option: ${purchase_option_id}"
           echo "State: ${state}"
           echo "US price: USD ${us_price}"
+
+      - name: Inspect Internal testing track
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PACKAGE_NAME: com.killjoy00.goldrush
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits" > "$work/edit.json"
+
+          edit_id="$(jq -r '.id' "$work/edit.json")"
+          test -n "$edit_id" && test "$edit_id" != "null"
+
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/tracks/internal" > "$work/track.json"
+
+          curl -sS -X DELETE \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}" >/dev/null || true
+
+          echo "Internal testing track:"
+          jq -r '
+            if ((.releases // []) | length) == 0 then
+              "NO_RELEASE"
+            else
+              .releases[] | "status=\(.status) versionCodes=\((.versionCodes // []) | join(",")) name=\(.name // "")"
+            end
+          ' "$work/track.json"
