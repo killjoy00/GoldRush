@@ -1,15 +1,17 @@
 # Android release pipeline
 
-Gold Rush Android now builds both a sideloadable debug APK and a release Android App Bundle in GitHub Actions.
+Gold Rush Android builds both a sideloadable debug APK and release Android App Bundles in GitHub Actions. The app is now in Play-launch configuration rather than core-port development.
 
-## What CI produces
+## CI and signing
 
-The `Android` workflow runs the Kotlin unit suite and then builds:
+The regular `Android` workflow runs the Kotlin unit suite, release lint, and release packaging, and produces:
 
 - `gold-rush-android-debug` — a debug APK for direct testing/sideloading.
-- `gold-rush-android-release-aab` — the release AAB produced by `:app:bundleRelease`.
+- `gold-rush-android-release-aab` — the release AAB produced by `:app:bundleRelease` for packaging validation.
 
-The release AAB is intentionally **unsigned** today. Android Gradle does not sign a release variant unless a release signing configuration is supplied. Keeping the bundle unsigned in the repository-level pipeline lets us continuously verify that the real release variant packages successfully without putting a private upload key in source control.
+That normal CI AAB is intentionally unsigned so signing material stays out of source control.
+
+The separate manual `Android Play release` workflow is the Play-uploadable path. It materializes the upload keystore only on the runner, runs tests/lint/bundle generation, signs and verifies the AAB, archives the signed bundle plus its SHA-256 hash, and removes the temporary keystore.
 
 ## Current release identity
 
@@ -18,39 +20,37 @@ The release AAB is intentionally **unsigned** today. Android Gradle does not sig
 - `minSdk`: 26
 - `targetSdk`: 36
 - `compileSdk`: 36
-- `versionCode`: 1
-- `versionName`: `0.1.0`
+- current `versionCode`: 2
+- current `versionName`: `1.5`
 
-The app currently targets Android 16 / API 36, which satisfies the Google Play target requirement in effect for new apps in September 2026.
+`versionCode = 1` is deliberately reserved for the initial Play seed upload. The pre-monetization Android 1.5 build at commit `1c90e999f08b920385b76bb2b4514974f8d25f82` is the intended v1 seed. Current `main` is v2 and includes Android AdMob, UMP consent handling, and the Play Billing Remove Ads UI.
 
-## Signing still required before Play upload
+Every subsequent Play upload must use a strictly higher `versionCode`.
 
-Before the first Play Console upload, create a dedicated Android upload key and enable Play App Signing. The upload key must remain outside Git. Do not reuse an iOS certificate, an AdMob identifier, or a debug keystore.
+## Monetization status
 
-The eventual CI signing layer should provide the keystore and passwords through GitHub Actions secrets, materialize the keystore only for the release job, configure the Gradle `release` signing config from environment variables, and remove the temporary keystore at job completion.
+Android monetization is implemented in code:
 
-Recommended secret names when the upload key is created:
+- Google Mobile Ads SDK with the production Android AdMob app ID and banner ad-unit ID.
+- Google UMP consent gating and Privacy Choices support.
+- Google Play Billing non-consumable Remove Ads entitlement.
+- Product ID: `com.killjoy00.goldrush.removeads`.
+- Debug builds use Google's test banner ID; release builds use the production banner ID.
+- Ads fail closed while purchase ownership is unresolved so an existing purchaser does not see an ad flash.
 
-- `ANDROID_KEYSTORE_BASE64`
-- `ANDROID_KEYSTORE_PASSWORD`
-- `ANDROID_KEY_ALIAS`
-- `ANDROID_KEY_PASSWORD`
+See `docs/ANDROID_MONETIZATION.md` for the current identifiers and behavior.
 
-No values for those secrets belong in this repository.
+## First Play release sequence
 
-## AdMob is separate
+1. Create/configure Gold Rush in Play Console with package name `com.killjoy00.goldrush`.
+2. Enroll in Play App Signing and create a dedicated Gold Rush Android upload key.
+3. Configure the manual Play-release workflow for the upload key.
+4. Build/sign the v1 seed build and upload it to Internal Testing.
+5. After Play accepts the first build, create and activate the one-time product `com.killjoy00.goldrush.removeads`.
+6. Upload current `main` as versionCode 2 so the Play-delivered build includes AdMob, UMP, and Remove Ads.
+7. Test purchase, restore, reinstall, pending purchase, refund/revocation, consent, ads, and entitlement behavior from the Play-delivered Internal Testing build.
+8. Complete the Play listing, content rating, target audience, ads declaration, Data Safety form, privacy policy, screenshots, feature graphic, and production rollout.
 
-The existing publisher account and `app-ads.txt` publisher line can stay shared across iOS and Android, but Android needs its own AdMob **Android app entry** and Android banner/ad-unit IDs. Do not reuse the iOS app ID or iOS ad-unit IDs in the Android manifest or Kotlin code.
+## AdMob
 
-## Remaining first-release checklist
-
-1. Create the Gold Rush Android app in Play Console using `com.killjoy00.goldrush`.
-2. Enable Play App Signing and create the Android upload key.
-3. Add the four signing secrets above to GitHub Actions.
-4. Wire the secure signing config and verify the generated AAB is signed by the upload certificate.
-5. Create the Android app entry in AdMob and add the Android-specific app/ad-unit IDs.
-6. Add Google Mobile Ads Android plus Google Play Billing for the remove-ads entitlement.
-7. Prepare Play listing metadata, privacy/data-safety answers, screenshots, icon/feature graphic, content rating, and testing-track configuration.
-8. Increment `versionCode` for every Play upload.
-
-Until those account-bound steps are completed, CI's release AAB is a packaging validation artifact rather than a Play-uploadable production binary.
+Gold Rush already has its Android AdMob app entry and Android-specific banner configuration wired in code. The existing publisher account and root `app-ads.txt` publisher record can remain shared across iOS and Android. Final release QA should confirm that Play listing/domain configuration and AdMob app association are correct.

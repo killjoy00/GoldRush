@@ -14,8 +14,8 @@ The Swift engine remains the source of truth for game rules and the Swift agents
 | `GoldRushUI` | Jetpack Compose |
 | UserDefaults career data | Preferences DataStore (`goldrush_career_stats_v1`) |
 | Game Center turn-based | Cross-platform service (later, if desired) |
-| StoreKit remove-ads purchase | Google Play Billing (remaining) |
-| Google Mobile Ads iOS | Google Mobile Ads Android (remaining) |
+| StoreKit remove-ads purchase | Google Play Billing |
+| Google Mobile Ads iOS | Google Mobile Ads Android + UMP |
 
 The parity contract is behavioral: identical deck composition, SplitMix64 stream, deterministic shuffle, setup/draft decisions, hidden-information boundaries, round transitions, scoring, Pack Mule optimization, tiebreaks, Prospector decision policy, career-stat aggregation, Claim Journal projection, and player-tableau privacy.
 
@@ -93,13 +93,30 @@ Android now mirrors the on-device iOS career model and keeps the data local in J
 
 Pure Kotlin tests cover aggregation, all four format labels, deduplication, the 500-ID cap, and DataStore preference round-tripping.
 
-## Remaining Android platform work
+## Android monetization and lifecycle parity
 
-The remaining work is platform functionality, not game-rule, AI, career-stat, journal, or tableau reconstruction:
+Android now includes the platform work that was previously listed as outstanding:
 
-1. Add Android AdMob and Google Play Billing remove-ads entitlement.
-2. Add Play Console signing/release automation and store metadata/screenshots.
-3. Decide online architecture. Game Center cannot provide Android/iOS cross-play; if cross-platform friend play is desired, move turn transport to a small shared backend while keeping the engine client-side.
+- Google Play Billing for the permanent Remove Ads product `com.killjoy00.goldrush.removeads`.
+- Google Mobile Ads Android with a dedicated Android AdMob app ID and banner unit.
+- UMP consent gating and Privacy Choices support.
+- Purchased-user ad suppression with fail-closed entitlement resolution.
+- Persisted active-game restoration across rotation and process recreation.
+- Play In-App Review using the same eligibility policy as iOS.
+- Adaptive and monochrome launcher icons.
+- Release R8 minification and resource shrinking.
+
+## Remaining Android launch work
+
+The remaining work is release/account configuration and device QA rather than game-rule, AI, career-stat, journal, tableau, ads, or billing reconstruction:
+
+1. Create/configure Gold Rush in Play Console for `com.killjoy00.goldrush`.
+2. Finish Play App Signing/upload-key setup and produce the first signed Internal Testing build.
+3. Upload the reserved versionCode 1 seed build, then create and activate the Remove Ads one-time product.
+4. Upload current `main` as versionCode 2 and validate monetization through Play Internal Testing.
+5. Complete Play listing metadata, Data Safety/content declarations, screenshots, feature graphic, and production-track setup.
+6. Validate Billing, ads, UMP consent, review prompts, restoration, and hidden-information behavior using a Play-delivered build on physical Android hardware.
+7. Decide online architecture later if cross-platform friend play is desired. Game Center cannot provide Android/iOS cross-play.
 
 ## Vercel
 
@@ -107,10 +124,4 @@ There is no Gold Rush Vercel project today. Pass-and-play, solo, career stats, t
 
 ## Build
 
-CI is authoritative:
-
-```bash
-gradle -p Android :app:testDebugUnitTest :app:assembleDebug
-```
-
-The workflow uploads `app-debug.apk` as `gold-rush-android-debug`, so the current build can be sideloaded without a local Android toolchain.
+CI is authoritative. The Android workflow runs unit tests, release lint, debug APK assembly, and release AAB generation. The separate manual Play-release workflow signs the Play-uploadable bundle once the account-bound signing configuration is available.
