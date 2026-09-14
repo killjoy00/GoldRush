@@ -1,6 +1,6 @@
 # Android release readiness
 
-Current checkpoint: the Android client implements the shipped Gold Rush rules, Prospector AI, career stats, Claim Journal, My Claim/Tableau, persisted setup choices, active-game restoration, Play Billing Remove Ads, Google Mobile Ads, UMP consent handling, Play In-App Review, adaptive/themed launcher icons, and CI release bundle builds.
+Current checkpoint: the Android client implements the shipped Gold Rush rules, Prospector AI, career stats, Claim Journal, My Claim/Tableau, persisted setup choices, active-game restoration, Play Billing Remove Ads, Google Mobile Ads, UMP consent handling, Play In-App Review, adaptive/themed launcher icons, and CI release bundle builds. The first Android bundle has been accepted by Google Play and the Remove Ads product is active.
 
 ## Ready in-repo
 
@@ -11,27 +11,34 @@ Current checkpoint: the Android client implements the shipped Gold Rush rules, P
 - Active local/Prospector games restore from a deterministic seed + action transcript after rotation or process recreation.
 - Release R8 minification and resource shrinking are enabled and exercised by CI.
 - Android public version name is aligned with iOS at `1.5`.
-- Current `main` uses `versionCode = 2`; `versionCode = 1` is reserved for the initial pre-monetization Play seed upload.
+- Version code 2 is the first bundle accepted by Google Play; every later Play build must use a higher version code.
 - Explicit backup policy: career/setup preferences may restore, while the active-game transcript is excluded from cloud backup and device transfer.
 - Play In-App Review follows the iOS prompt policy: only after a win, after at least three completed games, and at most once per app version.
 - Debug APK artifact and release AAB artifact.
-- Play Billing non-consumable product contract: `com.killjoy00.goldrush.removeads`.
+- Play Billing permanent product contract: `com.killjoy00.goldrush.removeads`.
 - Android AdMob app/banner configuration and UMP consent gating.
 - Adaptive launcher icon with monochrome themed-icon layer.
 - Career and setup persistence through Preferences DataStore.
 - Android Lint runs against the release variant in CI and archives its report.
-- A manual Play-release workflow can build, sign, verify, hash, and archive a Play-uploadable AAB once account-bound signing is configured.
+- `Android Play release` verifies the upload certificate, signs the release AAB, archives release artifacts, and uploads future releases to Google Play Internal testing using the stored service-account credential.
 
-## External release configuration still required
+## Google Play configuration completed
 
-### Google Play Console
+- Play app/package configured as `com.killjoy00.goldrush`.
+- Upload certificate established. Expected SHA-1: `8A:D5:7A:08:05:70:96:CD:6F:D4:70:39:EA:86:1C:E1:63:E3:AC:26`.
+- Version code 2 / version 1.5 accepted by Google Play.
+- Play Developer API service account connected via GitHub Actions.
+- Remove Ads product `com.killjoy00.goldrush.removeads` created and active.
+- Remove Ads purchase option `buy` active at US `$2.99` with Google-generated regional prices.
 
-1. Create/configure the Android app for `com.killjoy00.goldrush`.
-2. Enroll in Play App Signing and configure the dedicated Android upload key for the release workflow.
-3. Upload the signed versionCode 1 seed build to Internal Testing.
-4. After Play accepts the first build, create and activate the one-time product `com.killjoy00.goldrush.removeads`.
-5. Upload current `main` as versionCode 2 for monetization testing.
-6. Complete store listing, content rating, target audience, ads declaration, Data Safety, privacy-policy, and production-track fields.
+## External release work still required
+
+### Google Play Console / release track
+
+1. Confirm version code 2 is actually rolled out to Internal testing, not merely uploaded into a release draft.
+2. Add/verify tester access and install the app from the Play internal-test link.
+3. Complete or verify store listing, content rating, target audience, ads declaration, Data Safety, privacy-policy, and production-track requirements.
+4. Any later binary must increment `versionCode` to at least 3 before running `Android Play release`.
 
 ### AdMob
 
