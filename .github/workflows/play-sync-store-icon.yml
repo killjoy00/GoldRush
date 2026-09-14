@@ -1,10 +1,6 @@
 name: Sync Play Store icon
 
 on:
-  push:
-    branches: ["android-play-assets-audit"]
-    paths:
-      - ".github/workflows/play-sync-store-icon.yml"
   workflow_dispatch:
 
 permissions:
