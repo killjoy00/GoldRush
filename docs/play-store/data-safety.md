@@ -1,6 +1,6 @@
 # Google Play Data Safety answers
 
-Last checked: 2026-09-13.
+Last checked: 2026-09-14.
 
 These answers describe the current Android release: local gameplay/persistence, Google Play Billing, and one Google AdMob banner on menu/non-gameplay surfaces. Re-check this file if another SDK, backend, analytics product, crash reporter, login system, or ad-personalization configuration is added.
 
@@ -50,6 +50,10 @@ Gold Rush uses Google Play Billing for the one-time product `com.killjoy00.goldr
 ## Play Console Ads declaration
 
 Answer **Yes, contains ads**. The release build includes an AdMob banner outside active gameplay; purchasers of Remove Ads do not receive the banner.
+
+## Submission guardrail
+
+The Android Publisher API does not expose the live Play Console Data Safety or Ads declaration form responses. This file is the checked working copy, not proof that those forms have been submitted. Before production rollout, compare the Console forms against these answers, save/submit them, and resolve any Play warning or discrepancy.
 
 Official references:
 - https://support.google.com/googleplay/android-developer/answer/10787469
