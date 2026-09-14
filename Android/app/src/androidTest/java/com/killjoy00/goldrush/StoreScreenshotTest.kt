@@ -1,6 +1,7 @@
 package com.killjoy00.goldrush
 
 import android.graphics.Bitmap
+import android.os.ParcelFileDescriptor
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -47,7 +48,9 @@ class StoreScreenshotTest {
 
     @Test
     fun capturePlayStorePhoneScreenshots() {
-        clearExportDirectory()
+        check(shell("mkdir -p $EXPORT_DIRECTORY && echo READY").trim() == "READY") {
+            "Could not prepare screenshot export directory"
+        }
         composeRule.setContent { GoldRushApp() }
         waitForText("GOLD RUSH")
 
@@ -114,10 +117,6 @@ class StoreScreenshotTest {
         composeRule.waitUntil(timeoutMillis = 10_000) { textExists(text) }
     }
 
-    private fun clearExportDirectory() {
-        shell("rm -rf $EXPORT_DIRECTORY && mkdir -p $EXPORT_DIRECTORY")
-    }
-
     private fun capture(name: String) {
         composeRule.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -134,19 +133,17 @@ class StoreScreenshotTest {
         }
         check(output.isFile && output.length() > 0L) { "Screenshot was not written: $output" }
 
-        shell("cp '${output.absolutePath}' '$EXPORT_DIRECTORY/$name.png'")
+        val exportedBytes = shell(
+            "cp '${output.absolutePath}' '$EXPORT_DIRECTORY/$name.png' && wc -c < '$EXPORT_DIRECTORY/$name.png'"
+        ).trim().toLongOrNull()
+        check(exportedBytes != null && exportedBytes > 0L) {
+            "Screenshot export failed for $name; shell reported '$exportedBytes'"
+        }
     }
 
-    private fun shell(command: String) {
-        InstrumentationRegistry.getInstrumentation().uiAutomation
-            .executeShellCommand(command)
-            .use { descriptor ->
-                FileOutputStream(File("/dev/null")).use { sink ->
-                    android.os.ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { input ->
-                        input.copyTo(sink)
-                    }
-                }
-            }
+    private fun shell(command: String): String {
+        val descriptor = InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)
+        return ParcelFileDescriptor.AutoCloseInputStream(descriptor).bufferedReader().use { it.readText() }
     }
 
     private companion object {
