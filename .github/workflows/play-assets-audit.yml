@@ -1,10 +1,6 @@
 name: Google Play assets audit
 
 on:
-  push:
-    branches: ["android-play-assets-audit"]
-    paths:
-      - ".github/workflows/play-assets-audit.yml"
   workflow_dispatch:
 
 permissions:
