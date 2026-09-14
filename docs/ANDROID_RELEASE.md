@@ -29,7 +29,9 @@ The workflow fails before signing or uploading if the configured keystore does n
 - current `versionCode`: 2
 - current `versionName`: `1.5`
 
-Version code 2 is the first Gold Rush Android bundle accepted by Google Play. Every subsequent Play upload must use a strictly higher `versionCode`; the next upload must therefore be 3 or greater.
+Version code 2 is the first Gold Rush Android bundle accepted by Google Play. The Play Developer API confirms that version code 2 is on the `internal` track with release status `completed` under the release name `Gold Rush Internal Test`.
+
+Every subsequent Play upload must use a strictly higher `versionCode`; the next upload must therefore be 3 or greater.
 
 ## Monetization status
 
@@ -53,13 +55,13 @@ Completed:
 1. Gold Rush exists in Play Console as `com.killjoy00.goldrush`.
 2. Play App Signing / upload-key configuration is established.
 3. Version code 2 / version 1.5 was accepted by Play.
-4. The service account is connected through `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`.
+4. Version code 2 is rolled out on the Internal testing track with status `completed`.
 5. The one-time product `com.killjoy00.goldrush.removeads` was created and activated through the Play Developer API.
-6. GitHub release automation now verifies the exact upload certificate and can send future signed AABs directly to Internal testing.
+6. GitHub release automation verifies the exact upload certificate and can send future signed AABs directly to Internal testing.
 
 Remaining release QA / launch work:
 
-1. Confirm version code 2 is rolled out on the Internal testing track and install it through the Play test link.
+1. Add/verify tester access and install version code 2 through the Play internal-test link.
 2. Test purchase, restore, reinstall, pending purchase, refund/revocation, consent, ads, and entitlement behavior from the Play-delivered build.
 3. Complete/verify the Play listing, content rating, target audience, ads declaration, Data Safety form, privacy policy, screenshots, feature graphic, and production rollout requirements.
 4. For any new binary, increment `versionCode` to at least 3 before running `Android Play release`.
