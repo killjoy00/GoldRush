@@ -26,8 +26,9 @@ import org.junit.runner.RunWith
  * Captures real Compose UI states for the Google Play phone screenshot set.
  *
  * This deliberately drives the shipping GoldRushApp instead of rendering a
- * parallel marketing-only mock. The output is pulled from the emulator by the
- * dedicated Play screenshot workflow and visually inspected before upload.
+ * parallel marketing-only mock. Each image is copied to a public emulator
+ * staging directory before the instrumentation package is torn down so CI can
+ * pull and visually review the exact pixels that the test captured.
  */
 @RunWith(AndroidJUnit4::class)
 class StoreScreenshotTest {
@@ -46,6 +47,7 @@ class StoreScreenshotTest {
 
     @Test
     fun capturePlayStorePhoneScreenshots() {
+        clearExportDirectory()
         composeRule.setContent { GoldRushApp() }
         waitForText("GOLD RUSH")
 
@@ -112,9 +114,14 @@ class StoreScreenshotTest {
         composeRule.waitUntil(timeoutMillis = 10_000) { textExists(text) }
     }
 
+    private fun clearExportDirectory() {
+        shell("rm -rf $EXPORT_DIRECTORY && mkdir -p $EXPORT_DIRECTORY")
+    }
+
     private fun capture(name: String) {
         composeRule.waitForIdle()
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
         val directory = File(context.getExternalFilesDir(null), "play-store")
         check(directory.exists() || directory.mkdirs()) { "Could not create screenshot directory $directory" }
 
@@ -126,9 +133,24 @@ class StoreScreenshotTest {
             }
         }
         check(output.isFile && output.length() > 0L) { "Screenshot was not written: $output" }
+
+        shell("cp '${output.absolutePath}' '$EXPORT_DIRECTORY/$name.png'")
+    }
+
+    private fun shell(command: String) {
+        InstrumentationRegistry.getInstrumentation().uiAutomation
+            .executeShellCommand(command)
+            .use { descriptor ->
+                FileOutputStream(File("/dev/null")).use { sink ->
+                    android.os.ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { input ->
+                        input.copyTo(sink)
+                    }
+                }
+            }
     }
 
     private companion object {
+        const val EXPORT_DIRECTORY = "/sdcard/Download/goldrush-play"
         val SCORING_CODE = Regex("^[A-Z][1-8]$")
     }
 }
