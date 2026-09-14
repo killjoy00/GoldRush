@@ -1,0 +1,86 @@
+name: Temporary Play v3 audit
+
+on:
+  push:
+    branches: ["play-audit-v3"]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Play Developer API
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Verify live Play state after v3 upload
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/com.killjoy00.goldrush"
+          work="$(mktemp -d)"
+          edit_id=""
+          cleanup() {
+            if [ -n "$edit_id" ]; then
+              curl -sS -X DELETE -H "Authorization: Bearer ${ACCESS_TOKEN}" "${base}/edits/${edit_id}" >/dev/null || true
+            fi
+            rm -rf "$work"
+          }
+          trap cleanup EXIT
+
+          curl --fail-with-body -sS -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/oneTimeProducts/com.killjoy00.goldrush.removeads" > "$work/product.json"
+          product_state="$(jq -r '[.purchaseOptions[] | select(.purchaseOptionId == "buy")][0].state' "$work/product.json")"
+          product_regions="$(jq '[.purchaseOptions[] | select(.purchaseOptionId == "buy")][0].regionalPricingAndAvailabilityConfigs | map(select(.availability == "AVAILABLE")) | length' "$work/product.json")"
+          test "$product_state" = "ACTIVE"
+
+          curl --fail-with-body -sS -X POST -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" -d '{}' "${base}/edits" > "$work/edit.json"
+          edit_id="$(jq -r '.id' "$work/edit.json")"
+
+          curl --fail-with-body -sS -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/tracks/internal" > "$work/internal.json"
+          v3_completed="$(jq '[.releases[]? | select(.status == "completed") | .versionCodes[]? | select(. == "3")] | length' "$work/internal.json")"
+          test "$v3_completed" -ge 1
+
+          curl --fail-with-body -sS -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/tracks/production" > "$work/production.json"
+          production_releases="$(jq '(.releases // []) | length' "$work/production.json")"
+          test "$production_releases" -eq 0
+
+          curl --fail-with-body -sS -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            "${base}/edits/${edit_id}/listings/en-US" > "$work/listing.json"
+          test "$(jq -r '.title' "$work/listing.json")" = "Gold Rush Prospecting"
+
+          count_images() {
+            curl --fail-with-body -sS -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              "${base}/edits/${edit_id}/listings/en-US/$1" | jq '(.images // []) | length'
+          }
+          icon_count="$(count_images icon)"
+          feature_count="$(count_images featureGraphic)"
+          phone_count="$(count_images phoneScreenshots)"
+          test "$icon_count" -eq 1
+          test "$feature_count" -eq 1
+          test "$phone_count" -ge 4
+
+          echo "PLAY_V3_AUDIT_BEGIN"
+          echo "versionCode3InternalCompleted=${v3_completed}"
+          echo "productionReleaseCount=${production_releases}"
+          echo "removeAdsState=${product_state}"
+          echo "removeAdsAvailableRegionCount=${product_regions}"
+          echo "icon=${icon_count}"
+          echo "featureGraphic=${feature_count}"
+          echo "phoneScreenshots=${phone_count}"
+          echo "PLAY_V3_AUDIT_END"
