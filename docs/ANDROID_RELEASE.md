@@ -11,7 +11,7 @@ The regular `Android` workflow runs the Kotlin unit suite, release lint, and rel
 
 That normal CI AAB is intentionally unsigned so signing material stays out of source control.
 
-The separate manual `Android Play release` workflow is the Play-upload path. It materializes the upload keystore only on the runner, verifies that the keystore certificate matches the exact upload certificate Google Play expects, runs tests/lint/bundle generation, signs and verifies the AAB, archives the signed bundle plus mapping/hash artifacts, and uploads the release to the Google Play Internal testing track through the Play Developer API.
+The separate `Android Play release` workflow is the Play-upload path. It materializes the upload keystore only on the runner, verifies that the keystore certificate matches the exact upload certificate Google Play expects, runs tests/lint/bundle generation, signs and verifies the AAB, archives the signed bundle plus mapping/hash artifacts, and uploads the release to the Google Play Internal testing track through the Play Developer API. The workflow can be dispatched manually or triggered in a controlled way from the `play-release` branch.
 
 The expected Gold Rush upload certificate SHA-1 is:
 
@@ -26,12 +26,12 @@ The workflow fails before signing or uploading if the configured keystore does n
 - `minSdk`: 26
 - `targetSdk`: 36
 - `compileSdk`: 36
-- current `versionCode`: 2
+- current `versionCode`: 3
 - current `versionName`: `1.5`
 
-Version code 2 is the first Gold Rush Android bundle accepted by Google Play. The Play Developer API confirms that version code 2 is on the `internal` track with release status `completed` under the release name `Gold Rush Internal Test`.
+Android 1.5 / version code 3 is the current Play-delivered build. The guarded release workflow uploaded it to Internal testing, and a separate Android Publisher API readback confirmed version code 3 has release status `completed` on the `internal` track.
 
-Every subsequent Play upload must use a strictly higher `versionCode`; the next upload must therefore be 3 or greater.
+Version code 3 is now consumed by Play. Every subsequent Play upload must use a strictly higher `versionCode`; the next binary must therefore be 4 or greater.
 
 ## Monetization status
 
@@ -54,18 +54,21 @@ Completed:
 
 1. Gold Rush exists in Play Console as `com.killjoy00.goldrush`.
 2. Play App Signing / upload-key configuration is established.
-3. Version code 2 / version 1.5 was accepted by Play.
-4. Version code 2 is rolled out on the Internal testing track with status `completed`.
-5. The one-time product `com.killjoy00.goldrush.removeads` was created and activated through the Play Developer API.
-6. GitHub release automation verifies the exact upload certificate and can send future signed AABs directly to Internal testing.
+3. Version code 3 / version 1.5 was built, tested, linted, signed, and uploaded by the guarded release workflow.
+4. A Play Developer API readback confirmed version code 3 is completed on Internal testing.
+5. The one-time product `com.killjoy00.goldrush.removeads` is active at US $2.99 with regional pricing.
+6. The English listing, contact metadata, store icon, feature graphic, and four phone screenshots are live.
+7. Android v3 includes an in-app Privacy Policy link to `https://killjoy00.github.io/GoldRush/privacy.html`.
+8. Production remains empty.
 
 Remaining release QA / launch work:
 
-1. Add/verify tester access and install version code 2 through the Play internal-test link.
-2. Test purchase, restore, reinstall, pending purchase, refund/revocation, consent, ads, and entitlement behavior from the Play-delivered build.
-3. Complete/verify the Play listing, content rating, target audience, ads declaration, Data Safety form, privacy policy, screenshots, feature graphic, and production rollout requirements.
-4. For any new binary, increment `versionCode` to at least 3 before running `Android Play release`.
+1. Verify tester email-list access and install/update version code 3 through the Play internal-test link.
+2. Test purchase, restore, reinstall, pending purchase, refund/revocation, consent, ads, privacy-policy link, and entitlement behavior from the Play-delivered build.
+3. Complete/verify Play App content declarations: Privacy policy, Ads, App access, Target audience and content, Content rating, and Data Safety.
+4. Review production country/device availability and resolve every Play production-readiness warning.
+5. For any new binary, increment `versionCode` to at least 4 before running `Android Play release`.
 
 ## AdMob
 
-Gold Rush already has its Android AdMob app entry and Android-specific banner configuration wired in code. The existing publisher account and root `app-ads.txt` publisher record can remain shared across iOS and Android. Final release QA should confirm that Play listing/domain configuration and AdMob app association are correct.
+Gold Rush already has its Android AdMob app entry and Android-specific banner configuration wired in code. The existing publisher account and root `app-ads.txt` publisher record can remain shared across iOS and Android. The public website repository contains the required publisher record; final device QA should confirm live ad delivery and the UMP/privacy-choice behavior from the Play-delivered build.
