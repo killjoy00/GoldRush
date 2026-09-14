@@ -50,7 +50,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect -camera-back none
           script: |
-            set -euo pipefail
+            set -eu
             gradle -p Android :app:connectedDebugAndroidTest \
               -Pandroid.testInstrumentationRunnerArguments.class=com.killjoy00.goldrush.StoreScreenshotTest \
               --no-daemon --stacktrace
