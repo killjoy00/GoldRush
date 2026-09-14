@@ -1,6 +1,6 @@
 # Android release readiness
 
-Current checkpoint: the Android client implements the shipped Gold Rush rules, Prospector AI, career stats, Claim Journal, My Claim/Tableau, persisted setup choices, active-game restoration, Play Billing Remove Ads, Google Mobile Ads, UMP consent handling, Play In-App Review, adaptive/themed launcher icons, and CI release bundle builds. The first Android bundle has been accepted by Google Play, is rolled out on Internal testing, the Remove Ads product is active, and the required Play store graphics are live.
+Current checkpoint: the Android client implements the shipped Gold Rush rules, Prospector AI, career stats, Claim Journal, My Claim/Tableau, persisted setup choices, active-game restoration, Play Billing Remove Ads, Google Mobile Ads, UMP consent handling, Play In-App Review, adaptive/themed launcher icons, and CI release bundle builds. The first Android bundle has been accepted by Google Play and is rolled out on Internal testing; the Remove Ads product, listing metadata, and required Play store graphics are live. No production release has been created yet.
 
 ## Ready in-repo
 
@@ -22,41 +22,53 @@ Current checkpoint: the Android client implements the shipped Gold Rush rules, P
 - Android Lint runs against the release variant in CI and archives its report.
 - `Android Play release` verifies the upload certificate, signs the release AAB, archives release artifacts, and uploads future releases to Google Play Internal testing using the stored service-account credential.
 - `Android Play screenshots` can manually regenerate, validate, archive, and sync the four real Compose phone screenshots to Play.
+- `Google Play release audit` now performs a broad read-only audit of the live bundle, tracks, listing/contact metadata, required graphics, Remove Ads state/pricing/regions, tester-Google-Group visibility, and country-availability API responses.
 
 ## Google Play configuration completed
 
 - Play app/package configured as `com.killjoy00.goldrush`.
 - Upload certificate established. Expected SHA-1: `8A:D5:7A:08:05:70:96:CD:6F:D4:70:39:EA:86:1C:E1:63:E3:AC:26`.
 - Version code 2 / version 1.5 accepted by Google Play.
+- Play Developer API confirms exactly one current uploaded bundle and confirms version code 2 is present.
 - Play Developer API confirms version code 2 is on the `internal` track with release status `completed`.
+- Production track exists but currently has **zero releases**; Gold Rush has not been rolled out to production.
 - Play Developer API service account connected via GitHub Actions.
 - Remove Ads product `com.killjoy00.goldrush.removeads` created and active.
-- Remove Ads purchase option `buy` active at US `$2.99` with Google-generated regional prices.
-- English title, short description, and full description synced through the Play Developer API.
-- Default language, contact website, and contact email configured through the Play Developer API.
+- Remove Ads purchase option `buy` active at US `$2.99`; the latest API audit reports the purchase option available in **173 regions**.
+- English title, short description, and full description match the checked-in Play listing files.
+- Default language, contact website, and contact email match the checked-in release configuration.
 - Play Store icon uploaded from the existing production artwork and verified live (`icon=1`).
 - 1024×500 RGB Play feature graphic generated from the shipping Gold Rush visual language, visually reviewed, uploaded, and verified live (`featureGraphic=1`).
 - Four 1080×1920 Android phone screenshots generated from the real Compose UI, visually reviewed, uploaded, and verified live (`phoneScreenshots=4`).
+- Tablet screenshots are not currently supplied (`sevenInchScreenshots=0`, `tenInchScreenshots=0`) and are not required for the initial phone-focused release.
+- The public website repository contains the exact required AdMob `app-ads.txt` publisher record at its root.
+- GitHub reports Pages enabled for the Gold Rush repository, and the intended privacy-policy source file exists at `docs/privacy.html`.
 
-## External release work still required
+## What still requires manual verification
 
-### Google Play Console / release track
+The Android Publisher API does not expose every Play Console declaration. The remaining work should not be guessed or marked complete from repository state alone.
 
-1. Add/verify tester access and install the app from the Play internal-test link.
-2. Complete or verify content rating, target audience, ads declaration, Data Safety, privacy-policy, and production-track requirements.
-3. Any later binary must increment `versionCode` to at least 3 before running `Android Play release`.
+### Google Play Console
 
-### AdMob
+1. Confirm the intended Google account is present in the Internal testing email list and that the tester opt-in/install link works. The Android Publisher Testers API exposes Google Groups but does **not** expose Play Console email-list testers; the latest audit found zero Google Groups, which says nothing about email-list membership.
+2. Under **Policy and programs → App content**, complete or verify: Privacy policy, Ads declaration, App access, Target audience and content, Content rating, and Data Safety.
+3. Open the configured public privacy-policy URL once and confirm it loads the current Gold Rush policy. Repository/Pages configuration is present, but the final public HTTP response was not independently verified by this audit environment.
+4. Review production country/device availability and distribution settings in Play Console. The country-availability API did not return usable production targeting data before a production release exists.
+5. Resolve every production-review error or warning shown by Play Console before starting production rollout.
+6. Keep Production empty until the physical-device/internal-test QA below passes.
+7. Any later binary must increment `versionCode` to at least 3 before running `Android Play release`.
 
-The Android AdMob app entry and banner identifiers are already wired in code. Before production, confirm the app association and that the Play listing's developer website points at a domain whose root `app-ads.txt` contains the publisher record.
+### Physical-device / Play-delivered QA
 
-### Device QA
-
-- Exercise Dealt/Drafted x Together/Take Turns in both pass-and-play and Prospector modes on physical Android hardware.
-- Rotate the device and background/restore during both a split and handoff to verify active-game restoration and hidden-information boundaries.
-- Test Billing through a Play internal-testing account, including purchase, reinstall/restore, pending purchase, and refund/revocation behavior.
-- Verify banner ads, UMP consent/privacy choices, and Remove Ads entitlement together on a Play-delivered release build.
-- Verify the Play in-app review integration from a Play-delivered internal-test build; Google controls whether the review card is actually displayed.
+- Install from the Google Play Internal testing opt-in/install flow on a physical Android device.
+- Confirm the menu shows the localized Remove Ads price returned by Play.
+- Confirm banner ads appear only on intended non-gameplay surfaces before purchase and never during an active game.
+- Complete a test Remove Ads purchase; verify immediate removal, force-close/reopen persistence, reinstall ownership restore, and explicit Restore Purchase behavior.
+- Verify pending-purchase behavior does not grant entitlement early, then refund/revoke a test purchase and confirm ownership refresh removes the entitlement.
+- Verify UMP consent flow where applicable and Privacy Choices when required.
+- Exercise Dealt/Drafted × Together/Take Turns in both pass-and-play and Prospector modes.
+- Rotate the device and background/restore during split and hidden-information handoff states.
+- Verify Play In-App Review integration after the configured eligibility threshold; Google may suppress the actual review card.
 
 ## Not required for the first Android release
 

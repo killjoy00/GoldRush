@@ -46,30 +46,37 @@ jobs:
           }
           trap cleanup EXIT
 
+          api_get() {
+            curl --fail-with-body -sS \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "Accept: application/json" \
+              "$1"
+          }
+
+          http_get() {
+            output="$1"
+            url="$2"
+            curl -sS -o "$output" -w '%{http_code}' \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "Accept: application/json" \
+              "$url"
+          }
+
           expected_version_code="$(sed -n 's/.*versionCode = \([0-9][0-9]*\).*/\1/p' Android/app/build.gradle.kts | head -n 1)"
           test -n "$expected_version_code"
-
           expected_title="$(tr -d '\r\n' < docs/play-store/title.txt)"
           expected_short="$(tr -d '\r\n' < docs/play-store/short-description.txt)"
           expected_full="$(cat docs/play-store/full-description.txt)"
 
-          curl --fail-with-body -sS \
-            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-            -H "Accept: application/json" \
-            "${base}/oneTimeProducts/${PRODUCT_ID}" > "$work/product.json"
-
+          # Monetization: permanent Remove Ads product.
+          api_get "${base}/oneTimeProducts/${PRODUCT_ID}" > "$work/product.json"
           product_state="$(jq -r '[.purchaseOptions[] | select(.purchaseOptionId == "buy")][0].state // empty' "$work/product.json")"
           us_price="$(jq -r '[.purchaseOptions[] | select(.purchaseOptionId == "buy")][0].regionalPricingAndAvailabilityConfigs[] | select(.regionCode == "US") | .price | ((.units // "0") + "." + (((.nanos // 0) / 10000000 | floor) | tostring | if length == 1 then "0" + . else . end))' "$work/product.json")"
+          product_region_count="$(jq '[.purchaseOptions[] | select(.purchaseOptionId == "buy")][0].regionalPricingAndAvailabilityConfigs // [] | map(select(.availability == "AVAILABLE")) | length' "$work/product.json")"
+          test "$product_state" = "ACTIVE"
+          test "$us_price" = "2.99"
 
-          if [ "$product_state" != "ACTIVE" ]; then
-            echo "::error::Remove Ads option 'buy' is not ACTIVE (found '${product_state:-missing}')."
-            exit 1
-          fi
-          if [ "$us_price" != "2.99" ]; then
-            echo "::error::Remove Ads US price drifted from 2.99 (found '${us_price:-missing}')."
-            exit 1
-          fi
-
+          # Create a read-only edit snapshot for release/listing/distribution resources.
           curl --fail-with-body -sS \
             -X POST \
             -H "Authorization: Bearer ${ACCESS_TOKEN}" \
@@ -79,71 +86,115 @@ jobs:
           edit_id="$(jq -r '.id' "$work/edit.json")"
           test -n "$edit_id" && test "$edit_id" != "null"
 
-          curl --fail-with-body -sS \
-            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-            "${base}/edits/${edit_id}/tracks/internal" > "$work/track.json"
+          api_get "${base}/edits/${edit_id}/tracks" > "$work/tracks.json"
+          api_get "${base}/edits/${edit_id}/tracks/internal" > "$work/internal.json"
 
-          live_version_ok="$(jq -r --arg vc "$expected_version_code" '[.releases[]? | select(.status == "completed") | .versionCodes[]? | select(. == $vc)] | length' "$work/track.json")"
-          if [ "$live_version_ok" -lt 1 ]; then
-            echo "::error::versionCode ${expected_version_code} is not completed on the Internal track."
-            exit 1
+          production_http="$(http_get "$work/production.json" "${base}/edits/${edit_id}/tracks/production")"
+          if [ "$production_http" != "200" ]; then
+            echo '{}' > "$work/production.json"
           fi
 
-          curl --fail-with-body -sS \
-            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-            "${base}/edits/${edit_id}/listings/en-US" > "$work/listing.json"
+          internal_completed="$(jq -r --arg vc "$expected_version_code" '[.releases[]? | select(.status == "completed") | .versionCodes[]? | select(. == $vc)] | length' "$work/internal.json")"
+          test "$internal_completed" -ge 1
+          internal_release_count="$(jq '(.releases // []) | length' "$work/internal.json")"
+          production_release_count="$(jq '(.releases // []) | length' "$work/production.json")"
+          production_completed_count="$(jq '[.releases[]? | select(.status == "completed")] | length' "$work/production.json")"
+          track_names="$(jq -r '[.tracks[]?.track] | join(",")' "$work/tracks.json")"
+
+          api_get "${base}/edits/${edit_id}/bundles" > "$work/bundles.json"
+          bundle_version_present="$(jq -r --argjson vc "$expected_version_code" '[.bundles[]? | select(.versionCode == $vc)] | length' "$work/bundles.json")"
+          test "$bundle_version_present" -ge 1
+          bundle_count="$(jq '(.bundles // []) | length' "$work/bundles.json")"
+
+          # Store listing and developer contact data.
+          api_get "${base}/edits/${edit_id}/listings" > "$work/listings.json"
+          api_get "${base}/edits/${edit_id}/listings/en-US" > "$work/listing.json"
+          api_get "${base}/edits/${edit_id}/details" > "$work/details.json"
+          listing_locale_count="$(jq '(.listings // []) | length' "$work/listings.json")"
 
           live_title="$(jq -r '.title // ""' "$work/listing.json")"
           live_short="$(jq -r '.shortDescription // ""' "$work/listing.json")"
           live_full="$(jq -r '.fullDescription // ""' "$work/listing.json")"
-
-          if [ "$live_title" != "$expected_title" ]; then
-            echo "::error::Play title does not match docs/play-store/title.txt."
-            exit 1
-          fi
-          if [ "$live_short" != "$expected_short" ]; then
-            echo "::error::Play short description does not match the repo."
-            exit 1
-          fi
-          if [ "$live_full" != "$expected_full" ]; then
-            echo "::error::Play full description does not match the repo."
-            exit 1
-          fi
-
-          curl --fail-with-body -sS \
-            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-            "${base}/edits/${edit_id}/details" > "$work/details.json"
+          test "$live_title" = "$expected_title"
+          test "$live_short" = "$expected_short"
+          test "$live_full" = "$expected_full"
 
           default_language="$(jq -r '.defaultLanguage // ""' "$work/details.json")"
           contact_website="$(jq -r '.contactWebsite // ""' "$work/details.json")"
           contact_email="$(jq -r '.contactEmail // ""' "$work/details.json")"
+          test "$default_language" = "en-US"
+          test "$contact_website" = "$EXPECTED_CONTACT_WEBSITE"
+          test "$contact_email" = "$EXPECTED_CONTACT_EMAIL"
 
-          if [ "$default_language" != "en-US" ]; then
-            echo "::error::Default Play language drifted from en-US."
-            exit 1
-          fi
-          if [ "$contact_website" != "$EXPECTED_CONTACT_WEBSITE" ]; then
-            echo "::error::Play contact website does not match the expected website."
-            exit 1
-          fi
-          if [ "$contact_email" != "$EXPECTED_CONTACT_EMAIL" ]; then
-            echo "::error::Play contact email does not match the expected contact."
-            exit 1
+          count_images() {
+            image_type="$1"
+            api_get "${base}/edits/${edit_id}/listings/en-US/${image_type}" > "$work/${image_type}.json"
+            jq '(.images // []) | length' "$work/${image_type}.json"
+          }
+          icon_count="$(count_images icon)"
+          feature_count="$(count_images featureGraphic)"
+          phone_count="$(count_images phoneScreenshots)"
+          seven_count="$(count_images sevenInchScreenshots)"
+          ten_count="$(count_images tenInchScreenshots)"
+          test "$icon_count" -eq 1
+          test "$feature_count" -eq 1
+          test "$phone_count" -ge 4
+
+          # Tester API can expose Google Groups only; Play Console email lists are intentionally not exposed here.
+          testers_http="$(http_get "$work/testers.json" "${base}/edits/${edit_id}/testers/internal")"
+          if [ "$testers_http" = "200" ]; then
+            tester_google_group_count="$(jq '(.googleGroups // []) | length' "$work/testers.json")"
+          else
+            tester_google_group_count="unavailable-http-${testers_http}"
           fi
 
-          tester_status="unknown"
-          if curl --fail-with-body -sS \
-            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-            "${base}/edits/${edit_id}/testers/internal" > "$work/testers.json"; then
-            group_count="$(jq '(.googleGroups // []) | length' "$work/testers.json")"
-            tester_status="google-group-count=${group_count}"
+          # Per-track country availability. Missing production configuration is reported, not treated as an audit failure.
+          internal_country_http="$(http_get "$work/internal-countries.json" "${base}/edits/${edit_id}/countryAvailability/internal")"
+          if [ "$internal_country_http" = "200" ]; then
+            internal_country_count="$(jq '(.countries // []) | length' "$work/internal-countries.json")"
+            internal_rest_of_world="$(jq -r '.restOfWorld // false' "$work/internal-countries.json")"
+            internal_sync_production="$(jq -r '.syncWithProduction // false' "$work/internal-countries.json")"
+          else
+            internal_country_count="unavailable-http-${internal_country_http}"
+            internal_rest_of_world="unknown"
+            internal_sync_production="unknown"
           fi
 
-          echo "Google Play release audit passed."
-          echo "Internal completed versionCode: ${expected_version_code}"
-          echo "Remove Ads: ACTIVE / USD 2.99"
-          echo "English listing: matches repository"
-          echo "Default language: en-US"
-          echo "Contact website configured: true"
-          echo "Contact email configured: true"
-          echo "Internal tester API status: ${tester_status}"
+          production_country_http="$(http_get "$work/production-countries.json" "${base}/edits/${edit_id}/countryAvailability/production")"
+          if [ "$production_country_http" = "200" ]; then
+            production_country_count="$(jq '(.countries // []) | length' "$work/production-countries.json")"
+            production_rest_of_world="$(jq -r '.restOfWorld // false' "$work/production-countries.json")"
+          else
+            production_country_count="unavailable-http-${production_country_http}"
+            production_rest_of_world="unknown"
+          fi
+
+          echo "GOOGLE_PLAY_AUDIT_BEGIN"
+          echo "expectedVersionCode=${expected_version_code}"
+          echo "bundleCount=${bundle_count}"
+          echo "bundleExpectedVersionPresent=${bundle_version_present}"
+          echo "trackNames=${track_names}"
+          echo "internalReleaseCount=${internal_release_count}"
+          echo "internalExpectedVersionCompleted=${internal_completed}"
+          echo "productionTrackHttp=${production_http}"
+          echo "productionReleaseCount=${production_release_count}"
+          echo "productionCompletedReleaseCount=${production_completed_count}"
+          echo "listingLocaleCount=${listing_locale_count}"
+          echo "defaultLanguage=${default_language}"
+          echo "contactWebsiteConfigured=true"
+          echo "contactEmailConfigured=true"
+          echo "icon=${icon_count}"
+          echo "featureGraphic=${feature_count}"
+          echo "phoneScreenshots=${phone_count}"
+          echo "sevenInchScreenshots=${seven_count}"
+          echo "tenInchScreenshots=${ten_count}"
+          echo "removeAdsState=${product_state}"
+          echo "removeAdsUsPrice=${us_price}"
+          echo "removeAdsAvailableRegionCount=${product_region_count}"
+          echo "internalTesterGoogleGroupCount=${tester_google_group_count}"
+          echo "internalCountryCount=${internal_country_count}"
+          echo "internalRestOfWorld=${internal_rest_of_world}"
+          echo "internalSyncWithProduction=${internal_sync_production}"
+          echo "productionCountryCount=${production_country_count}"
+          echo "productionRestOfWorld=${production_rest_of_world}"
+          echo "GOOGLE_PLAY_AUDIT_END"
