@@ -71,3 +71,7 @@ jobs:
           echo "phoneScreenshots=${phone_count}"
           echo "sevenInchScreenshots=${seven_count}"
           echo "tenInchScreenshots=${ten_count}"
+
+          test "$icon_count" -eq 1
+          test "$feature_count" -eq 1
+          test "$phone_count" -ge 4
