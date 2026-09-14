@@ -1,10 +1,6 @@
 name: Google Play release audit
 
 on:
-  push:
-    branches: ["play-readiness-audit"]
-    paths:
-      - ".github/workflows/play-release-audit.yml"
   workflow_dispatch:
 
 permissions:
