@@ -1,0 +1,36 @@
+name: Android AdMob release config
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify production AdMob IDs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Gold Rush Android AdMob configuration
+        shell: bash
+        run: bash .github/scripts/validate-android-admob.sh
+
+      - name: Prove Google sample IDs are rejected
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_file="$RUNNER_TEMP/build.gradle.kts"
+          cp Android/app/build.gradle.kts "$test_file"
+          sed -i 's#ca-app-pub-1217971050094766~3907429685#ca-app-pub-3940256099942544~3347511713#' "$test_file"
+          sed -i 's#ca-app-pub-1217971050094766/4428717591#ca-app-pub-3940256099942544/6300978111#' "$test_file"
+
+          if bash .github/scripts/validate-android-admob.sh "$test_file"; then
+            echo "::error::Production guard unexpectedly accepted Google sample AdMob IDs."
+            exit 1
+          fi
+          echo "Confirmed: Google sample AdMob IDs are rejected."
