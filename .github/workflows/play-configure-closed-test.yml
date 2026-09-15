@@ -1,0 +1,93 @@
+name: Play configure closed test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["play-closed-test"]
+    paths:
+      - ".github/workflows/play-configure-closed-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PACKAGE_NAME: com.killjoy00.goldrush
+      TRACK_NAME: production-access
+      VERSION_CODE: "3"
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Create/update closed-testing track with existing Play artifact
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          auth=(-H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json")
+
+          edit_json="$(curl --fail --silent --show-error -X POST "${base}/edits" "${auth[@]}" -d '{}')"
+          edit_id="$(jq -r '.id' <<<"$edit_json")"
+          test -n "$edit_id" && test "$edit_id" != "null"
+
+          track_url="${base}/edits/${edit_id}/tracks/${TRACK_NAME}"
+          code="$(curl --silent --show-error -o "$RUNNER_TEMP/track.json" -w '%{http_code}' "${track_url}" "${auth[@]}")"
+          if [[ "$code" == "404" ]]; then
+            jq -n --arg track "$TRACK_NAME" '{track:$track,type:"CLOSED_TESTING",formFactor:"DEFAULT"}' > "$RUNNER_TEMP/create-track.json"
+            curl --fail --silent --show-error -X POST "${base}/edits/${edit_id}/tracks" "${auth[@]}" \
+              --data-binary @"$RUNNER_TEMP/create-track.json" > "$RUNNER_TEMP/created-track.json"
+            echo "Created closed-testing track: $TRACK_NAME"
+          elif [[ "$code" == "200" ]]; then
+            echo "Closed-testing track already exists: $TRACK_NAME"
+          else
+            cat "$RUNNER_TEMP/track.json"
+            echo "::error::Unexpected HTTP $code while reading track $TRACK_NAME"
+            exit 1
+          fi
+
+          jq -n \
+            --arg track "$TRACK_NAME" \
+            --arg version "$VERSION_CODE" \
+            '{track:$track,releases:[{name:"Gold Rush 1.5 closed test",versionCodes:[$version],status:"completed"}]}' \
+            > "$RUNNER_TEMP/update-track.json"
+
+          curl --fail --silent --show-error -X PUT "${track_url}" "${auth[@]}" \
+            --data-binary @"$RUNNER_TEMP/update-track.json" > "$RUNNER_TEMP/updated-track.json"
+
+          curl --fail --silent --show-error -X POST "${base}/edits/${edit_id}:commit" "${auth[@]}" -d '{}' > "$RUNNER_TEMP/commit.json"
+          echo "Committed versionCode $VERSION_CODE to closed-testing track $TRACK_NAME."
+
+      - name: Verify closed-testing release
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          auth=(-H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json")
+
+          edit_json="$(curl --fail --silent --show-error -X POST "${base}/edits" "${auth[@]}" -d '{}')"
+          edit_id="$(jq -r '.id' <<<"$edit_json")"
+          track_json="$(curl --fail --silent --show-error "${base}/edits/${edit_id}/tracks/${TRACK_NAME}" "${auth[@]}")"
+
+          jq -e --arg version "$VERSION_CODE" '
+            any(.releases[]?; .status == "completed" and any(.versionCodes[]?; . == $version))
+          ' <<<"$track_json" >/dev/null
+
+          echo "CLOSED_TEST_AUDIT_BEGIN"
+          echo "track=$TRACK_NAME"
+          echo "versionCode=$VERSION_CODE"
+          echo "status=completed"
+          echo "CLOSED_TEST_AUDIT_END"
