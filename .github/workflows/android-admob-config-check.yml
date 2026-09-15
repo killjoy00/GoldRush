@@ -1,0 +1,20 @@
+name: Android AdMob release config
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify production AdMob IDs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Gold Rush Android AdMob configuration
+        shell: bash
+        run: bash .github/scripts/validate-android-admob.sh
