@@ -21,6 +21,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify production Android AdMob configuration
+        shell: bash
+        run: bash .github/scripts/validate-android-admob.sh
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
