@@ -1,0 +1,81 @@
+name: Play configure closed test v2
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["play-closed-test"]
+    paths:
+      - ".github/workflows/play-configure-closed-test-v2.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PACKAGE_NAME: com.killjoy00.goldrush
+      TRACK_NAME: production-access
+      VERSION_CODE: "3"
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Publish existing v3 to closed testing
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          auth=(-H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json")
+
+          edit_json="$(curl --fail --silent --show-error -X POST "${base}/edits" "${auth[@]}" -d '{}')"
+          edit_id="$(jq -r '.id' <<<"$edit_json")"
+          track_url="${base}/edits/${edit_id}/tracks/${TRACK_NAME}"
+
+          get_code="$(curl --silent --show-error -o "$RUNNER_TEMP/track.json" -w '%{http_code}' "$track_url" "${auth[@]}")"
+          if [[ "$get_code" == "404" ]]; then
+            jq -n --arg track "$TRACK_NAME" '{track:$track,type:"CLOSED_TESTING",formFactor:"DEFAULT"}' > "$RUNNER_TEMP/create.json"
+            create_code="$(curl --silent --show-error -o "$RUNNER_TEMP/create-response.json" -w '%{http_code}' -X POST "${base}/edits/${edit_id}/tracks" "${auth[@]}" --data-binary @"$RUNNER_TEMP/create.json")"
+            if [[ "$create_code" != "200" ]]; then
+              cat "$RUNNER_TEMP/create-response.json"
+              exit 1
+            fi
+          elif [[ "$get_code" != "200" ]]; then
+            cat "$RUNNER_TEMP/track.json"
+            exit 1
+          fi
+
+          jq -n --arg version "$VERSION_CODE" '{releases:[{versionCodes:[$version],status:"completed"}]}' > "$RUNNER_TEMP/update.json"
+          update_code="$(curl --silent --show-error -o "$RUNNER_TEMP/update-response.json" -w '%{http_code}' -X PUT "$track_url" "${auth[@]}" --data-binary @"$RUNNER_TEMP/update.json")"
+          if [[ "$update_code" != "200" ]]; then
+            cat "$RUNNER_TEMP/update-response.json"
+            echo "::error::Closed-track update failed with HTTP $update_code"
+            exit 1
+          fi
+
+          commit_code="$(curl --silent --show-error -o "$RUNNER_TEMP/commit-response.json" -w '%{http_code}' -X POST "${base}/edits/${edit_id}:commit" "${auth[@]}" -d '{}')"
+          if [[ "$commit_code" != "200" ]]; then
+            cat "$RUNNER_TEMP/commit-response.json"
+            echo "::error::Play edit commit failed with HTTP $commit_code"
+            exit 1
+          fi
+
+          verify_edit="$(curl --fail --silent --show-error -X POST "${base}/edits" "${auth[@]}" -d '{}')"
+          verify_id="$(jq -r '.id' <<<"$verify_edit")"
+          verify_json="$(curl --fail --silent --show-error "${base}/edits/${verify_id}/tracks/${TRACK_NAME}" "${auth[@]}")"
+          jq -e --arg version "$VERSION_CODE" 'any(.releases[]?; .status == "completed" and any(.versionCodes[]?; . == $version))' <<<"$verify_json" >/dev/null
+          echo "CLOSED_TEST_AUDIT_BEGIN"
+          echo "track=$TRACK_NAME"
+          echo "versionCode=$VERSION_CODE"
+          echo "status=completed"
+          echo "CLOSED_TEST_AUDIT_END"
