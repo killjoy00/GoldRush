@@ -1,0 +1,80 @@
+name: Play review status audit
+
+on:
+  push:
+    branches: ["play-closed-test"]
+    paths:
+      - ".github/workflows/play-review-status-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PACKAGE_NAME: com.killjoy00.goldrush
+      TRACK_NAME: production-access
+      VERSION_CODE: "3"
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Probe current review and closed-track state
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          auth=(-H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json")
+
+          edit_json="$(curl --fail --silent --show-error -X POST "${base}/edits" "${auth[@]}" -d '{}')"
+          edit_id="$(jq -r '.id' <<<"$edit_json")"
+
+          track_json="$(curl --fail --silent --show-error "${base}/edits/${edit_id}/tracks/${TRACK_NAME}" "${auth[@]}")"
+          release_json="$(jq -c --arg vc "$VERSION_CODE" '[.releases[]? | select(any(.versionCodes[]?; . == $vc))][0] // {}' <<<"$track_json")"
+          release_status="$(jq -r '.status // "missing"' <<<"$release_json")"
+          release_name="$(jq -r '.name // "missing"' <<<"$release_json")"
+
+          # Safe review-state probe: an empty edit plus ERROR_IF_IN_REVIEW never
+          # cancels an active review. Google returns CHANGES_ALREADY_IN_REVIEW
+          # when any app changes are currently under review.
+          commit_http="$(curl --silent --show-error -o "$RUNNER_TEMP/review-probe.json" -w '%{http_code}' \
+            -X POST "${base}/edits/${edit_id}:commit?changesInReviewBehavior=ERROR_IF_IN_REVIEW" \
+            "${auth[@]}" -d '{}')"
+
+          review_state="unknown"
+          if [[ "$commit_http" == "400" ]] && jq -e '.error.details[]? | select(.reason == "CHANGES_ALREADY_IN_REVIEW")' "$RUNNER_TEMP/review-probe.json" >/dev/null; then
+            review_state="in_review"
+          elif [[ "$commit_http" == "200" ]]; then
+            review_state="not_in_review"
+          else
+            echo "Unexpected review probe response: HTTP ${commit_http}"
+            cat "$RUNNER_TEMP/review-probe.json"
+            exit 1
+          fi
+
+          verify_edit_json="$(curl --fail --silent --show-error -X POST "${base}/edits" "${auth[@]}" -d '{}')"
+          verify_edit_id="$(jq -r '.id' <<<"$verify_edit_json")"
+          verify_track="$(curl --fail --silent --show-error "${base}/edits/${verify_edit_id}/tracks/${TRACK_NAME}" "${auth[@]}")"
+          verify_status="$(jq -r --arg vc "$VERSION_CODE" '[.releases[]? | select(any(.versionCodes[]?; . == $vc))][0].status // "missing"' <<<"$verify_track")"
+          curl --silent --show-error -X DELETE "${base}/edits/${verify_edit_id}" "${auth[@]}" >/dev/null || true
+
+          echo "PLAY_REVIEW_AUDIT_BEGIN"
+          echo "track=${TRACK_NAME}"
+          echo "versionCode=${VERSION_CODE}"
+          echo "releaseName=${release_name}"
+          echo "releaseStatus=${release_status}"
+          echo "reviewState=${review_state}"
+          echo "verifiedReleaseStatus=${verify_status}"
+          echo "PLAY_REVIEW_AUDIT_END"
