@@ -54,11 +54,11 @@ if ! grep -Fq 'manifestPlaceholders["adMobAppId"] = admobAppId' "$gradle_file"; 
   echo "::error::Manifest AdMob app ID is no longer wired from admobAppId."
   exit 1
 fi
-if ! grep -Fq 'buildConfigField("String", "ADMOB_APP_ID", "\\\"$admobAppId\\\"")' "$gradle_file"; then
+if ! grep -Fq 'buildConfigField("String", "ADMOB_APP_ID", "\"$admobAppId\"")' "$gradle_file"; then
   echo "::error::BuildConfig.ADMOB_APP_ID is no longer wired from admobAppId."
   exit 1
 fi
-if ! grep -Fq 'buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\\\"$admobBannerAdUnitId\\\"")' "$gradle_file"; then
+if ! grep -Fq 'buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", "\"$admobBannerAdUnitId\"")' "$gradle_file"; then
   echo "::error::BuildConfig.ADMOB_BANNER_AD_UNIT_ID is no longer wired from admobBannerAdUnitId."
   exit 1
 fi
