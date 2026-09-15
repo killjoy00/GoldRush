@@ -29,7 +29,7 @@ jobs:
           access_token_scopes: https://www.googleapis.com/auth/androidpublisher
           create_credentials_file: false
 
-      - name: Publish existing v3 to closed testing
+      - name: Create first closed-testing draft with existing v3
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
         shell: bash
@@ -55,7 +55,7 @@ jobs:
             exit 1
           fi
 
-          jq -n --arg version "$VERSION_CODE" '{releases:[{versionCodes:[$version],status:"completed"}]}' > "$RUNNER_TEMP/update.json"
+          jq -n --arg version "$VERSION_CODE" '{releases:[{name:"Gold Rush 1.5 closed test",versionCodes:[$version],status:"draft"}]}' > "$RUNNER_TEMP/update.json"
           update_code="$(curl --silent --show-error -o "$RUNNER_TEMP/update-response.json" -w '%{http_code}' -X PUT "$track_url" "${auth[@]}" --data-binary @"$RUNNER_TEMP/update.json")"
           if [[ "$update_code" != "200" ]]; then
             cat "$RUNNER_TEMP/update-response.json"
@@ -73,9 +73,9 @@ jobs:
           verify_edit="$(curl --fail --silent --show-error -X POST "${base}/edits" "${auth[@]}" -d '{}')"
           verify_id="$(jq -r '.id' <<<"$verify_edit")"
           verify_json="$(curl --fail --silent --show-error "${base}/edits/${verify_id}/tracks/${TRACK_NAME}" "${auth[@]}")"
-          jq -e --arg version "$VERSION_CODE" 'any(.releases[]?; .status == "completed" and any(.versionCodes[]?; . == $version))' <<<"$verify_json" >/dev/null
+          jq -e --arg version "$VERSION_CODE" 'any(.releases[]?; .status == "draft" and any(.versionCodes[]?; . == $version))' <<<"$verify_json" >/dev/null
           echo "CLOSED_TEST_AUDIT_BEGIN"
           echo "track=$TRACK_NAME"
           echo "versionCode=$VERSION_CODE"
-          echo "status=completed"
+          echo "status=draft"
           echo "CLOSED_TEST_AUDIT_END"
