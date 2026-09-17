@@ -27,6 +27,7 @@ jobs:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
           PACKAGE_NAME: com.killjoy00.goldrush
           PRODUCT_ID: com.killjoy00.goldrush.removeads
+          CLOSED_TRACK: production-access
           EXPECTED_CONTACT_WEBSITE: https://killjoy00.github.io/
           EXPECTED_CONTACT_EMAIL: killjoy00@yahoo.com
         shell: bash
@@ -89,6 +90,13 @@ jobs:
           api_get "${base}/edits/${edit_id}/tracks" > "$work/tracks.json"
           api_get "${base}/edits/${edit_id}/tracks/internal" > "$work/internal.json"
 
+          closed_http="$(http_get "$work/closed.json" "${base}/edits/${edit_id}/tracks/${CLOSED_TRACK}")"
+          if [ "$closed_http" != "200" ]; then
+            echo "::error::Closed-testing track ${CLOSED_TRACK} is not readable (HTTP ${closed_http})."
+            cat "$work/closed.json" || true
+            exit 1
+          fi
+
           production_http="$(http_get "$work/production.json" "${base}/edits/${edit_id}/tracks/production")"
           if [ "$production_http" != "200" ]; then
             echo '{}' > "$work/production.json"
@@ -97,6 +105,14 @@ jobs:
           internal_completed="$(jq -r --arg vc "$expected_version_code" '[.releases[]? | select(.status == "completed") | .versionCodes[]? | select(. == $vc)] | length' "$work/internal.json")"
           test "$internal_completed" -ge 1
           internal_release_count="$(jq '(.releases // []) | length' "$work/internal.json")"
+
+          closed_release_count="$(jq '(.releases // []) | length' "$work/closed.json")"
+          closed_expected_completed="$(jq -r --arg vc "$expected_version_code" '[.releases[]? | select(.status == "completed") | .versionCodes[]? | select(. == $vc)] | length' "$work/closed.json")"
+          if [ "$closed_expected_completed" -lt 1 ]; then
+            echo "::error::Expected versionCode ${expected_version_code} is not completed on closed-testing track ${CLOSED_TRACK}."
+            exit 1
+          fi
+
           production_release_count="$(jq '(.releases // []) | length' "$work/production.json")"
           production_completed_count="$(jq '[.releases[]? | select(.status == "completed")] | length' "$work/production.json")"
           track_names="$(jq -r '[.tracks[]?.track] | join(",")' "$work/tracks.json")"
@@ -140,7 +156,7 @@ jobs:
           test "$feature_count" -eq 1
           test "$phone_count" -ge 4
 
-          # Tester API can expose Google Groups only; Play Console email lists are intentionally not exposed here.
+          # Tester API can expose Google Groups only; Play Console email lists and actual opt-in count are not exposed here.
           testers_http="$(http_get "$work/testers.json" "${base}/edits/${edit_id}/testers/internal")"
           if [ "$testers_http" = "200" ]; then
             tester_google_group_count="$(jq '(.googleGroups // []) | length' "$work/testers.json")"
@@ -148,7 +164,7 @@ jobs:
             tester_google_group_count="unavailable-http-${testers_http}"
           fi
 
-          # Per-track country availability. Missing production configuration is reported, not treated as an audit failure.
+          # Per-track country availability. Production is a hard US + Canada-only launch.
           internal_country_http="$(http_get "$work/internal-countries.json" "${base}/edits/${edit_id}/countryAvailability/internal")"
           if [ "$internal_country_http" = "200" ]; then
             internal_country_count="$(jq '(.countries // []) | length' "$work/internal-countries.json")"
@@ -163,10 +179,18 @@ jobs:
           production_country_http="$(http_get "$work/production-countries.json" "${base}/edits/${edit_id}/countryAvailability/production")"
           if [ "$production_country_http" = "200" ]; then
             production_country_count="$(jq '(.countries // []) | length' "$work/production-countries.json")"
+            production_country_codes="$(jq -r '[.countries[]?.countryCode] | unique | sort | join(",")' "$work/production-countries.json")"
             production_rest_of_world="$(jq -r '.restOfWorld // false' "$work/production-countries.json")"
+            if [ "$production_country_codes" != "CA,US" ] || [ "$production_rest_of_world" != "false" ]; then
+              echo "::error::Production availability must be exactly Canada + United States. Current countries=${production_country_codes:-none}, restOfWorld=${production_rest_of_world}."
+              exit 1
+            fi
+            production_country_guard="pass"
           else
             production_country_count="unavailable-http-${production_country_http}"
+            production_country_codes="unavailable"
             production_rest_of_world="unknown"
+            production_country_guard="locked-or-unavailable"
           fi
 
           echo "GOOGLE_PLAY_AUDIT_BEGIN"
@@ -176,6 +200,10 @@ jobs:
           echo "trackNames=${track_names}"
           echo "internalReleaseCount=${internal_release_count}"
           echo "internalExpectedVersionCompleted=${internal_completed}"
+          echo "closedTrack=${CLOSED_TRACK}"
+          echo "closedTrackHttp=${closed_http}"
+          echo "closedReleaseCount=${closed_release_count}"
+          echo "closedExpectedVersionCompleted=${closed_expected_completed}"
           echo "productionTrackHttp=${production_http}"
           echo "productionReleaseCount=${production_release_count}"
           echo "productionCompletedReleaseCount=${production_completed_count}"
@@ -196,5 +224,7 @@ jobs:
           echo "internalRestOfWorld=${internal_rest_of_world}"
           echo "internalSyncWithProduction=${internal_sync_production}"
           echo "productionCountryCount=${production_country_count}"
+          echo "productionCountryCodes=${production_country_codes}"
           echo "productionRestOfWorld=${production_rest_of_world}"
+          echo "productionCountryGuard=${production_country_guard}"
           echo "GOOGLE_PLAY_AUDIT_END"
