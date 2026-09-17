@@ -1,0 +1,207 @@
+name: Promote tested Android build to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type PROMOTE_GOLD_RUSH_V3 to confirm the first Android Production submission
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gold-rush-android-production-promotion
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Play Developer API
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Verify launch guardrails and promote tested build
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          PACKAGE_NAME: com.killjoy00.goldrush
+          CLOSED_TRACK: production-access
+          PRODUCTION_TRACK: production
+          CONFIRMATION: ${{ inputs.confirmation }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "$CONFIRMATION" != "PROMOTE_GOLD_RUSH_V3" ]; then
+            echo "::error::Confirmation did not match PROMOTE_GOLD_RUSH_V3. No Play changes were made."
+            exit 1
+          fi
+
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${PACKAGE_NAME}"
+          work="$(mktemp -d)"
+          edit_id=""
+
+          cleanup() {
+            if [ -n "$edit_id" ]; then
+              curl -sS -X DELETE \
+                -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+                "${base}/edits/${edit_id}" >/dev/null || true
+            fi
+            rm -rf "$work"
+          }
+          trap cleanup EXIT
+
+          api_get() {
+            curl --fail-with-body -sS \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "Accept: application/json" \
+              "$1"
+          }
+
+          http_get() {
+            output="$1"
+            url="$2"
+            curl -sS -o "$output" -w '%{http_code}' \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "Accept: application/json" \
+              "$url"
+          }
+
+          expected_version_code="$(sed -n 's/.*versionCode = \([0-9][0-9]*\).*/\1/p' Android/app/build.gradle.kts | head -n 1)"
+          expected_version_name="$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' Android/app/build.gradle.kts | head -n 1)"
+          test -n "$expected_version_code"
+          test -n "$expected_version_name"
+
+          if [ "$expected_version_code" != "3" ]; then
+            echo "::error::This first-launch workflow is pinned to tested versionCode 3, but the repo currently declares ${expected_version_code}."
+            exit 1
+          fi
+
+          release_notes="$(cat docs/play-store/release-notes.txt)"
+          if [ -z "$release_notes" ]; then
+            echo "::error::Release notes are empty."
+            exit 1
+          fi
+
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits" > "$work/edit.json"
+          edit_id="$(jq -r '.id' "$work/edit.json")"
+          test -n "$edit_id" && test "$edit_id" != "null"
+
+          # The exact binary must already exist in Play and must be the completed closed-test build.
+          api_get "${base}/edits/${edit_id}/bundles" > "$work/bundles.json"
+          bundle_present="$(jq -r --argjson vc "$expected_version_code" '[.bundles[]? | select(.versionCode == $vc)] | length' "$work/bundles.json")"
+          if [ "$bundle_present" -lt 1 ]; then
+            echo "::error::versionCode ${expected_version_code} is not present in Google Play. No Production change was made."
+            exit 1
+          fi
+
+          api_get "${base}/edits/${edit_id}/tracks/${CLOSED_TRACK}" > "$work/closed.json"
+          closed_completed="$(jq -r --arg vc "$expected_version_code" '[.releases[]? | select(.status == "completed") | .versionCodes[]? | select(. == $vc)] | length' "$work/closed.json")"
+          if [ "$closed_completed" -lt 1 ]; then
+            echo "::error::versionCode ${expected_version_code} is not completed on closed track ${CLOSED_TRACK}. No Production change was made."
+            exit 1
+          fi
+
+          # First Android launch only: Production must still be empty.
+          production_http="$(http_get "$work/production.json" "${base}/edits/${edit_id}/tracks/${PRODUCTION_TRACK}")"
+          if [ "$production_http" != "200" ]; then
+            echo "::error::Could not read Production track (HTTP ${production_http}). No Production change was made."
+            cat "$work/production.json" || true
+            exit 1
+          fi
+          production_release_count="$(jq '(.releases // []) | length' "$work/production.json")"
+          if [ "$production_release_count" -ne 0 ]; then
+            echo "::error::Production already contains ${production_release_count} release(s). This first-launch workflow will not overwrite an existing Production track."
+            exit 1
+          fi
+
+          # Hard launch geography: exactly Canada + United States, never Rest of World.
+          countries_http="$(http_get "$work/production-countries.json" "${base}/edits/${edit_id}/countryAvailability/${PRODUCTION_TRACK}")"
+          if [ "$countries_http" != "200" ]; then
+            echo "::error::Production country availability is not readable yet (HTTP ${countries_http}). Configure Production access and set countries to Canada + United States in Play Console before promotion."
+            cat "$work/production-countries.json" || true
+            exit 1
+          fi
+          production_country_codes="$(jq -r '[.countries[]?.countryCode] | unique | sort | join(",")' "$work/production-countries.json")"
+          production_rest_of_world="$(jq -r '.restOfWorld // false' "$work/production-countries.json")"
+          if [ "$production_country_codes" != "CA,US" ] || [ "$production_rest_of_world" != "false" ]; then
+            echo "::error::Production geography must be exactly CA,US with restOfWorld=false. Current countries=${production_country_codes:-none}, restOfWorld=${production_rest_of_world}."
+            exit 1
+          fi
+
+          jq -n \
+            --arg track "$PRODUCTION_TRACK" \
+            --arg name "Gold Rush ${expected_version_name} Android launch" \
+            --arg vc "$expected_version_code" \
+            --arg notes "$release_notes" \
+            '{track:$track,releases:[{name:$name,versionCodes:[$vc],status:"completed",releaseNotes:[{language:"en-US",text:$notes}]}]}' \
+            > "$work/production-payload.json"
+
+          curl --fail-with-body -sS \
+            -X PUT \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data-binary @"$work/production-payload.json" \
+            "${base}/edits/${edit_id}/tracks/${PRODUCTION_TRACK}" \
+            > "$work/production-update.json"
+
+          # Validate before commit. Nothing is published if validation fails.
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits/${edit_id}:validate" \
+            > "$work/validate.json"
+
+          # Never cancel or replace an unrelated Play review. If anything is already in review,
+          # Google returns CHANGES_ALREADY_IN_REVIEW and this workflow exits without committing.
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits/${edit_id}:commit?changesInReviewBehavior=ERROR_IF_IN_REVIEW" \
+            > "$work/commit.json"
+          edit_id=""
+
+          # Fresh readback after commit.
+          curl --fail-with-body -sS \
+            -X POST \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "${base}/edits" > "$work/verify-edit.json"
+          edit_id="$(jq -r '.id' "$work/verify-edit.json")"
+          api_get "${base}/edits/${edit_id}/tracks/${PRODUCTION_TRACK}" > "$work/production-verified.json"
+          verified_count="$(jq -r --arg vc "$expected_version_code" '[.releases[]? | .versionCodes[]? | select(. == $vc)] | length' "$work/production-verified.json")"
+          verified_status="$(jq -r --arg vc "$expected_version_code" '[.releases[]? | select(any(.versionCodes[]?; . == $vc))][0].status // "missing"' "$work/production-verified.json")"
+          if [ "$verified_count" -lt 1 ]; then
+            echo "::error::Production commit returned successfully but versionCode ${expected_version_code} was not found on readback."
+            exit 1
+          fi
+
+          echo "PLAY_PRODUCTION_PROMOTION_BEGIN"
+          echo "versionCode=${expected_version_code}"
+          echo "versionName=${expected_version_name}"
+          echo "sourceTrack=${CLOSED_TRACK}"
+          echo "sourceCompleted=${closed_completed}"
+          echo "productionCountries=${production_country_codes}"
+          echo "productionRestOfWorld=${production_rest_of_world}"
+          echo "productionVerifiedStatus=${verified_status}"
+          echo "PLAY_PRODUCTION_PROMOTION_END"
