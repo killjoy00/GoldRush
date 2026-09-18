@@ -12,14 +12,20 @@ signed="$RUNNER_TEMP/goldrush-release-smoke.apk"
 printf '%s' "$ANDROID_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$keystore"
 test -s "$keystore"
 
-apksigner sign \
+sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+test -n "$sdk_root"
+apksigner_bin="$(find "$sdk_root/build-tools" -maxdepth 2 -type f -name apksigner | sort -V | tail -n 1)"
+test -n "$apksigner_bin"
+test -x "$apksigner_bin"
+
+"$apksigner_bin" sign \
   --ks "$keystore" \
   --ks-pass "pass:$ANDROID_UPLOAD_KEYSTORE_PASSWORD" \
   --ks-key-alias "$ANDROID_UPLOAD_KEY_ALIAS" \
   --key-pass "pass:$ANDROID_UPLOAD_KEY_PASSWORD" \
   --out "$signed" \
   "$unsigned"
-apksigner verify "$signed"
+"$apksigner_bin" verify "$signed"
 
 adb install -r "$signed"
 adb logcat -c || true
