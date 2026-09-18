@@ -19,10 +19,10 @@ android {
         applicationId = "com.killjoy00.goldrush"
         minSdk = 26
         targetSdk = 36
-        // versionCode 2 is already consumed by Google Play. This compliance
-        // follow-up is the next Play-deliverable Android build.
-        versionCode = 3
-        versionName = "1.5"
+        // versionCode 3 is already consumed by Google Play. v4 is the startup
+        // crash hotfix for the minified Android release.
+        versionCode = 4
+        versionName = "1.5.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         manifestPlaceholders["adMobAppId"] = admobAppId
