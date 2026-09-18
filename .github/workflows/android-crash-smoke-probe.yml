@@ -1,0 +1,71 @@
+name: Android crash smoke probe
+
+on:
+  push:
+    branches: [android-crash-vitals-probe]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [26, 35]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.6.0"
+      - name: Enable KVM
+        shell: bash
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -e /dev/kvm
+      - name: Launch/background/rotate smoke
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect -camera-back none
+          script: |
+            set -euo pipefail
+            gradle -p Android :app:assembleDebug --no-daemon --stacktrace
+            apk="$(find Android/app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+            adb install -r "$apk"
+            adb logcat -c
+
+            adb shell am start -W -n com.killjoy00.goldrush/.MainActivity
+            sleep 5
+            adb shell pidof com.killjoy00.goldrush >/dev/null
+
+            adb shell input keyevent KEYCODE_HOME
+            sleep 2
+            adb shell am start -W -n com.killjoy00.goldrush/.MainActivity
+            sleep 3
+            adb shell pidof com.killjoy00.goldrush >/dev/null
+
+            adb shell settings put system accelerometer_rotation 0 || true
+            adb shell settings put system user_rotation 1 || true
+            sleep 3
+            adb shell pidof com.killjoy00.goldrush >/dev/null
+
+            adb logcat -d > /tmp/logcat.txt
+            if grep -E -A25 -B5 'FATAL EXCEPTION|Process: com\.killjoy00\.goldrush' /tmp/logcat.txt; then
+              echo "::error::Fatal exception detected for Gold Rush"
+              exit 1
+            fi
+
+            echo "ANDROID_SMOKE_OK api=${{ matrix.api }}"
