@@ -45,35 +45,4 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect -camera-back none
-          script: |
-            set -euo pipefail
-            gradle -p Android :app:assembleRelease --no-daemon --stacktrace
-            unsigned="$(find Android/app/build/outputs/apk/release -maxdepth 1 -type f -name '*unsigned*.apk' -o -name 'app-release.apk' | head -n 1)"
-            test -n "$unsigned"
-            keystore="$RUNNER_TEMP/goldrush-upload.jks"
-            signed="$RUNNER_TEMP/goldrush-release-signed.apk"
-            printf '%s' "$ANDROID_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$keystore"
-            test -s "$keystore"
-            apksigner sign               --ks "$keystore"               --ks-pass "pass:$ANDROID_UPLOAD_KEYSTORE_PASSWORD"               --ks-key-alias "$ANDROID_UPLOAD_KEY_ALIAS"               --key-pass "pass:$ANDROID_UPLOAD_KEY_PASSWORD"               --out "$signed"               "$unsigned"
-            apksigner verify "$signed"
-
-            adb install -r "$signed"
-            adb logcat -c
-            adb shell am start -W -n com.killjoy00.goldrush/.MainActivity
-            sleep 5
-            adb shell pidof com.killjoy00.goldrush >/dev/null
-            adb shell input keyevent KEYCODE_HOME
-            sleep 2
-            adb shell am start -W -n com.killjoy00.goldrush/.MainActivity
-            sleep 3
-            adb shell settings put system accelerometer_rotation 0 || true
-            adb shell settings put system user_rotation 1 || true
-            sleep 3
-            adb shell pidof com.killjoy00.goldrush >/dev/null
-
-            adb logcat -d > /tmp/logcat.txt
-            if grep -E -A25 -B5 'FATAL EXCEPTION|Process: com\.killjoy00\.goldrush' /tmp/logcat.txt; then
-              echo "::error::Fatal exception detected for minified Gold Rush release"
-              exit 1
-            fi
-            echo "ANDROID_RELEASE_SMOKE_OK api=${{ matrix.api }}"
+          script: bash .github/scripts/android-crash-smoke-probe.sh release ${{ matrix.api }}
