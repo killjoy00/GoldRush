@@ -4,7 +4,7 @@ This is the short manual-only checklist after the September 2026 Play Developer 
 
 ## Play Console — declarations/status
 
-- [x] **Closed testing:** `Gold Rush 1.5 closed test` / versionCode 3 is reviewed, approved, and completed on `production-access`.
+- [x] **Closed testing:** **versionCode 4 / versionName 1.5.1** is completed on `production-access`; the crashing v3 closed-test build is superseded.
 - [ ] **Closed-test gate:** keep at least 12 testers actually opted in continuously for 14 days, then obtain Production access.
 - [x] **Privacy policy:** `https://killjoy00.github.io/GoldRush/privacy.html` verified and saved.
 - [x] **Ads:** **Yes, contains ads**.
@@ -16,14 +16,14 @@ This is the short manual-only checklist after the September 2026 Play Developer 
 - [x] **Health apps declaration:** No.
 - [x] **Government apps declaration:** No.
 - [x] **Data Safety:** submitted through the Android Publisher API; Google returned HTTP 204. Source answers are in `docs/play-store/data-safety.md`.
-- [ ] **AdMob Privacy & messaging:** confirm the applicable European regulations message is **Published**, not Draft.
+- [ ] **AdMob Privacy & messaging (non-blocking for US/Canada launch):** European regulations messaging is optional resilience for EEA/UK/Switzerland travelers or future expansion; do not block the US/Canada launch on it.
 - [ ] **Production countries:** after Production access unlocks, set availability to **Canada + United States only** with no Rest of World. The release audit and Production promotion workflow fail closed if readable Production geography differs.
 - [ ] **Device availability:** review the Production device catalog for unexpected exclusions after Production access is granted.
 - [ ] **Production readiness:** resolve every Play Console error/warning before rollout.
 
 ## Physical Android / Play-delivered QA
 
-- [ ] Install/update to **versionCode 3** from the `production-access` closed test on a physical Android device.
+- [ ] Install/update to **versionCode 4** from the `production-access` closed test on a physical Android device and confirm startup is stable.
 - [ ] Confirm the in-app **Privacy Policy** action opens the current public policy.
 - [ ] Confirm the localized Remove Ads price appears.
 - [ ] Confirm banner ads appear only on intended non-gameplay surfaces and never during an active game.
@@ -42,12 +42,12 @@ This is the short manual-only checklist after the September 2026 Play Developer 
 
 - Production currently has **zero releases**. Keep it that way until Production access, account-side checks, and physical-device QA pass.
 - `.github/workflows/play-release-audit.yml` permanently verifies that the repo version is present in Play and completed on `production-access`. Once Production country availability is readable, it requires exactly `CA,US` with `restOfWorld=false`.
-- `.github/workflows/play-promote-production.yml` is the only intended first-launch Production path. It does **not** build or upload a new AAB. It promotes the already-tested versionCode 3 only after verifying:
-  - versionCode 3 already exists in Play;
-  - versionCode 3 is completed on `production-access`;
+- `.github/workflows/play-promote-production.yml` is the only intended first-launch Production path. It does **not** build or upload a new AAB. It promotes the already-tested versionCode 4 only after verifying:
+  - versionCode 4 already exists in Play;
+  - versionCode 4 is completed on `production-access`;
   - Production still has zero releases;
   - Production geography is exactly Canada + United States with no Rest of World;
   - the edit validates successfully; and
   - no unrelated Play change is already in review (`ERROR_IF_IN_REVIEW`).
-- The workflow requires the explicit confirmation string `PROMOTE_GOLD_RUSH_V3` and is pinned to versionCode 3 so it cannot silently become a future-release mechanism.
-- **Version code 3 is already consumed by Play. Any new Android binary must use versionCode 4 or higher.**
+- The workflow requires the explicit confirmation string `PROMOTE_GOLD_RUSH_V4` and is pinned to versionCode 4 so it cannot silently become a future-release mechanism.
+- **Version code 4 is already consumed by Play. Any new Android binary must use versionCode 5 or higher.**

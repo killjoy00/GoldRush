@@ -20,7 +20,7 @@ Current Google Play text limits:
 
 The September 14, 2026 Android Publisher API audit confirms:
 
-- version code 3 / version 1.5 is completed on **Internal testing**;
+- version code 4 / version 1.5.1 is completed on **Internal testing** and on the `production-access` closed-test track;
 - the **Production** track exists but currently has **zero releases**;
 - the live English listing and developer contact fields match the checked-in release configuration;
 - required phone graphics are live (`icon=1`, `featureGraphic=1`, `phoneScreenshots=4`);
@@ -31,8 +31,8 @@ The public website repository contains the exact required AdMob `app-ads.txt` re
 
 `google.com, pub-1217971050094766, DIRECT, f08c47fec0942fa0`
 
-GitHub reports Pages enabled for the Gold Rush repository and `docs/privacy.html` contains the current policy. Android v3 also links directly to the same privacy-policy URL inside the app. Before production rollout, open the public URL once in a normal browser, confirm the current policy loads, and save that URL in Play Console App content → Privacy policy.
+GitHub reports Pages enabled for the Gold Rush repository and `docs/privacy.html` contains the current policy. Android v4 also links directly to the same privacy-policy URL inside the app. Before production rollout, open the public URL once in a normal browser, confirm the current policy loads, and save that URL in Play Console App content → Privacy policy.
 
 Play Console email-list tester membership and production country/device availability remain manual Console checks because those states are not fully exposed by the Android Publisher API in the current pre-production configuration.
 
-Version code 3 is consumed by Play. Any subsequent Android binary must use **versionCode 4 or higher**.
+Version code 4 is consumed by Play. Any subsequent Android binary must use **versionCode 5 or higher**.
