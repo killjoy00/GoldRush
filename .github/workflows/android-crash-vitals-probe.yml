@@ -13,7 +13,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
       - name: Authenticate to Play Developer Reporting API
         id: auth
         uses: google-github-actions/auth@v3
@@ -22,83 +21,23 @@ jobs:
           credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           access_token_scopes: https://www.googleapis.com/auth/playdeveloperreporting
           create_credentials_file: false
-
-      - name: Query Android vitals crashes
+      - name: Query all Android vitals errors
         env:
           ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
         shell: bash
         run: |
           set -euo pipefail
-          base="https://playdeveloperreporting.googleapis.com/v1beta1"
-          app="apps/com.killjoy00.goldrush"
-
-          echo "PLAY_VITALS_PROBE_BEGIN"
-
-          apps_http="$(curl -sS -o /tmp/apps.json -w '%{http_code}'             -H "Authorization: Bearer ${ACCESS_TOKEN}"             -H "Accept: application/json"             "${base}/apps:search?pageSize=100")"
-          echo "appsSearchHttp=${apps_http}"
-          if [ "${apps_http}" != "200" ]; then
-            cat /tmp/apps.json
-            echo "PLAY_VITALS_PROBE_END"
-            exit 0
-          fi
-
-          accessible="$(jq -r --arg n "${app}" '[.apps[]? | select(.name == $n)] | length' /tmp/apps.json)"
-          echo "goldRushAccessible=${accessible}"
-          if [ "${accessible}" -lt 1 ]; then
-            jq '{apps: [.apps[]? | {name, title, packageName}]}' /tmp/apps.json
-            echo "PLAY_VITALS_PROBE_END"
-            exit 0
-          fi
-
-          filter='versionCode = 3 AND errorIssueType = CRASH'
-          issues_http="$(curl -sS -G -o /tmp/issues.json -w '%{http_code}'             -H "Authorization: Bearer ${ACCESS_TOKEN}"             -H "Accept: application/json"             --data-urlencode "filter=${filter}"             --data-urlencode "orderBy=errorReportCount desc"             --data-urlencode "sampleErrorReportLimit=1"             --data-urlencode "pageSize=50"             "${base}/${app}/errorIssues:search")"
-          echo "errorIssuesHttp=${issues_http}"
-          if [ "${issues_http}" != "200" ]; then
-            cat /tmp/issues.json
-            echo "PLAY_VITALS_PROBE_END"
-            exit 0
-          fi
-
-          echo "crashIssueCount=$(jq '(.errorIssues // []) | length' /tmp/issues.json)"
-          jq '{
-            errorIssues: [
-              .errorIssues[]? | {
-                name,
-                type,
-                cause,
-                location,
-                errorReportCount,
-                distinctUsers,
-                firstOsVersion,
-                lastOsVersion,
-                firstAppVersion,
-                lastAppVersion,
-                sampleErrorReports
-              }
-            ]
-          }' /tmp/issues.json
-
-          reports_http="$(curl -sS -G -o /tmp/reports.json -w '%{http_code}'             -H "Authorization: Bearer ${ACCESS_TOKEN}"             -H "Accept: application/json"             --data-urlencode "filter=${filter}"             --data-urlencode "pageSize=50"             "${base}/${app}/errorReports:search")"
-          echo "errorReportsHttp=${reports_http}"
-          if [ "${reports_http}" = "200" ]; then
-            echo "crashReportCount=$(jq '(.errorReports // []) | length' /tmp/reports.json)"
-            jq '{
-              errorReports: [
-                .errorReports[]? | {
-                  name,
-                  type,
-                  reportText,
-                  issue,
-                  deviceModel,
-                  deviceBrand,
-                  osVersion,
-                  appVersion,
-                  eventTime
-                }
-              ]
-            }' /tmp/reports.json
-          else
-            cat /tmp/reports.json
-          fi
-
-          echo "PLAY_VITALS_PROBE_END"
+          base="https://playdeveloperreporting.googleapis.com/v1beta1/apps/com.killjoy00.goldrush"
+          echo "PLAY_VITALS_ALL_BEGIN"
+          for kind in CRASH ANR; do
+            out="/tmp/${kind}.json"
+            http="$(curl -sS -G -o "${out}" -w '%{http_code}'               -H "Authorization: Bearer ${ACCESS_TOKEN}"               -H "Accept: application/json"               --data-urlencode "filter=errorIssueType = ${kind}"               --data-urlencode "orderBy=errorReportCount desc"               --data-urlencode "sampleErrorReportLimit=1"               --data-urlencode "pageSize=100"               "${base}/errorIssues:search")"
+            echo "${kind}Http=${http}"
+            if [ "${http}" = "200" ]; then
+              echo "${kind}IssueCount=$(jq '(.errorIssues // []) | length' "${out}")"
+              jq '{errorIssues:[.errorIssues[]? | {name,type,cause,location,errorReportCount,distinctUsers,firstOsVersion,lastOsVersion,firstAppVersion,lastAppVersion,sampleErrorReports}]}' "${out}"
+            else
+              cat "${out}"
+            fi
+          done
+          echo "PLAY_VITALS_ALL_END"
