@@ -13,7 +13,7 @@ if [ "$variant" = "release" ]; then
   printf '%s' "$ANDROID_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$keystore"
   test -s "$keystore"
   apksigner sign     --ks "$keystore"     --ks-pass "pass:$ANDROID_UPLOAD_KEYSTORE_PASSWORD"     --ks-key-alias "$ANDROID_UPLOAD_KEY_ALIAS"     --key-pass "pass:$ANDROID_UPLOAD_KEY_PASSWORD"     --out "$apk"     "$unsigned"
-  apksigner verify "$apk"
+  "$apksigner_bin" verify "$apk"
 elif [ "$variant" = "debug" ]; then
   gradle -p Android :app:assembleDebug --no-daemon --stacktrace
   apk="$(find Android/app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -n 1)"
