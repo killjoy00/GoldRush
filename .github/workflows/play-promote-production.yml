@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: Type PROMOTE_GOLD_RUSH_V3 to confirm the first Android Production submission
+        description: Type PROMOTE_GOLD_RUSH_V4 to confirm the first Android Production submission
         required: true
         type: string
 
@@ -42,8 +42,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ "$CONFIRMATION" != "PROMOTE_GOLD_RUSH_V3" ]; then
-            echo "::error::Confirmation did not match PROMOTE_GOLD_RUSH_V3. No Play changes were made."
+          if [ "$CONFIRMATION" != "PROMOTE_GOLD_RUSH_V4" ]; then
+            echo "::error::Confirmation did not match PROMOTE_GOLD_RUSH_V4. No Play changes were made."
             exit 1
           fi
 
@@ -82,8 +82,8 @@ jobs:
           test -n "$expected_version_code"
           test -n "$expected_version_name"
 
-          if [ "$expected_version_code" != "3" ]; then
-            echo "::error::This first-launch workflow is pinned to tested versionCode 3, but the repo currently declares ${expected_version_code}."
+          if [ "$expected_version_code" != "4" ]; then
+            echo "::error::This first-launch workflow is pinned to tested versionCode 4, but the repo currently declares ${expected_version_code}."
             exit 1
           fi
 
