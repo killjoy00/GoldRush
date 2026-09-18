@@ -24,7 +24,7 @@ else
 fi
 
 adb install -r "$apk"
-adb logcat -c
+adb logcat -c || true
 adb shell am start -W -n com.killjoy00.goldrush/.MainActivity
 sleep 5
 adb shell pidof com.killjoy00.goldrush >/dev/null
