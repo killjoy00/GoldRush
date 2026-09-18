@@ -37,20 +37,35 @@ fi
 adb install -r "$apk"
 adb logcat -c || true
 
+dump_logcat_and_fail() {
+  stage="$1"
+  echo "::error::Gold Rush process died during $stage"
+  adb logcat -d > /tmp/goldrush-smoke-logcat.txt || true
+  grep -E -A60 -B20 'FATAL EXCEPTION|Process: com\\.killjoy00\\.goldrush|AndroidRuntime' /tmp/goldrush-smoke-logcat.txt || true
+  tail -n 250 /tmp/goldrush-smoke-logcat.txt || true
+  exit 1
+}
+
 adb shell am start -W -n com.killjoy00.goldrush/.MainActivity
 sleep 5
-adb shell pidof com.killjoy00.goldrush >/dev/null
+if ! adb shell pidof com.killjoy00.goldrush >/dev/null; then
+  dump_logcat_and_fail "initial launch"
+fi
 
 adb shell input keyevent KEYCODE_HOME
 sleep 2
 adb shell am start -W -n com.killjoy00.goldrush/.MainActivity
 sleep 3
-adb shell pidof com.killjoy00.goldrush >/dev/null
+if ! adb shell pidof com.killjoy00.goldrush >/dev/null; then
+  dump_logcat_and_fail "background/foreground restore"
+fi
 
 adb shell settings put system accelerometer_rotation 0 || true
 adb shell settings put system user_rotation 1 || true
 sleep 3
-adb shell pidof com.killjoy00.goldrush >/dev/null
+if ! adb shell pidof com.killjoy00.goldrush >/dev/null; then
+  dump_logcat_and_fail "rotation"
+fi
 
 adb logcat -d > /tmp/goldrush-smoke-logcat.txt
 if grep -E -A25 -B5 'FATAL EXCEPTION|Process: com\.killjoy00\.goldrush' /tmp/goldrush-smoke-logcat.txt; then
