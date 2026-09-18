@@ -113,20 +113,20 @@ The old seed-build/manual-upload sequence is obsolete. Current live state is:
 
 1. Gold Rush is configured in Play as `com.killjoy00.goldrush`.
 2. The correct upload certificate is established and locked in CI: `8A:D5:7A:08:05:70:96:CD:6F:D4:70:39:EA:86:1C:E1:63:E3:AC:26`.
-3. Android 1.5 / **versionCode 3** is completed on the Internal testing track; this was confirmed by a post-upload Android Publisher API readback.
+3. Android 1.5.1 / **versionCode 4** is completed on Internal testing and on the `production-access` closed-test track; the crashing v3 build is superseded.
 4. Remove Ads is ACTIVE at US $2.99 with Google-generated regional pricing.
 5. The Play listing text, contact metadata, store icon, feature graphic, and four real-app phone screenshots are live.
 6. Production currently has **zero releases**.
-7. Any future Android binary must use **versionCode 4 or higher**.
+7. Any future Android binary must use **versionCode 5 or higher**.
 
 ## Remaining Android launch work
 
 The remaining work is manual Play policy declarations plus physical-device QA rather than game-rule, AI, career-stat, journal, tableau, ads, billing, store-listing, asset, or signing reconstruction:
 
-1. Verify Internal-test email-list access and install/update versionCode 3 from Google Play on physical Android hardware.
+1. Verify Internal-test email-list access and install/update versionCode 4 from Google Play on physical Android hardware.
 2. Complete/verify App content declarations: Privacy policy, Ads, App access, Target audience and content, Content rating, and Data Safety.
 3. Review production country/device availability and resolve any Play production-readiness warnings.
-4. Validate the in-app privacy link, Billing purchase/restore/reinstall/pending/refund flows, ads, UMP consent/privacy choices, review prompts, restoration, and hidden-information behavior using the Play-delivered v3 build.
+4. Validate the in-app privacy link, Billing purchase/restore/reinstall/pending/refund flows, ads, UMP consent/privacy choices, review prompts, restoration, and hidden-information behavior using the Play-delivered v4 build.
 5. Keep Production empty until those checks pass.
 6. Decide online architecture later if cross-platform friend play is desired. Game Center cannot provide Android/iOS cross-play.
 
