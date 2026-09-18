@@ -2,7 +2,7 @@ name: Android release crash smoke probe
 
 on:
   push:
-    branches: [android-crash-vitals-probe]
+    branches: [android-crash-proguard-only]
 
 permissions:
   contents: read
