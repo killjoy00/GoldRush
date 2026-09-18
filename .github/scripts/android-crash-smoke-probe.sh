@@ -8,11 +8,22 @@ if [ "$variant" = "release" ]; then
   gradle -p Android :app:assembleRelease --no-daemon --stacktrace
   unsigned="$(find Android/app/build/outputs/apk/release -maxdepth 1 -type f \( -name '*unsigned*.apk' -o -name 'app-release.apk' \) | head -n 1)"
   test -n "$unsigned"
+
   keystore="$RUNNER_TEMP/goldrush-upload.jks"
   apk="$RUNNER_TEMP/goldrush-release-signed.apk"
   printf '%s' "$ANDROID_UPLOAD_KEYSTORE_BASE64" | base64 --decode > "$keystore"
   test -s "$keystore"
-  apksigner sign     --ks "$keystore"     --ks-pass "pass:$ANDROID_UPLOAD_KEYSTORE_PASSWORD"     --ks-key-alias "$ANDROID_UPLOAD_KEY_ALIAS"     --key-pass "pass:$ANDROID_UPLOAD_KEY_PASSWORD"     --out "$apk"     "$unsigned"
+
+  apksigner_bin="$(find "${ANDROID_HOME:-/usr/local/lib/android/sdk}/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+  test -x "$apksigner_bin"
+
+  "$apksigner_bin" sign \
+    --ks "$keystore" \
+    --ks-pass "pass:$ANDROID_UPLOAD_KEYSTORE_PASSWORD" \
+    --ks-key-alias "$ANDROID_UPLOAD_KEY_ALIAS" \
+    --key-pass "pass:$ANDROID_UPLOAD_KEY_PASSWORD" \
+    --out "$apk" \
+    "$unsigned"
   "$apksigner_bin" verify "$apk"
 elif [ "$variant" = "debug" ]; then
   gradle -p Android :app:assembleDebug --no-daemon --stacktrace
@@ -25,6 +36,7 @@ fi
 
 adb install -r "$apk"
 adb logcat -c || true
+
 adb shell am start -W -n com.killjoy00.goldrush/.MainActivity
 sleep 5
 adb shell pidof com.killjoy00.goldrush >/dev/null
