@@ -1,0 +1,73 @@
+name: Pack One post-create Play probe
+
+on:
+  push:
+    branches:
+      - "chatgpt/packone-play-probe"
+    paths:
+      - ".github/workflows/packone-postcreate-probe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Authenticate
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Read Pack One Play state
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Accept: application/json")
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/pro.packone.app"
+          edit_id=""
+
+          cleanup() {
+            if [ -n "$edit_id" ]; then
+              curl -sS -X DELETE "${base}/edits/${edit_id}" "${auth[@]}" >/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          echo "PACKONE_POSTCREATE_BEGIN"
+          code="$(curl -sS -o "$RUNNER_TEMP/edit.json" -w '%{http_code}' -X POST "${base}/edits" "${auth[@]}" -H "Content-Type: application/json" -d '{}')"
+          echo "edit_http=${code}"
+          if [ "$code" != "200" ]; then
+            jq -r '"error_code=" + ((.error.code // 0)|tostring), "error_status=" + (.error.status // "unknown"), "error_message=" + (.error.message // "unknown")' "$RUNNER_TEMP/edit.json" 2>/dev/null || true
+            exit 0
+          fi
+
+          edit_id="$(jq -r '.id' "$RUNNER_TEMP/edit.json")"
+          echo "app_access=ok"
+
+          for resource in tracks bundles listings details; do
+            rcode="$(curl -sS -o "$RUNNER_TEMP/${resource}.json" -w '%{http_code}' "${base}/edits/${edit_id}/${resource}" "${auth[@]}")"
+            echo "${resource}_http=${rcode}"
+          done
+
+          echo "track_names=$(jq -r '[.tracks[]?.track] | join(",")' "$RUNNER_TEMP/tracks.json" 2>/dev/null || echo unknown)"
+          echo "bundle_count=$(jq -r '(.bundles // []) | length' "$RUNNER_TEMP/bundles.json" 2>/dev/null || echo unknown)"
+          echo "listing_count=$(jq -r '(.listings // []) | length' "$RUNNER_TEMP/listings.json" 2>/dev/null || echo unknown)"
+          echo "default_language=$(jq -r '.defaultLanguage // "unset"' "$RUNNER_TEMP/details.json" 2>/dev/null || echo unknown)"
+          echo "contact_email_present=$(jq -r 'if (.contactEmail // "") == "" then "no" else "yes" end' "$RUNNER_TEMP/details.json" 2>/dev/null || echo unknown)"
+          echo "contact_website_present=$(jq -r 'if (.contactWebsite // "") == "" then "no" else "yes" end' "$RUNNER_TEMP/details.json" 2>/dev/null || echo unknown)"
+
+          prod_code="$(curl -sS -o "$RUNNER_TEMP/prod.json" -w '%{http_code}' "${base}/edits/${edit_id}/tracks/production" "${auth[@]}")"
+          internal_code="$(curl -sS -o "$RUNNER_TEMP/internal.json" -w '%{http_code}' "${base}/edits/${edit_id}/tracks/internal" "${auth[@]}")"
+          echo "production_track_http=${prod_code}"
+          echo "internal_track_http=${internal_code}"
+          if [ "$prod_code" = "200" ]; then echo "production_release_count=$(jq -r '(.releases // []) | length' "$RUNNER_TEMP/prod.json")"; fi
+          if [ "$internal_code" = "200" ]; then echo "internal_release_count=$(jq -r '(.releases // []) | length' "$RUNNER_TEMP/internal.json")"; fi
+          echo "PACKONE_POSTCREATE_END"
