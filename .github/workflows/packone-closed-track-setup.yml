@@ -1,0 +1,82 @@
+name: Pack One closed track setup
+
+on:
+  push:
+    branches:
+      - "chatgpt/packone-play-probe"
+    paths:
+      - ".github/workflows/packone-closed-track-setup.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Authenticate
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+
+      - name: Ensure empty production-access closed track exists
+        env:
+          ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pkg="pro.packone.app"
+          track="production-access"
+          base="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${pkg}"
+          auth=(-H "Authorization: Bearer ${ACCESS_TOKEN}" -H "Content-Type: application/json")
+          edit_id=""
+
+          cleanup() {
+            if [ -n "$edit_id" ]; then
+              curl -sS -X DELETE "${base}/edits/${edit_id}" "${auth[@]}" >/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          edit_json="$(curl --fail-with-body -sS -X POST "${base}/edits" "${auth[@]}" -d '{}')"
+          edit_id="$(jq -r '.id' <<<"$edit_json")"
+
+          code="$(curl -sS -o "$RUNNER_TEMP/track.json" -w '%{http_code}' "${base}/edits/${edit_id}/tracks/${track}" "${auth[@]}")"
+          echo "existing_track_http=${code}"
+
+          if [ "$code" = "404" ]; then
+            jq -n --arg track "$track" '{track:$track,type:"CLOSED_TESTING",formFactor:"DEFAULT"}' > "$RUNNER_TEMP/create.json"
+            create_code="$(curl -sS -o "$RUNNER_TEMP/create-response.json" -w '%{http_code}' -X POST "${base}/edits/${edit_id}/tracks" "${auth[@]}" --data-binary @"$RUNNER_TEMP/create.json")"
+            echo "create_track_http=${create_code}"
+            if [ "$create_code" != "200" ]; then
+              cat "$RUNNER_TEMP/create-response.json"
+              exit 1
+            fi
+          elif [ "$code" = "200" ]; then
+            echo "track_already_exists=yes"
+          else
+            cat "$RUNNER_TEMP/track.json"
+            exit 1
+          fi
+
+          commit_code="$(curl -sS -o "$RUNNER_TEMP/commit.json" -w '%{http_code}' -X POST "${base}/edits/${edit_id}:commit?changesInReviewBehavior=ERROR_IF_IN_REVIEW" "${auth[@]}" -d '{}')"
+          echo "commit_http=${commit_code}"
+          if [ "$commit_code" != "200" ]; then
+            cat "$RUNNER_TEMP/commit.json"
+            exit 1
+          fi
+          edit_id=""
+
+          verify_edit="$(curl --fail-with-body -sS -X POST "${base}/edits" "${auth[@]}" -d '{}')"
+          edit_id="$(jq -r '.id' <<<"$verify_edit")"
+          verify_code="$(curl -sS -o "$RUNNER_TEMP/verify.json" -w '%{http_code}' "${base}/edits/${edit_id}/tracks/${track}" "${auth[@]}")"
+          echo "verify_http=${verify_code}"
+          if [ "$verify_code" = "200" ]; then
+            echo "track_name=$(jq -r '.track // "unknown"' "$RUNNER_TEMP/verify.json")"
+            echo "release_count=$(jq -r '(.releases // []) | length' "$RUNNER_TEMP/verify.json")"
+          fi
