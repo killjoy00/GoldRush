@@ -171,12 +171,10 @@ jobs:
           test -n "$DEVICE_TYPE" || { echo "::error::No iPad Air simulator device type available on this runner."; exit 1; }
           echo "Using device type: $DEVICE_TYPE"
 
+          # Xcode 27 ships a special iPhone-only iOS 27.2 runtime alongside the
+          # normal iOS runtime. Choosing that variant for an iPad returns error 403.
           RUNTIME=$(xcrun simctl list runtimes -j | jq -r \
-            '[.runtimes[] | select(.isAvailable and (.name | contains("iPadOS")))] | sort_by(.version) | last | .identifier // empty')
-          if [ -z "$RUNTIME" ]; then
-            RUNTIME=$(xcrun simctl list runtimes -j | jq -r \
-              '[.runtimes[] | select(.isAvailable and (.name | contains("iOS")))] | sort_by(.version) | last | .identifier // empty')
-          fi
+            '[.runtimes[] | select(.isAvailable and (.identifier | startswith("com.apple.CoreSimulator.SimRuntime.iOS-")) and ((.identifier | contains("-iPhone")) | not))] | sort_by(.version) | last | .identifier // empty')
           test -n "$RUNTIME" || { echo "::error::No usable simulator runtime found."; exit 1; }
           echo "Using runtime: $RUNTIME"
 
