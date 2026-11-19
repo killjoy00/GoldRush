@@ -26,15 +26,17 @@ jobs:
 
   ios:
     name: iOS UI typecheck
-    # Pinned from the probe run: macos-26 carries Xcode 26.6 (17F113), the
-    # iOS 26.5 SDK and Swift 6.3.3 -- the same compiler the engine is tested
-    # with on Linux, so there is no version skew between the two halves.
-    runs-on: macos-26
+    # Use the App Store-required iOS 27 SDK for both unsigned CI and releases.
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
       - name: Show toolchain
         run: |
-          sudo xcode-select -s /Applications/Xcode_26.6.app
+          set -euo pipefail
+          xcodebuild -version
+          sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          major="${sdk%%.*}"
+          if (( major < 27 )); then echo "::error::iOS 27 SDK required, found $sdk"; exit 1; fi
           xcodebuild -version
           swift --version
       - name: Build engine for iOS
@@ -56,11 +58,16 @@ jobs:
 
   app:
     name: iOS app build (unsigned)
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_26.6.app
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          major="${sdk%%.*}"
+          if (( major < 27 )); then echo "::error::iOS 27 SDK required, found $sdk"; exit 1; fi
       - name: Build the app target without signing
         # Validates the hand-written project file end to end. Nobody on this
         # project has a Mac to open it in, so this job is the only thing that
@@ -117,11 +124,16 @@ jobs:
     # layout, and there is no way to opt an iPhone-only app out of that --
     # so this job renders the same window App Review does, on every push,
     # rather than trusting the layout math to be right.
-    runs-on: macos-26
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v4
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_26.6.app
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          major="${sdk%%.*}"
+          if (( major < 27 )); then echo "::error::iOS 27 SDK required, found $sdk"; exit 1; fi
       - name: Build for the iOS Simulator
         run: |
           set -o pipefail
