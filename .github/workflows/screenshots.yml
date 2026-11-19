@@ -29,7 +29,7 @@ on:
 jobs:
   capture:
     name: ${{ matrix.label }}
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 45
     strategy:
       # Both sizes are captured even when one fails, so a bad device name for
@@ -54,7 +54,11 @@ jobs:
         # The same version the release workflow archives with, so a screenshot
         # cannot come from a different SDK than the binary users get.
         run: |
-          sudo xcode-select -s /Applications/Xcode_26.6.app
+          set -euo pipefail
+          xcodebuild -version
+          sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          major="${sdk%%.*}"
+          if (( major < 27 )); then echo "::error::iOS 27 SDK required, found $sdk"; exit 1; fi
           xcodebuild -version
 
       - name: Resolve the simulator
