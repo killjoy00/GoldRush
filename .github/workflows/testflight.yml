@@ -15,7 +15,7 @@ on:
 jobs:
   upload:
     name: Archive, sign and upload
-    runs-on: macos-26
+    runs-on: xcode-27
     timeout-minutes: 45
     env:
       # Change this by setting a repository variable of the same name.
@@ -27,7 +27,11 @@ jobs:
 
       - name: Select Xcode
         run: |
-          sudo xcode-select -s /Applications/Xcode_26.6.app
+          set -euo pipefail
+          xcodebuild -version
+          sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          major="${sdk%%.*}"
+          if (( major < 27 )); then echo "::error::iOS 27 SDK required, found $sdk"; exit 1; fi
           xcodebuild -version
 
       - name: Check required secrets are present
