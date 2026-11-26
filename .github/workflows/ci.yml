@@ -134,21 +134,7 @@ jobs:
           sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
           major="${sdk%%.*}"
           if (( major < 27 )); then echo "::error::iOS 27 SDK required, found $sdk"; exit 1; fi
-      - name: Build for the iOS Simulator
-        run: |
-          set -o pipefail
-          cd App
-          xcodebuild build \
-            -project GoldRush.xcodeproj \
-            -scheme GoldRush \
-            -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/dd" \
-            -skipMacroValidation \
-            GOLDRUSH_BUNDLE_ID=com.goldrush.ci \
-            CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/sim-build.log" 2>&1 || { echo "=== errors ==="; grep -E "error:" "$RUNNER_TEMP/sim-build.log" | sort -u | head -40; exit 1; }
-
-      - name: Boot the review device and screenshot the home screen
+      - name: Start the review iPad simulator while compiling
         run: |
           set -o pipefail
           echo "=== Available iPad device types ==="
@@ -180,7 +166,27 @@ jobs:
 
           DEVICE_ID=$(xcrun simctl create ReviewIPad "$DEVICE_TYPE" "$RUNTIME")
           echo "Created device: $DEVICE_ID"
+          echo "REVIEW_IPAD_UDID=$DEVICE_ID" >> "$GITHUB_ENV"
           xcrun simctl boot "$DEVICE_ID"
+
+      - name: Build for the iOS Simulator
+        run: |
+          set -o pipefail
+          cd App
+          xcodebuild build \
+            -project GoldRush.xcodeproj \
+            -scheme GoldRush \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            -skipMacroValidation \
+            GOLDRUSH_BUNDLE_ID=com.goldrush.ci \
+            CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/sim-build.log" 2>&1 || { echo "=== errors ==="; grep -E "error:" "$RUNNER_TEMP/sim-build.log" | sort -u | head -40; exit 1; }
+
+      - name: Wait for the review device and screenshot the home screen
+        run: |
+          set -euo pipefail
+          DEVICE_ID="$REVIEW_IPAD_UDID"
           xcrun simctl bootstatus "$DEVICE_ID" -b
 
           APP_PATH=$(find "$RUNNER_TEMP/dd/Build/Products" -maxdepth 2 -name "GoldRush.app" -path "*iphonesimulator*" | head -1)
@@ -194,7 +200,6 @@ jobs:
           sleep 8
           mkdir -p "$RUNNER_TEMP/screenshots"
           xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/screenshots/home-screen.png"
-          xcrun simctl shutdown "$DEVICE_ID" || true
 
           # The first version of this fix passed CI and was rejected anyway:
           # the home screen scrolled, but App Review looks at the screen
@@ -214,6 +219,13 @@ jobs:
           # The compatibility window is rendered at 2x, so points are half.
           print(f"approx points at 2x: {w // 2} x {h // 2}")
           PY
+
+      - name: Shut down the review simulator
+        if: always()
+        run: |
+          if [ -n "${REVIEW_IPAD_UDID:-}" ]; then
+            xcrun simctl shutdown "$REVIEW_IPAD_UDID" || true
+          fi
 
       - uses: actions/upload-artifact@v4
         if: always()
