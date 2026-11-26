@@ -1,0 +1,121 @@
+name: Portfolio store status (read only)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '49 12 * * *'
+  pull_request:
+    paths:
+      - '.github/portfolio-status/**'
+      - '.github/workflows/portfolio-store-status.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/portfolio-status/**'
+      - '.github/workflows/portfolio-store-status.yml'
+permissions:
+  contents: read
+concurrency:
+  group: portfolio-store-status
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s .github/portfolio-status -p 'test_*.py'
+  apple:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify configured Gold Rush app identity
+        env:
+          BUNDLE_ID: ${{ vars.GOLDRUSH_BUNDLE_ID || 'com.killjoy00.goldrush' }}
+        run: |
+          test "$BUNDLE_ID" = com.killjoy00.goldrush || { echo "::error::Configured bundle differs from registry; verify and update the approved identity."; exit 1; }
+      - run: python3 -m pip install --quiet 'PyJWT[crypto]==2.10.1'
+      - name: Read Apple release lifecycle
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: python3 .github/portfolio-status/portfolio_apple_status.py "$RUNNER_TEMP/apple.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-apple-release-status
+          path: ${{ runner.temp }}/apple.json
+          retention-days: 7
+          if-no-files-found: error
+  play:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Authenticate to Google Play using existing publisher
+        id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          access_token_scopes: https://www.googleapis.com/auth/androidpublisher
+          create_credentials_file: false
+      - name: Read Play release lifecycle without edits
+        env:
+          GOOGLE_PLAY_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: python3 .github/portfolio-status/portfolio_play_status.py "$RUNNER_TEMP/play.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-play-release-status
+          path: ${{ runner.temp }}/play.json
+          retention-days: 7
+          if-no-files-found: error
+  publish:
+    needs: [apple, play]
+    if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && (needs.apple.result == 'success' || needs.play.result == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/download-artifact@v4
+        if: needs.apple.result == 'success'
+        with:
+          name: public-apple-release-status
+          path: ${{ runner.temp }}/portfolio-status
+      - uses: actions/download-artifact@v4
+        if: needs.play.result == 'success'
+        with:
+          name: public-play-release-status
+          path: ${{ runner.temp }}/portfolio-status
+      - name: Publish only validated public evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-status
+          for platform in apple play; do
+            source="$RUNNER_TEMP/portfolio-status/$platform.json"
+            if [[ -f "$source" ]]; then
+              python3 ".github/portfolio-status/portfolio_${platform}_status.py" "$source" --validate
+              cp "$source" "release-status/$platform.json"
+              git add -- "release-status/$platform.json"
+            fi
+          done
+          git diff --cached --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Refresh sanitized mobile store status"
+          git push origin HEAD:main
