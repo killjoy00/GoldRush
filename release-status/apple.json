@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-11-26T20:53:02Z",
+  "run_id": "45893670733",
+  "apps": {
+    "gold-rush": {
+      "bundle": "com.killjoy00.goldrush",
+      "result": "ok",
+      "builds": [
+        {
+          "version": "1.5",
+          "build": "1028",
+          "processing": "VALID",
+          "internal": "IN_BETA_TESTING",
+          "external": "READY_FOR_BETA_SUBMISSION",
+          "expired": false
+        },
+        {
+          "version": "1.5",
+          "build": "1027",
+          "processing": "VALID",
+          "internal": "IN_BETA_TESTING",
+          "external": "READY_FOR_BETA_SUBMISSION",
+          "expired": false
+        },
+        {
+          "version": "1.4",
+          "build": "1026",
+          "processing": "VALID",
+          "internal": "IN_BETA_TESTING",
+          "external": "READY_FOR_BETA_SUBMISSION",
+          "expired": false
+        },
+        {
+          "version": "1.03",
+          "build": "1025",
+          "processing": "VALID",
+          "internal": "IN_BETA_TESTING",
+          "external": "READY_FOR_BETA_SUBMISSION",
+          "expired": false
+        },
+        {
+          "version": "1.02",
+          "build": "22",
+          "processing": "VALID",
+          "internal": "IN_BETA_TESTING",
+          "external": "READY_FOR_BETA_SUBMISSION",
+          "expired": false
+        },
+        {
+          "version": "1.02",
+          "build": "20",
+          "processing": "VALID",
+          "internal": "IN_BETA_TESTING",
+          "external": "READY_FOR_BETA_SUBMISSION",
+          "expired": false
+        },
+        {
+          "version": "1.0.1",
+          "build": "19",
+          "processing": "VALID",
+          "internal": "IN_BETA_TESTING",
+          "external": "READY_FOR_BETA_SUBMISSION",
+          "expired": false
+        },
+        {
+          "version": "1.0",
+          "build": "17",
+          "processing": "VALID",
+          "internal": "IN_BETA_TESTING",
+          "external": "READY_FOR_BETA_SUBMISSION",
+          "expired": false
+        },
+        {
+          "version": "1.0",
+          "build": "16",
+          "processing": "VALID",
+          "internal": "EXPIRED",
+          "external": "EXPIRED",
+          "expired": true
+        },
+        {
+          "version": "1.0",
+          "build": "15",
+          "processing": "VALID",
+          "internal": "EXPIRED",
+          "external": "EXPIRED",
+          "expired": true
+        },
+        {
+          "version": "1.0",
+          "build": "14",
+          "processing": "VALID",
+          "internal": "EXPIRED",
+          "external": "EXPIRED",
+          "expired": true
+        },
+        {
+          "version": "1.0",
+          "build": "13",
+          "processing": "VALID",
+          "internal": "EXPIRED",
+          "external": "EXPIRED",
+          "expired": true
+        },
+        {
+          "version": "1.0",
+          "build": "11",
+          "processing": "VALID",
+          "internal": "EXPIRED",
+          "external": "EXPIRED",
+          "expired": true
+        },
+        {
+          "version": "1.0",
+          "build": "10",
+          "processing": "VALID",
+          "internal": "EXPIRED",
+          "external": "EXPIRED",
+          "expired": true
+        },
+        {
+          "version": "1.0",
+          "build": "9",
+          "processing": "VALID",
+          "internal": "EXPIRED",
+          "external": "EXPIRED",
+          "expired": true
+        },
+        {
+          "version": "1.0",
+          "build": "8",
+          "processing": "VALID",
+          "internal": "EXPIRED",
+          "external": "EXPIRED",
+          "expired": true
+        }
+      ],
+      "versions": [
+        {
+          "version": "1.5",
+          "state": "READY_FOR_DISTRIBUTION"
+        },
+        {
+          "version": "1.4",
+          "state": "READY_FOR_DISTRIBUTION"
+        },
+        {
+          "version": "1.3",
+          "state": "READY_FOR_DISTRIBUTION"
+        },
+        {
+          "version": "1.2",
+          "state": "READY_FOR_DISTRIBUTION"
+        },
+        {
+          "version": "1.01",
+          "state": "READY_FOR_DISTRIBUTION"
+        },
+        {
+          "version": "1.0",
+          "state": "READY_FOR_DISTRIBUTION"
+        }
+      ]
+    }
+  }
+}
