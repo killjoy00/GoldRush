@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "checked_at": "2026-11-26T20:53:02Z",
-  "run_id": "45893670733",
+  "checked_at": "2026-11-27T21:40:43Z",
+  "run_id": "46071810165",
   "apps": {
     "gold-rush": {
       "bundle": "com.killjoy00.goldrush",
